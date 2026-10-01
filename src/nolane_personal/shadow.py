@@ -95,10 +95,10 @@ class ShadowLivingCoreRunner:
         torch = self.torch
         store = LivingStore(self.db_path)
         try:
-            records = [
-                r for r in store.replay_records(limit)
-                if int(r["version"]) > self.latent.source_state_version
-            ]
+            records = store.replay_records(
+                limit,
+                after_version=self.latent.source_state_version,
+            )
         finally:
             store.close()
 
