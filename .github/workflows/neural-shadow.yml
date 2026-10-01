@@ -12,6 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -e '.[dev,neural]'
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: pytest -q tests/test_living_core_contracts.py tests/test_neural_shadow.py
       - run: python scripts/audit_living_core.py
