@@ -24,4 +24,5 @@ jobs:
           tests/test_surgery_court.py
           tests/test_qwen3_surgery_contract.py
           tests/test_personal_cortex_training.py
+          tests/test_living_bridge.py
       - run: python scripts/audit_living_core.py
