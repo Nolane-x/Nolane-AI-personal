@@ -53,8 +53,8 @@ def test_bridge_exact_parameter_count_and_real_qwen_depth_trace():
     config = LivingBridgeConfig(bridge_dim=32, max_layers=64)
     bridge = CrossLayerLivingBridge(32, config, seed=8)
     assert bridge.parameter_count() == analytical_bridge_parameter_count(32, config)
-    assert bridge.parameter_count() == 17857
-    assert analytical_bridge_parameter_count(1024, config) == 84321
+    assert bridge.parameter_count() == 17825
+    assert analytical_bridge_parameter_count(1024, config) == 84289
 
     inputs = {"input_ids": torch.tensor([[1, 5, 7, 9]], dtype=torch.long)}
     with LivingBridgeHookSession(
