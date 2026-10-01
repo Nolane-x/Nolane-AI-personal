@@ -385,3 +385,42 @@ Engineering substrate: **WIDE-REGION-STATE-SPACE-COURT-READY / UNPROMOTED**.
 - [ ] promote only if the SSM cortex earns its larger architectural departure from Qwen
 
 L12 is the first wave where a compact token-recurrent state-space sequence model can replace a single large contiguous share of Qwen depth. It remains hybrid and unpromoted until real Qwen3-0.6B evidence passes.
+
+## L13 — Shrinking Qwen Scaffold
+
+Engineering substrate: **THIN-SCAFFOLD-COURT-READY / UNPROMOTED**.
+
+- [x] fast/slow multi-timescale non-attentional cortex
+- [x] token-conditioned fast proposal + decay
+- [x] slow-state retention floor for longer time scale
+- [x] persistent 32D Living latent conditions both time scales
+- [x] packed fast/slow recurrent state compatible with cached generation
+- [x] exact analytical parameter audit
+- [x] default hidden-1024 / state-24 footprint: **81,249 parameters**
+- [x] hard <=100K cortex parameter cap
+- [x] full-sequence == incremental packed-state scan court
+- [x] fast/slow dynamic-separation court
+- [x] Qwen scaffold size is an explicit optimization target
+- [x] calibrated head/tail anchor selection
+- [x] default shrink schedule ~50% -> 40% -> 32% -> 25% Qwen remaining
+- [x] default target ~75% Qwen decoder-depth removal
+- [x] minimum head/tail anchor protection
+- [x] monotonic frozen scaffold plan + SHA-256
+- [x] whole-region Qwen teacher distillation at every shrink stage
+- [x] true central-region replacement during task training
+- [x] dev-regression rollback to previous accepted shell
+- [x] cached/replay-safe generation equivalence
+- [x] quality court compares Qwen vs L12 vs L13
+- [x] production gate blocks if Qwen scaffold >35%
+- [x] resource court requires speedup versus Qwen and L12
+- [x] checkpoint + scaffold-plan identity binding
+- [x] tiny 12-layer Qwen3 court proves 2-head + 2-tail shell with central 8/12 blocks absent
+- [x] zero-gradient boundary on all Qwen parameters
+- [ ] freeze a real Qwen3-0.6B scaffold plan from sufficient approved history
+- [ ] train accepted stages until real Qwen scaffold <=35%
+- [ ] pass real held-out non-inferiority court against L12
+- [ ] pass real CPU/GPU forward and cached-generation resource court
+- [ ] test whether the shell can shrink below 25% without losing language competence
+- [ ] promote only if reduced Qwen dependence earns measurable quality/compute value
+
+L13 makes Qwen dependency itself measurable. The target is no longer merely a larger replacement region; it is a progressively thinner Qwen language scaffold around a Nolane-native multi-timescale cortex.
