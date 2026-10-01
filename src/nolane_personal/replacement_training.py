@@ -78,8 +78,7 @@ def _capture_teacher_pairs(model, input_ids, layer_indices):
         handles.append(layer.register_forward_hook(post_hook))
 
     try:
-        with model.device if False else _nullcontext():
-            model(input_ids=input_ids, use_cache=False)
+        model(input_ids=input_ids, use_cache=False)
     finally:
         for handle in reversed(handles):
             handle.remove()
@@ -91,14 +90,6 @@ def _capture_teacher_pairs(model, input_ids, layer_indices):
             raise RuntimeError(f"failed to capture teacher layer {index}")
         result.append((index, pair["input"], pair["output"]))
     return result
-
-
-class _nullcontext:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
 
 
 def _distill_loss(replacement, pairs, latent, cosine_weight):
