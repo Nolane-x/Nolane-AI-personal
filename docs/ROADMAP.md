@@ -251,3 +251,38 @@ Engineering substrate: **FOUR-WAY-COURT-READY / UNPROMOTED**.
 - [ ] consider attention/block bypass only after matched L6/L7/L8 evidence
 
 L7 and L8 explore different recurrence axes. Neither is assumed superior before the same held-out evidence decides.
+
+
+## L9 — Recurrent Transformer-Block Replacement
+
+Engineering substrate: **REAL-BYPASS-COURT-READY / UNPROMOTED**.
+
+- [x] selected Qwen decoder blocks can be genuinely bypassed
+- [x] shared recurrent replacement conditioned on Living latent + layer identity
+- [x] vectorized GRU token processing
+- [x] original decoder block forward count = 0 under replacement session
+- [x] exception-safe restoration of original Qwen forwards
+- [x] exact analytical parameter audit
+- [x] default Qwen-hidden-1024 footprint: **84,289 parameters**
+- [x] hard <=100K replacement parameter cap
+- [x] frozen Qwen teacher hidden-state capture
+- [x] teacher distillation before block bypass fine-tuning
+- [x] end-to-end personalization fine-tuning with selected blocks absent
+- [x] zero-gradient boundary on all Qwen weights
+- [x] trained replacement artifact + base-model/hidden-size/protocol lineage
+- [x] experimental generation with skipped blocks
+- [x] five-way quality evaluator: Qwen/L6/L7/L8/L9
+- [x] best-prior non-inferiority gate
+- [x] Vietnamese/English general-regression gate
+- [x] real wall-clock speedup resource gate
+- [x] checkpoint-bound quality+resource promotion ceremony
+- [ ] train L6/L7/L8/L9 on sufficient real approved personalization history
+- [ ] freeze matched real held-out protocol
+- [ ] prove L9 stays within 0.010 NLL of the best prior architecture
+- [ ] prove L9 improves over untouched Qwen by >=0.005 NLL
+- [ ] prove real Qwen3-0.6B median forward latency <=0.95x baseline
+- [ ] evaluate how many decoder blocks can be replaced before the quality frontier breaks
+- [ ] implement cache-compatible replacement before production autoregressive serving
+- [ ] promote only if real compute removal survives both quality and resource courts
+
+L9 is the first architecture wave where selected Transformer attention/MLP blocks can be absent from the forward path. It remains experimental until the matched real court demonstrates a worthwhile quality/speed frontier.

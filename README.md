@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.8.0
+## Current executable milestone: Living Runtime v0.9.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. Both remain unpromoted until matched real evidence decides whether either path earns production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 now crosses the next boundary: selected Qwen decoder blocks can be **genuinely bypassed and replaced** by a small recurrent substitute. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -350,6 +350,64 @@ python scripts/generate_depth_bridge.py \
 
 See `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`.
 
+### L9 Recurrent Transformer-Block Replacement
+
+L9 is the first wave where a selected Qwen decoder block can disappear from the actual forward computation.
+
+```text
+incoming Qwen hidden
+       |
+       +---- Living latent 32D
+       +---- layer identity
+       |
+       v
+vectorized recurrent replacement
+       |
+ residual + sigmoid gate
+       |
+       v
+next Qwen layer
+
+(original selected attention + MLP block: NOT CALLED)
+```
+
+The shared replacement is **84,289 trainable parameters** for hidden size 1024.
+
+Training has two phases:
+
+1. distill the frozen original Qwen block's hidden output;
+2. bypass that block and fine-tune end-to-end on the frozen personalization train split.
+
+```bash
+python scripts/train_block_replacement.py
+```
+
+Run the five-way quality court:
+
+```bash
+python scripts/evaluate_block_replacement.py
+```
+
+It compares untouched Qwen, L6, L7, L8 and L9 on the same held-out protocol. L9 must improve over Qwen and stay within **0.010 NLL** of the best prior learned architecture.
+
+Real compute removal is mandatory. The resource court requires median forward latency <= **0.95x Qwen**:
+
+```bash
+python scripts/benchmark_block_replacement_resources.py
+```
+
+Final promotion requires quality + speed/resource PASS on the exact same checkpoint:
+
+```bash
+python scripts/decide_block_replacement_promotion.py \
+  --quality runtime-data/l9-quality.json \
+  --resources runtime-data/l9-resources.json
+```
+
+Experimental generation currently forces `use_cache=False`; cache-compatible replacement remains a production gate.
+
+See `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -448,11 +506,16 @@ L7 Hybrid Recurrent Cortex
 L8 Depth-Recurrent Living Bridge
      |
      +--> recurrent state across decoder depth
-     +--> latent + hidden summary + layer identity
-     +--> four-way Qwen/L6/L7/L8 court
      |
      v
-future attention/block bypass or replacement
+L9 Recurrent Block Replacement
+     |
+     +--> selected Qwen attention/MLP blocks skipped
+     +--> teacher distillation + bypass fine-tuning
+     +--> five-way quality + real speed court
+     |
+     v
+future progressive Transformer-depth replacement
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, and `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, and `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`.
