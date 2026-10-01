@@ -41,7 +41,7 @@ def analytical_bridge_parameter_count(
     if h <= 0:
         raise ValueError("hidden_size must be positive")
 
-    latent_norm = 2 * l
+    latent_norm = l
     hidden_norm = 2 * h
     hidden_down = h * b + b
     latent_proj = l * b + b
@@ -99,7 +99,17 @@ class CrossLayerLivingBridge:
             class Module(nn.Module):
                 def __init__(self) -> None:
                     super().__init__()
-                    self.latent_norm = nn.LayerNorm(c.latent_dim)
+                    class LatentRMSNorm(nn.Module):
+                        def __init__(self, dim: int, eps: float = 1e-6) -> None:
+                            super().__init__()
+                            self.weight = nn.Parameter(torch.ones(dim))
+                            self.eps = float(eps)
+
+                        def forward(self, x):
+                            rms = torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
+                            return x * rms * self.weight
+
+                    self.latent_norm = LatentRMSNorm(c.latent_dim)
                     self.hidden_norm = nn.LayerNorm(self_outer.hidden_size)
                     self.hidden_down = nn.Linear(self_outer.hidden_size, c.bridge_dim)
                     self.latent_proj = nn.Linear(c.latent_dim, c.bridge_dim)
