@@ -424,3 +424,37 @@ Engineering substrate: **THIN-SCAFFOLD-COURT-READY / UNPROMOTED**.
 - [ ] promote only if reduced Qwen dependence earns measurable quality/compute value
 
 L13 makes Qwen dependency itself measurable. The target is no longer merely a larger replacement region; it is a progressively thinner Qwen language scaffold around a Nolane-native multi-timescale cortex.
+
+
+## L14 — Minimal Qwen Anchor Cortex
+
+Engineering substrate: **MINIMAL-ANCHOR-COURT-READY / UNPROMOTED**.
+
+- [x] deep recurrent state-space cortex with fast, slow and virtual-depth packed states
+- [x] shared virtual-depth micro-steps per token
+- [x] learned virtual-depth step embeddings
+- [x] parameter count independent of removed Qwen depth
+- [x] exact analytical parameter audit
+- [x] default hidden-1024 / state-20 footprint: **89,805 parameters**
+- [x] hard <=100K cortex cap
+- [x] calibrated nested minimal-anchor plan
+- [x] default endpoint: exactly one Qwen head block + one Qwen tail block
+- [x] whole central Qwen region genuinely absent from the forward path
+- [x] rollback-safe region distillation + task training
+- [x] full-sequence == incremental packed-state scan
+- [x] virtual-depth effect court
+- [x] cached == replay-safe deterministic generation
+- [x] quality court compares untouched Qwen vs L13 vs L14
+- [x] quality gate requires Qwen anchors <=15% of decoder depth
+- [x] resource court requires speedup versus Qwen and L13
+- [x] checkpoint + anchor-plan identity binding
+- [x] tiny 12-layer Qwen3 court proves layers 1..10 absent while only layer 0 + layer 11 remain
+- [x] zero-gradient boundary on all Qwen parameters
+- [ ] freeze a real Qwen3-0.6B minimal-anchor plan from sufficient approved history
+- [ ] train accepted stages down to the 1+1 anchor shell
+- [ ] pass real held-out non-inferiority court against L13
+- [ ] pass real CPU/GPU forward and cached-generation resource court
+- [ ] test whether the final Qwen decoder anchors themselves can be replaced by a native input/output boundary
+- [ ] promote only if minimal anchors preserve language competence and earn measurable compute value
+
+L14 makes the remaining Qwen decoder depth almost a boundary condition rather than the main reasoning substrate. It remains experimental until real Qwen3-0.6B evidence passes.
