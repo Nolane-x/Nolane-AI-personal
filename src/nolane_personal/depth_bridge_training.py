@@ -152,7 +152,7 @@ def save_trained_bridge(output_dir, cortex, receipt, *, base_model_fingerprint, 
     torch = cortex.bridge.torch
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    checkpoint = output_dir / "living-bridge.pt"
+    checkpoint = output_dir / "depth-bridge.pt"
     payload = {
         "schema": "NOLANE-L8-DEPTH-BRIDGE-V1",
         "authority": "TRAINED_CANDIDATE_UNPROMOTED",
@@ -180,5 +180,5 @@ def save_trained_bridge(output_dir, cortex, receipt, *, base_model_fingerprint, 
         "bridge_state_digest": module_parameter_digest(cortex.bridge.module),
     }
     manifest["artifact_id"] = payload_digest(manifest)
-    (output_dir / "living-bridge-manifest.json").write_text(canonical_json(manifest)+"\n", encoding="utf-8")
+    (output_dir / "depth-bridge-manifest.json").write_text(canonical_json(manifest)+"\n", encoding="utf-8")
     return manifest
