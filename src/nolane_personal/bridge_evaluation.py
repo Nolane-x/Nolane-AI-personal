@@ -10,6 +10,8 @@ class BridgeQualityEvidence:
     baseline_nll: float
     bridge_nll: float
     nll_improvement: float
+    l6_nll: float | None
+    bridge_vs_l6_improvement: float | None
     anchor_baseline_nll: float
     anchor_bridge_nll: float
     anchor_nll_regression: float
@@ -23,8 +25,10 @@ class BridgeQualityThresholds:
     min_test_examples: int = 2
     min_anchor_examples: int = 4
     min_nll_improvement: float = 0.01
+    min_vs_l6_nll_improvement: float = 0.005
     max_anchor_nll_regression: float = 0.05
     parameter_cap: int = 100_000
+    require_l6_comparison: bool = True
 
 
 def decide_bridge_quality(evidence: BridgeQualityEvidence, thresholds=None):
@@ -36,6 +40,11 @@ def decide_bridge_quality(evidence: BridgeQualityEvidence, thresholds=None):
         reasons.append("insufficient_anchor_examples")
     if evidence.nll_improvement < thresholds.min_nll_improvement:
         reasons.append("heldout_nll_gate_failed")
+    if thresholds.require_l6_comparison:
+        if evidence.l6_nll is None or evidence.bridge_vs_l6_improvement is None:
+            reasons.append("missing_l6_comparison")
+        elif evidence.bridge_vs_l6_improvement < thresholds.min_vs_l6_nll_improvement:
+            reasons.append("l6_comparison_gate_failed")
     if evidence.anchor_nll_regression > thresholds.max_anchor_nll_regression:
         reasons.append("general_regression_gate_failed")
     if evidence.bridge_parameters > thresholds.parameter_cap:
