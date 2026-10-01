@@ -113,6 +113,12 @@ class LatentResidualAdapter:
         return self
 
 
+def self_torch_uint8(tensor):
+    import torch
+    del tensor
+    return torch.uint8
+
+
 def tensor_state_digest(state_dict: dict[str, Any]) -> str:
     digest = hashlib.sha256()
     for name in sorted(state_dict):
@@ -120,7 +126,8 @@ def tensor_state_digest(state_dict: dict[str, Any]) -> str:
         digest.update(name.encode("utf-8"))
         digest.update(str(tensor.dtype).encode("ascii"))
         digest.update(str(tuple(tensor.shape)).encode("ascii"))
-        digest.update(tensor.numpy().tobytes())
+        raw = tensor.view(self_torch_uint8(tensor)).numpy().tobytes()
+        digest.update(raw)
     return digest.hexdigest()
 
 
