@@ -75,8 +75,21 @@ class WorkingState:
 
 
 @dataclass(slots=True)
+class RestState:
+    cycles: int = 0
+    last_cycle_at: str | None = None
+    last_cycle_source_count: int = 0
+    last_cycle_new_memories: int = 0
+
+    def normalize(self) -> None:
+        self.cycles = max(0, int(self.cycles))
+        self.last_cycle_source_count = max(0, int(self.last_cycle_source_count))
+        self.last_cycle_new_memories = max(0, int(self.last_cycle_new_memories))
+
+
+@dataclass(slots=True)
 class LivingState:
-    schema_version: int = 1
+    schema_version: int = 2
     identity_id: str = field(default_factory=lambda: str(uuid4()))
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
@@ -86,6 +99,7 @@ class LivingState:
     affect: AffectState = field(default_factory=AffectState)
     relationship: RelationshipState = field(default_factory=RelationshipState)
     working: WorkingState = field(default_factory=WorkingState)
+    rest: RestState = field(default_factory=RestState)
     open_threads: list[OpenThread] = field(default_factory=list)
     last_event_at: str | None = None
     last_user_event_at: str | None = None
@@ -97,6 +111,7 @@ class LivingState:
         self.affect.normalize()
         self.relationship.normalize()
         self.working.normalize()
+        self.rest.normalize()
         for thread in self.open_threads:
             thread.normalize()
         self.open_threads = self.open_threads[-32:]
@@ -111,6 +126,7 @@ class LivingState:
         data["affect"] = AffectState(**data.get("affect", {}))
         data["relationship"] = RelationshipState(**data.get("relationship", {}))
         data["working"] = WorkingState(**data.get("working", {}))
+        data["rest"] = RestState(**data.get("rest", {}))
         data["open_threads"] = [OpenThread(**item) for item in data.get("open_threads", [])]
         state = cls(**data)
         state.normalize()
