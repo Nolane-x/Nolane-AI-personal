@@ -6,7 +6,13 @@ transformers = pytest.importorskip("transformers")
 from transformers import Qwen3Config, Qwen3ForCausalLM
 
 from nolane_personal.bridge_cortex import LivingBridgeCortexConfig, TrainableLivingBridgeCortex
-from nolane_personal.bridge_training import BridgeTrainingConfig, mean_encoded_nll, train_encoded_examples
+from nolane_personal.bridge_artifact import load_trained_bridge
+from nolane_personal.bridge_training import (
+    BridgeTrainingConfig,
+    mean_encoded_nll,
+    save_trained_bridge,
+    train_encoded_examples,
+)
 from nolane_personal.living_bridge import (
     CrossLayerLivingBridge,
     LivingBridgeConfig,
@@ -152,3 +158,50 @@ def test_bridge_generation_uses_recurrent_path_and_cleans_hooks():
     assert output.shape[1] == 5
     assert cortex.last_trace
     assert all(len(layer._forward_hooks) == 0 for layer in model.model.layers)
+
+
+
+def test_bridge_artifact_roundtrip_and_lineage_fail_closed(tmp_path):
+    torch.manual_seed(41)
+    model = _tiny_qwen().eval()
+    bridge = CrossLayerLivingBridge(32, seed=12)
+    cortex = TrainableLivingBridgeCortex(
+        model,
+        bridge,
+        [0.25] * 32,
+        config=LivingBridgeCortexConfig(layer_indices=(1, 2), token_scope="all"),
+    )
+    receipt = train_encoded_examples(
+        cortex,
+        [_example([1, 5, 6, 7, 8, 9])],
+        config=BridgeTrainingConfig(epochs=2, learning_rate=0.01),
+    )
+    manifest = save_trained_bridge(
+        tmp_path,
+        cortex,
+        receipt,
+        base_model_fingerprint="tiny-qwen3",
+        dataset_fingerprint="protocol-sha",
+    )
+    loaded, config, meta = load_trained_bridge(
+        tmp_path / "living-bridge.pt",
+        expected_base_model_fingerprint="tiny-qwen3",
+        expected_hidden_size=32,
+    )
+    assert loaded.parameter_count() == bridge.parameter_count()
+    assert config.layer_indices == (1, 2)
+    assert meta["bridge_state_digest"] == manifest["bridge_state_digest"]
+    assert meta["dataset_fingerprint"] == "protocol-sha"
+
+    with pytest.raises(ValueError, match="base-model mismatch"):
+        load_trained_bridge(
+            tmp_path / "living-bridge.pt",
+            expected_base_model_fingerprint="wrong",
+            expected_hidden_size=32,
+        )
+    with pytest.raises(ValueError, match="hidden-size mismatch"):
+        load_trained_bridge(
+            tmp_path / "living-bridge.pt",
+            expected_base_model_fingerprint="tiny-qwen3",
+            expected_hidden_size=64,
+        )
