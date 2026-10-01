@@ -184,7 +184,7 @@ def test_bridge_artifact_roundtrip_and_lineage_fail_closed(tmp_path):
         dataset_fingerprint="protocol-sha",
     )
     loaded, config, meta = load_trained_bridge(
-        tmp_path / "living-bridge.pt",
+        tmp_path / "depth-bridge.pt",
         expected_base_model_fingerprint="tiny-qwen3",
         expected_hidden_size=32,
     )
@@ -195,13 +195,13 @@ def test_bridge_artifact_roundtrip_and_lineage_fail_closed(tmp_path):
 
     with pytest.raises(ValueError, match="base-model mismatch"):
         load_trained_bridge(
-            tmp_path / "living-bridge.pt",
+            tmp_path / "depth-bridge.pt",
             expected_base_model_fingerprint="wrong",
             expected_hidden_size=32,
         )
     with pytest.raises(ValueError, match="hidden-size mismatch"):
         load_trained_bridge(
-            tmp_path / "living-bridge.pt",
+            tmp_path / "depth-bridge.pt",
             expected_base_model_fingerprint="tiny-qwen3",
             expected_hidden_size=64,
         )
