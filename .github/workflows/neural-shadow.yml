@@ -27,4 +27,5 @@ jobs:
           tests/test_recurrent_cortex.py
           tests/test_recurrent_state.py
           tests/test_depth_bridge.py
+          tests/test_block_replacement.py
       - run: python scripts/audit_living_core.py
