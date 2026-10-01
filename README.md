@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.12.0
+## Current executable milestone: Living Runtime v0.13.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a **Selective State-Space Cortex** whose compact state recurs across tokens and can replace one wide contiguous share of Qwen depth with a single non-attentional sequence module. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**: a fast/slow multi-timescale cortex progressively replaces the center while Qwen decoder anchors at the head and tail become an explicitly minimized resource. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -556,6 +556,62 @@ Default real promotion requires at least **40% of Qwen decoder depth** genuinely
 
 See `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`.
 
+### L13 Shrinking Qwen Scaffold
+
+L13 treats **remaining Qwen depth** as a quantity that must shrink, not just replaced depth as a quantity that must grow.
+
+```text
+Qwen head anchors
+      |
+      v
+fast + slow multi-timescale state-space cortex
+      |
+      +--> central Transformer attention/MLP blocks skipped
+      |
+      v
+Qwen tail anchors
+```
+
+The default cortex is **81,249 trainable parameters** at hidden size 1024. It keeps a fast recurrent state for local changes and a slow recurrent state with a learned retention floor for longer-lived context.
+
+The frozen scaffold curriculum targets approximately:
+
+```text
+50% Qwen remains -> 40% -> 32% -> 25%
+```
+
+so the default destination is roughly **75% decoder-depth removal**. Head/tail splits are calibrated rather than forced symmetric.
+
+Freeze the scaffold plan:
+
+```bash
+python scripts/freeze_scaffold_plan.py
+```
+
+Train with whole-region teacher distillation and rollback-safe shrink stages:
+
+```bash
+python scripts/train_shrinking_scaffold.py
+```
+
+Evaluate Qwen vs L12 vs L13:
+
+```bash
+python scripts/evaluate_shrinking_scaffold.py
+```
+
+Benchmark whether the thinner shell actually beats L12 on compute:
+
+```bash
+python scripts/benchmark_scaffold_resources.py
+```
+
+Neural CI uses a real tiny 12-layer Qwen3 and proves a final test shell with only **2 head + 2 tail blocks** while the central **8/12 blocks execute zero original attention/MLP forwards**.
+
+Promotion is blocked if Qwen still occupies >35% of decoder depth, if fast/slow states collapse to the same dynamics, or if L13 fails held-out/resource gates against L12.
+
+See `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -674,12 +730,17 @@ L11 Recurrent Transformer Islands
 L12 Selective State-Space Cortex
      |
      +--> one wide region replaced by token-recurrent SSM
-     +--> full-scan == incremental-state contract
-     +--> nested widening toward ~60% Qwen depth
-     +--> quality + speed + plan-lineage courts
      |
      v
-future mostly-independent Nolane cortex with Qwen only as shrinking scaffold
+L13 Shrinking Qwen Scaffold
+     |
+     +--> fast/slow Nolane cortex
+     +--> Qwen head/tail anchors shrink stage by stage
+     +--> target ~25% Qwen decoder scaffold
+     +--> quality + speed + scaffold-lineage courts
+     |
+     v
+future Nolane-native cortex with Qwen reduced to minimal language interfaces
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, and `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`, and `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`.
