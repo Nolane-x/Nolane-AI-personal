@@ -458,3 +458,35 @@ Engineering substrate: **MINIMAL-ANCHOR-COURT-READY / UNPROMOTED**.
 - [ ] promote only if minimal anchors preserve language competence and earn measurable compute value
 
 L14 makes the remaining Qwen decoder depth almost a boundary condition rather than the main reasoning substrate. It remains experimental until real Qwen3-0.6B evidence passes.
+
+
+## L15 — Native Nolane Boundary
+
+Engineering substrate: **DECODER-FREE-COURT-READY / UNPROMOTED**.
+
+- [x] native forward bypasses all Qwen Transformer decoder blocks
+- [x] native custom generation does not call Hugging Face generate()
+- [x] Transformer KV cache removed from the native generation contract
+- [x] autoregressive continuity owned by Nolane recurrent state
+- [x] frozen Qwen token embeddings retained as input boundary
+- [x] frozen Qwen final norm + LM head retained as output boundary
+- [x] deep recurrent fast/slow/virtual-depth cortex reused under <=100K cap
+- [x] frozen native-boundary spec with exact base-model + dataset lineage
+- [x] teacher-logit distillation from full frozen Qwen
+- [x] task loss + teacher KL training
+- [x] zero gradients and zero mutation on Qwen weights
+- [x] forward court requires total Qwen decoder calls = 0
+- [x] generation court requires total Qwen decoder calls = 0
+- [x] prompt full-scan == incremental recurrent scan
+- [x] quality court compares untouched Qwen vs L14 vs L15
+- [x] resource court independently counts decoder execution
+- [x] quality/resource evidence bound to identical checkpoint + boundary spec SHA
+- [x] real tiny Qwen3 neural court passes decoder-free forward, generation and training
+- [ ] train real Qwen3-0.6B teacher -> native candidate on sufficient approved history
+- [ ] pass held-out non-inferiority court against L14
+- [ ] pass real CPU/GPU native-forward and native-generation resource court
+- [ ] distill/replace Qwen embedding matrix
+- [ ] distill/replace Qwen final norm + LM head
+- [ ] export a standalone Nolane checkpoint with no Qwen weights required at inference
+
+L15 removes the Transformer decoder from inference. It still retains frozen Qwen input/output boundary weights and therefore is decoder-free, not fully Qwen-free.
