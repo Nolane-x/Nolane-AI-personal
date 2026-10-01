@@ -102,6 +102,31 @@ It must also keep Vietnamese/English anchor regression <= 0.05, remain <=100K pa
 
 All compared artifacts must carry the **same personalization protocol SHA-256**.
 
+## Resource court
+
+Quality alone is insufficient.
+
+```bash
+python scripts/benchmark_depth_bridge_resources.py
+```
+
+Default resource gates require:
+
+- at least 4 benchmark prompts;
+- median forward latency <= **1.50×** untouched Qwen;
+- artifact <= **2 MB**;
+- bridge <= **100K parameters**.
+
+The final promotion ceremony consumes both court outputs:
+
+```bash
+python scripts/decide_depth_bridge_promotion.py \
+  --quality runtime-data/l8-quality.json \
+  --resources runtime-data/l8-resources.json
+```
+
+It only passes when both courts PASS on the **same depth-bridge checkpoint SHA-256**.
+
 ## Artifact
 
 Training creates:
