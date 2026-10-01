@@ -128,6 +128,7 @@ class LivingState:
         data["working"] = WorkingState(**data.get("working", {}))
         data["rest"] = RestState(**data.get("rest", {}))
         data["open_threads"] = [OpenThread(**item) for item in data.get("open_threads", [])]
+        data["schema_version"] = max(2, int(data.get("schema_version", 1)))
         state = cls(**data)
         state.normalize()
         return state
