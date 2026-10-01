@@ -215,3 +215,36 @@ Engineering substrate: **REAL-QWEN3-COURT-READY / UNPROMOTED**.
 - [ ] experiment with replacing/bypassing selected Transformer blocks only after L7 promotion evidence
 
 L7 is a genuine recurrent neural path inside Qwen. It does **not** yet remove Transformer attention; it establishes the hybrid architecture and evidence boundary required before deeper block replacement.
+
+
+## L8 — Depth-Recurrent Living Bridge
+
+Engineering substrate: **FOUR-WAY-COURT-READY / UNPROMOTED**.
+
+- [x] one recurrent bridge state travels across selected Qwen decoder depth
+- [x] persistent 32D Living latent initializes the depth path
+- [x] RMS latent normalization preserves sign/common-mode information
+- [x] current hidden-state summary feeds every depth transition
+- [x] learned decoder-layer identity embedding
+- [x] learned bounded gate at each selected depth
+- [x] exact analytical parameter audit
+- [x] default Qwen-hidden-1024 footprint: **84,289 parameters**
+- [x] hard <=100K parameter cap
+- [x] frozen base-Qwen gradient boundary
+- [x] real tiny Qwen3 depth-recurrent court
+- [x] same-prompt opposite-latent sensitivity court
+- [x] training loss + synthetic held-out gain court
+- [x] generation and exception-safe hook cleanup
+- [x] artifact save/load + base-model/hidden-size lineage gates
+- [x] reuse the exact L6/L7 frozen personalization protocol
+- [x] four-way evaluator: Qwen vs L6 vs L7 Hybrid vs L8
+- [x] mandatory held-out improvement over Qwen, L6 and L7 Hybrid
+- [x] Vietnamese/English general-regression gate
+- [ ] train L6/L7/L8 on sufficient real approved personalization history
+- [ ] freeze real held-out protocol
+- [ ] prove L8 beats L7 Hybrid by >=0.005 held-out NLL
+- [ ] measure real Qwen3-0.6B latency/RAM overhead
+- [ ] promote only if depth recurrence earns its extra parameters/compute
+- [ ] consider attention/block bypass only after matched L6/L7/L8 evidence
+
+L7 and L8 explore different recurrence axes. Neither is assumed superior before the same held-out evidence decides.
