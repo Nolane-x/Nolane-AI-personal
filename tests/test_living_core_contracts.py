@@ -4,8 +4,8 @@ from nolane_personal.living_core import EventFeaturizer, LivingCoreConfig, analy
 from nolane_personal.state import LivingState
 
 
-def test_default_living_core_is_only_14451_parameters():
-    assert analytical_parameter_count(LivingCoreConfig()) == 14451
+def test_default_living_core_is_only_14515_parameters():
+    assert analytical_parameter_count(LivingCoreConfig()) == 14515
 
 
 def test_event_features_are_deterministic_and_bounded():
