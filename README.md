@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.6.0
+## Current executable milestone: Living Runtime v0.7.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a **trainable Personal Cortex**: base Qwen is frozen while the latent-conditioned neural adapter receives real gradients through Qwen decoder computation.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 now adds a **Hybrid Recurrent Cortex**: a trainable recurrent neural path inside selected Qwen decoder layers whose state can persist token-to-token, call-to-call and across process restarts.
 
 ### Persistent runtime
 
@@ -238,6 +238,58 @@ The trained artifact stays `TRAINED_CANDIDATE_UNPROMOTED` until real held-out da
 
 See `docs/L6-PERSONAL-CORTEX.md`.
 
+### L7 Hybrid Recurrent Cortex
+
+L7 changes the model path again: the personalization component is no longer only a latent-to-hidden residual. A small recurrent mixer now evolves its own state **inside selected Qwen decoder layers**.
+
+```text
+Qwen hidden
+    |
+    v
+hidden -> recurrent width
+    |
+    v
+GRU(previous recurrent state)
+    |
+    v
+recurrent -> Qwen hidden
+    |
+    v
+bounded residual -> next Qwen layer
+```
+
+The persistent Living latent initializes the recurrent state. Selected Qwen layers share mixer weights but maintain separate recurrent states.
+
+For Qwen hidden size 1024 and the default recurrent width 24, the mixer is only **56,641 parameters**.
+
+Train it on the same frozen personalization train split:
+
+```bash
+python scripts/train_hybrid_recurrent_cortex.py \
+  --dataset runtime-data/personalization.jsonl \
+  --protocol runtime-data/personalization-protocol-v1.json \
+  --recurrent-dim 24
+```
+
+Run the held-out personal/general court:
+
+```bash
+python scripts/evaluate_hybrid_recurrent_cortex.py
+```
+
+Exercise the recurrent model path:
+
+```bash
+python scripts/generate_hybrid_recurrent_cortex.py \
+  --prompt "Nay tôi hơi mệt."
+```
+
+After generation, per-layer recurrent neural state is sealed locally and loaded on the next call. The state is bound to the AI identity, Qwen fingerprint, mixer digest and persistent-latent digest; incompatible lineage fails closed.
+
+Neural CI uses a real tiny `Qwen3ForCausalLM` and proves that recurrent state changes the second call on the same input, reset restores the first trajectory, the mixer can learn held-out targets, and Qwen base weights receive zero gradients.
+
+L7 is **Transformer + recurrent**, not yet a full Transformer replacement. See `docs/L7-HYBRID-RECURRENT-CORTEX.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -327,12 +379,16 @@ L5 latent adapter (counterfactual shadow)
      v
 L6 trained Personal Cortex candidate
      |
+     v
+L7 Hybrid Recurrent Cortex
+     |
+     +--> token-by-token recurrent dynamics
+     +--> per-layer persistent neural state
      +--> base Qwen frozen
-     +--> adapter receives gradients
      +--> held-out personal/general court
      |
      v
-future promoted Personal Cortex / deeper surgery
+future recurrent/state-space block replacement
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, and `docs/L6-PERSONAL-CORTEX.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, and `docs/L7-HYBRID-RECURRENT-CORTEX.md`.
