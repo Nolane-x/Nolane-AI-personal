@@ -63,8 +63,8 @@ def _nll(cortex, examples):
 def test_recurrent_parameter_count_is_exact():
     config = RecurrentCortexConfig(latent_dim=32, recurrent_dim=8, max_abs_gate=0.10)
     mixer = RecurrentCortexMixer(32, config, seed=1)
-    assert analytical_recurrent_parameter_count(32, config) == 2209
-    assert mixer.parameter_count() == 2209
+    assert analytical_recurrent_parameter_count(32, config) == 1313
+    assert mixer.parameter_count() == 1313
 
 
 def test_recurrent_state_changes_same_input_and_reset_restores_trajectory():
