@@ -90,8 +90,6 @@ def capture_hidden_pairs(
     post = layer.register_forward_hook(post_hook)
     try:
         model.eval()
-        with model.device if False else _nullcontext():
-            pass
         import torch
         with torch.inference_mode():
             for batch in input_batches:
@@ -100,13 +98,6 @@ def capture_hidden_pairs(
         post.remove()
         pre.remove()
     return captured
-
-
-class _nullcontext:
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc, tb):
-        return False
 
 
 def _bootstrap_gate(mixer: SelectiveStateSpaceMixer, target: float) -> None:
