@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.7.0
+## Current executable milestone: Living Runtime v0.8.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 now adds a **Hybrid Recurrent Cortex**: a trainable recurrent neural path inside selected Qwen decoder layers whose state can persist token-to-token, call-to-call and across process restarts.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. Both remain unpromoted until matched real evidence decides whether either path earns production authority.
 
 ### Persistent runtime
 
@@ -290,6 +290,52 @@ Neural CI uses a real tiny `Qwen3ForCausalLM` and proves that recurrent state ch
 
 L7 is **Transformer + recurrent**, not yet a full Transformer replacement. See `docs/L7-HYBRID-RECURRENT-CORTEX.md`.
 
+### L8 Depth-Recurrent Living Bridge
+
+L8 explores a different recurrence axis from L7. Instead of carrying a separate recurrent state through tokens at each selected layer, one bridge state moves **across selected decoder layers** during a forward.
+
+```text
+Living latent 32D
+      |
+      v
+RMS-normalized latent feature
+      |
+hidden summary + layer identity
+      |
+      v
+ depth GRU state -----> next selected layer
+      |
+  residual + bounded gate
+      |
+      v
+   Qwen hidden
+```
+
+For Qwen hidden size 1024, the default bridge has **84,289 trainable parameters**. Qwen remains frozen.
+
+Train on the same frozen protocol used by L6/L7:
+
+```bash
+python scripts/train_depth_bridge.py
+```
+
+Run the matched four-way court:
+
+```bash
+python scripts/evaluate_depth_bridge.py
+```
+
+The evaluator compares untouched Qwen, L6 Personal Cortex, L7 Hybrid Recurrent Cortex and L8 Depth Bridge on the same held-out examples. L8 is blocked unless it beats all three required baselines while staying within the Vietnamese/English regression and <=100K parameter gates.
+
+Experimental generation:
+
+```bash
+python scripts/generate_depth_bridge.py \
+  --prompt "Nay tôi hơi mệt."
+```
+
+See `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -382,13 +428,17 @@ L6 trained Personal Cortex candidate
      v
 L7 Hybrid Recurrent Cortex
      |
-     +--> token-by-token recurrent dynamics
-     +--> per-layer persistent neural state
-     +--> base Qwen frozen
-     +--> held-out personal/general court
+     +--> token recurrence + persistent per-layer state
      |
      v
-future recurrent/state-space block replacement
+L8 Depth-Recurrent Living Bridge
+     |
+     +--> recurrent state across decoder depth
+     +--> latent + hidden summary + layer identity
+     +--> four-way Qwen/L6/L7/L8 court
+     |
+     v
+future attention/block bypass or replacement
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, and `docs/L7-HYBRID-RECURRENT-CORTEX.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, and `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`.
