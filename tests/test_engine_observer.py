@@ -25,7 +25,7 @@ def test_engine_commits_validated_observer_transition(tmp_path):
     result = engine.handle_user_message("hello", reply=False)
     assert result.observer_receipt is not None
     assert result.observer_error is None
-    assert engine.state.affect.playfulness <= 0.57
+    assert abs(engine.state.affect.playfulness - 0.57) < 1e-9
     assert engine.state.relationship.closeness <= 0.089
     assert any(m.text == "possible preference" for m in store.memories())
     assert len(store.replay_records()) == 2
