@@ -19,6 +19,7 @@ class StandaloneNolaneConfig:
     bos_token_id: int | None = None
     eos_token_id: int | None = None
     pad_token_id: int | None = None
+    boundary_dtype: str = "float32"
 
     def validate(self) -> None:
         if self.vocab_size <= 0:
@@ -27,6 +28,8 @@ class StandaloneNolaneConfig:
             raise ValueError("hidden_size must be positive")
         if self.rms_norm_eps <= 0:
             raise ValueError("rms_norm_eps must be positive")
+        if self.boundary_dtype not in {"float32", "float16", "bfloat16"}:
+            raise ValueError("unsupported boundary_dtype")
 
 
 @dataclass(slots=True)
@@ -35,6 +38,17 @@ class StandaloneOutput:
     loss: Any | None = None
     state: Any | None = None
     trace: dict[str, Any] | None = None
+
+
+def _torch_dtype(torch, name: str):
+    mapping = {
+        "float32": torch.float32,
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+    }
+    if name not in mapping:
+        raise ValueError(f"unsupported boundary dtype: {name}")
+    return mapping[name]
 
 
 class StandaloneBoundaryModule:
@@ -54,6 +68,8 @@ class StandaloneBoundaryModule:
             raise RuntimeError("Install neural support with: pip install -e '.[neural]'") from exc
 
         config.validate()
+        if dtype is None:
+            dtype = _torch_dtype(torch, config.boundary_dtype)
         self.torch = torch
         self.nn = nn
         self.config = config
@@ -360,6 +376,7 @@ def standalone_config_from_qwen(qwen_model) -> StandaloneNolaneConfig:
         bos_token_id=getattr(qwen_model.config, "bos_token_id", None),
         eos_token_id=getattr(qwen_model.config, "eos_token_id", None),
         pad_token_id=getattr(qwen_model.config, "pad_token_id", None),
+        boundary_dtype=str(embed.weight.dtype).replace("torch.", ""),
     )
 
 
