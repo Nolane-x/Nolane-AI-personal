@@ -293,11 +293,12 @@ def train_island_stages(cortex, train_examples, dev_examples, plan, *, config=No
 
         snapshot = _clone_state(cortex.replacement.module)
         prior_islands = cortex.config.islands
+        dev_reference = accepted_dev
         cortex.config.islands = islands
         stage_base_guard = parameter_guard_snapshot(cortex.model)
         train_result = _train_current_stage(cortex, train_examples, config)
         dev_after = mean_encoded_nll(cortex, dev_examples, islands_enabled=True)
-        regression = dev_after - accepted_dev
+        regression = dev_after - dev_reference
         accepted = bool(
             train_result["base_gradients_seen"] == 0
             and stage_base_guard == parameter_guard_snapshot(cortex.model)
@@ -329,7 +330,7 @@ def train_island_stages(cortex, train_examples, dev_examples, plan, *, config=No
                 distill_final_loss=train_result["distill_final_loss"],
                 task_initial_loss=float(train_result["task_initial_loss"]),
                 task_final_loss=float(train_result["task_final_loss"]),
-                dev_nll_reference=float(accepted_dev if accepted else accepted_dev),
+                dev_nll_reference=float(dev_reference),
                 dev_nll_after=float(dev_after),
                 dev_regression=float(regression),
                 accepted=accepted,
