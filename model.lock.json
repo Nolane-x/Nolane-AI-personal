@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "provider": "huggingface",
+    "repo_id": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "architecture": "Qwen3ForCausalLM",
+    "model_type": "qwen3",
+    "license": "Apache-2.0",
+    "parameters_bf16": 751632384
+  },
+  "local": {
+    "path": "models/Qwen3-0.6B",
+    "commit_weights": false
+  },
+  "purpose": "Initial language/cognition scaffold for Nolane AI Personal; not a commitment to the final architecture."
+}
