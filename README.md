@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.6.0
+## Current executable milestone: Living Runtime v0.7.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a **trainable Personal Cortex**: base Qwen is frozen while the latent-conditioned neural adapter receives real gradients through Qwen decoder computation.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Cross-Layer Living Bridge**: a small GRU-based recurrent pathway that carries Living state across selected Qwen decoder layers.
 
 ### Persistent runtime
 
@@ -238,6 +238,55 @@ The trained artifact stays `TRAINED_CANDIDATE_UNPROMOTED` until real held-out da
 
 See `docs/L6-PERSONAL-CORTEX.md`.
 
+### L7 Cross-Layer Living Bridge
+
+L7 replaces the fixed per-layer residual idea with a learned recurrent pathway across Transformer depth.
+
+```text
+Living latent 32D
+      |
+      v
+hidden summary + layer identity
+      |
+      v
+   GRU state 32D  ---- recurs across selected Qwen layers
+      |
+   +--+--+
+   |     |
+residual gate
+   \     /
+    Qwen hidden
+```
+
+For a Qwen hidden size of 1024, the default bridge has **84,321 trainable parameters**. Qwen itself remains frozen.
+
+Train on the same frozen personalization train split used by L6:
+
+```bash
+python scripts/train_living_bridge.py
+```
+
+The quality court compares **three paths on the same held-out examples**:
+
+1. untouched Qwen;
+2. L6 residual Personal Cortex;
+3. L7 recurrent Living Bridge.
+
+```bash
+python scripts/evaluate_living_bridge.py
+```
+
+L7 is blocked unless it beats both untouched Qwen and L6, stays under 100K parameters, preserves base-Qwen weights, receives no base-Qwen gradients, and stays within the Vietnamese/English general-regression budget.
+
+Experimental generation:
+
+```bash
+python scripts/generate_living_bridge.py \
+  --prompt "Nay tôi hơi mệt."
+```
+
+See `docs/L7-CROSS-LAYER-LIVING-BRIDGE.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -327,12 +376,15 @@ L5 latent adapter (counterfactual shadow)
      v
 L6 trained Personal Cortex candidate
      |
-     +--> base Qwen frozen
-     +--> adapter receives gradients
-     +--> held-out personal/general court
+     v
+L7 Cross-Layer Living Bridge
+     |
+     +--> recurrent state across Qwen depth
+     +--> latent + hidden + layer identity fusion
+     +--> must beat Qwen base AND L6 held-out
      |
      v
-future promoted Personal Cortex / deeper surgery
+future promoted personal architecture / deeper block replacement
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, and `docs/L6-PERSONAL-CORTEX.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, and `docs/L7-CROSS-LAYER-LIVING-BRIDGE.md`.
