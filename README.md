@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.9.0
+## Current executable milestone: Living Runtime v0.10.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 now crosses the next boundary: selected Qwen decoder blocks can be **genuinely bypassed and replaced** by a small recurrent substitute. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into **Progressive Transformer-Depth Replacement**: Qwen blocks are calibrated, ranked and replaced through a rollback-safe curriculum with cached autoregressive generation. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -408,6 +408,57 @@ Experimental generation currently forces `use_cache=False`; cache-compatible rep
 
 See `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`.
 
+### L10 Progressive Transformer-Depth Replacement
+
+L10 no longer chooses a fixed pair of Qwen blocks manually. It freezes a layer-sensitivity plan, then attempts progressively larger block-replacement stages:
+
+```text
+Qwen calibration
+      |
+      v
+rank internal blocks by transformation sensitivity
+      |
+      v
+1 block -> 2 -> 4 -> ... -> target
+      |
+      +--> teacher distillation
+      +--> personalization training
+      +--> dev court
+      |
+      +--> PASS: continue
+      `--> FAIL: rollback weights and stop
+```
+
+The default target is **50% of Qwen decoder depth**, capped at 12 blocks. Promotion still requires at least 25% real depth replacement.
+
+Freeze the plan:
+
+```bash
+python scripts/freeze_progressive_replacement_plan.py
+```
+
+Train stage by stage:
+
+```bash
+python scripts/train_progressive_replacement.py
+```
+
+Evaluate held-out quality and cache correctness:
+
+```bash
+python scripts/evaluate_progressive_replacement.py
+```
+
+Benchmark real forward and generation resources:
+
+```bash
+python scripts/benchmark_progressive_replacement_resources.py
+```
+
+L10 also fixes recurrent-state semantics during generation. In no-cache mode the replacement state resets on every full-prefix replay; in cached mode the state carries only across incremental token forwards. Neural CI proves cached and replay-safe deterministic generations match on a real tiny `Qwen3ForCausalLM`.
+
+Quality/resource promotion is bound to both the exact checkpoint SHA and frozen progressive-plan SHA. See `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -511,11 +562,17 @@ L8 Depth-Recurrent Living Bridge
 L9 Recurrent Block Replacement
      |
      +--> selected Qwen attention/MLP blocks skipped
-     +--> teacher distillation + bypass fine-tuning
-     +--> five-way quality + real speed court
      |
      v
-future progressive Transformer-depth replacement
+L10 Progressive Transformer-Depth Replacement
+     |
+     +--> calibrated block ranking
+     +--> rollback-safe 1 -> 2 -> 4 -> ... curriculum
+     +--> cache-correct recurrent generation
+     +--> quality + real speed + plan-lineage court
+     |
+     v
+future recurrent/state-space islands replacing larger Transformer regions
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, and `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, and `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`.
