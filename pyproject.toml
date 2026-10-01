@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nolane-ai-personal"
+version = "0.1.0"
+description = "Event-driven persistent living runtime for Nolane AI Personal"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "Nolane"}]
+dependencies = []
+
+[project.optional-dependencies]
+qwen = [
+  "torch>=2.2",
+  "transformers>=4.51",
+  "safetensors>=0.4",
+]
+dev = ["pytest>=8"]
+
+[project.scripts]
+nolane-personal = "nolane_personal.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
