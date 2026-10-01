@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.14.0
+## Current executable milestone: Living Runtime v0.15.0
 
 The runtime now contains two very different compute scales:
 
@@ -641,6 +641,34 @@ Neural CI proves this mechanism on a real tiny 12-layer Qwen3 model with layers 
 
 See `docs/L14-MINIMAL-QWEN-ANCHOR-CORTEX.md`.
 
+### L15 Native Nolane Boundary
+
+L15 removes every Qwen Transformer decoder block from the experimental inference path:
+
+```text
+Qwen token embedding
+        |
+        v
+Nolane deep recurrent cortex
+ fast + slow + virtual depth
+        |
+        v
+Qwen final norm -> Qwen LM head
+```
+
+Native generation is a custom recurrent loop. It does **not** call Hugging Face `generate()` and does not use Transformer KV cache.
+
+```bash
+python scripts/freeze_native_boundary_spec.py
+python scripts/train_native_boundary.py
+python scripts/evaluate_native_boundary.py
+python scripts/benchmark_native_boundary_resources.py
+```
+
+Neural CI verifies on a real tiny Qwen3 model that native forward and generation both produce **zero decoder-layer calls**. Full Qwen is used only as a frozen teacher during training.
+
+L15 is decoder-free, not fully Qwen-free: embedding, final norm and LM head are still Qwen boundary weights. See `docs/L15-NATIVE-NOLANE-BOUNDARY.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -772,4 +800,4 @@ L13 Shrinking Qwen Scaffold
 future Nolane-native cortex with Qwen reduced to minimal language interfaces
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`, `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`, and `docs/L14-MINIMAL-QWEN-ANCHOR-CORTEX.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`, `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`, `docs/L14-MINIMAL-QWEN-ANCHOR-CORTEX.md`, and `docs/L15-NATIVE-NOLANE-BOUNDARY.md`.
