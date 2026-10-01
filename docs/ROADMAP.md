@@ -286,3 +286,35 @@ Engineering substrate: **REAL-BYPASS-COURT-READY / UNPROMOTED**.
 - [ ] promote only if real compute removal survives both quality and resource courts
 
 L9 is the first architecture wave where selected Transformer attention/MLP blocks can be absent from the forward path. It remains experimental until the matched real court demonstrates a worthwhile quality/speed frontier.
+
+## L10 — Progressive Transformer-depth replacement
+
+Engineering substrate: **PROGRESSIVE-COURT-READY / UNPROMOTED**.
+
+- [x] calibration of eligible internal Qwen blocks using hidden residual RMS + cosine change
+- [x] default protection for first/last decoder regions
+- [x] immutable replacement ranking and plan SHA-256
+- [x] plan bound to exact Qwen fingerprint and personalization protocol
+- [x] monotonic 1 -> 2 -> 4 -> ... replacement curriculum
+- [x] default target 50% decoder depth, capped at 12 blocks
+- [x] shared <=100K recurrent replacement across all selected layers
+- [x] per-stage teacher distillation on all currently selected layers
+- [x] per-stage task fine-tuning on frozen train evidence
+- [x] dev-regression rollback to previous accepted replacement weights
+- [x] explicit model-forward boundary for recurrent replacement state
+- [x] replay-safe no-cache generation state reset
+- [x] incremental cached generation with recurrent state carry
+- [x] cached vs replay-safe deterministic sequence court
+- [x] progressive artifact bound to plan + dataset + base-model identity
+- [x] quality court requires >=25% real Transformer depth replacement
+- [x] quality court requires non-inferiority against L9
+- [x] resource court requires <=0.90x baseline forward latency
+- [x] resource court requires cached generation speedup
+- [x] promotion binds quality/resource evidence to identical checkpoint and plan SHA
+- [ ] freeze a real Qwen3-0.6B progressive plan from sufficient approved history
+- [ ] train enough stages to replace >=25% of real Qwen depth
+- [ ] pass real held-out personalization/general quality court
+- [ ] pass real CPU/GPU latency and cached-generation resource court
+- [ ] promote only if progressive depth removal earns measurable quality/compute value
+
+L10 turns block replacement into a rollback-safe curriculum rather than a fixed proof-of-concept. It remains hybrid and unpromoted until real evidence passes.
