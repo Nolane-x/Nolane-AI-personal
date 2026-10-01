@@ -9,7 +9,7 @@ The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initi
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
-- **Tiny Living Core**: a recurrent 32D-latent transition model with only **14,451 parameters** by default.
+- **Tiny Living Core**: a recurrent 32D-latent transition model with only **14,515 parameters** by default.
 
 L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 recurrent-core infrastructure is executable but remains **DEV-READY / UNPROMOTED** until held-out replay evidence earns state authority.
 
@@ -43,7 +43,7 @@ The development core receives:
 (previous observed state, event features, delta-time, previous latent)
                               |
                               v
-                    14,451-param GRU core
+                    14,515-param GRU core
                          /       |       \
                         v        v        v
                    next latent  delta   confidence
