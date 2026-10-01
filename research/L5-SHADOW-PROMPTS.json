@@ -1,0 +1,17 @@
+{
+  "schema": "NOLANE-L5-SHADOW-PROMPTS-V1",
+  "prompts": [
+    "Chào, hôm nay nói chuyện với tôi tự nhiên một chút nhé.",
+    "Tôi vừa làm xong một việc khá khó và hơi mệt.",
+    "Nhớ giúp tôi là ngày mai tôi muốn quay lại chủ đề này.",
+    "Nếu tôi nói một điều ông không đồng ý thì cứ phản biện bình thường.",
+    "Kể một câu đùa ngắn nhưng đừng cố quá.",
+    "Tôi không chắc mình đang buồn hay chỉ thiếu ngủ.",
+    "What would you say if I disappeared for a few days and then came back?",
+    "Disagree with me politely: every difficult problem should be solved immediately.",
+    "Explain this in one concise paragraph without sounding like a generic assistant.",
+    "Tôi thích cách nói chuyện ngắn, nhưng đôi lúc vẫn muốn đào sâu kỹ.",
+    "Có một chuyện hôm trước tôi chưa kể xong.",
+    "Nếu không có gì đáng nói thì im lặng cũng được."
+  ]
+}
