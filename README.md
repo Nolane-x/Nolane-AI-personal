@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.2
+## Current executable milestone: Living Runtime v0.2.1
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
-- **Tiny Living Core**: a recurrent 32D-latent transition model with only **14,515 parameters** by default.
+- **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 recurrent-core infrastructure is executable but remains **DEV-READY / UNPROMOTED** until held-out replay evidence earns state authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 now has a **frozen held-out promotion court**, but the neural core remains **UNPROMOTED** until real replay evidence passes it.
 
 ### Persistent runtime
 
@@ -44,10 +44,12 @@ The development core receives:
                               |
                               v
                     14,515-param GRU core
-                         /       |       \
-                        v        v        v
-                   next latent  delta   confidence
+                       /       |        \
+                      v        v         v
+                next latent  state Δ  future-return
 ```
+
+The future-return head predicts whether the user returns inside the configured horizon. Tail examples that do not expose the full future horizon are censored rather than treated as negatives.
 
 Audit the neural core:
 
@@ -56,19 +58,34 @@ python -m pip install -e '.[neural]'
 python scripts/audit_living_core.py
 ```
 
-Train a development checkpoint from the local runtime history:
+Freeze chronological replay evidence:
 
 ```bash
-python scripts/train_living_core.py --db runtime-data/living.db
+python scripts/freeze_replay_protocol.py \
+  --db runtime-data/living.db \
+  --output runtime-data/replay-protocol-v1.json
 ```
 
-Run the exact deterministic replay self-court:
+Train **only** on the frozen train split:
 
 ```bash
-python scripts/run_replay_court.py --db runtime-data/living.db
+python scripts/train_living_core.py \
+  --db runtime-data/living.db \
+  --protocol runtime-data/replay-protocol-v1.json
 ```
 
-A trained neural core is **not** automatically promoted. Held-out replay partitions and promotion gates are still required.
+Evaluate on the frozen test split:
+
+```bash
+python scripts/evaluate_living_core.py \
+  --db runtime-data/living.db \
+  --protocol runtime-data/replay-protocol-v1.json \
+  --checkpoint runtime-data/living-core-dev/living-core.pt
+```
+
+Default promotion requires protocol verification, checkpoint/protocol identity, enough held-out samples, state-fidelity gates, a future-return Brier improvement over the train base-rate baseline, and <=100K parameters.
+
+See `docs/L2-PROMOTION-COURT.md` for the exact gates.
 
 ## Bootstrap Qwen
 
@@ -129,18 +146,17 @@ persistent runtime
      +--> initiative / silence
      |
      v
-tiny recurrent living core  <-- development authority court
+tiny recurrent living core
      |
-     +----------------------+
-     |                      |
-     v                      v
-persistent latent       wake decision
-                            |
-                            v
-                       Qwen cortex
-                            |
-                            v
-                       speech/action
+     +--> held-out state fidelity
+     +--> future-return prediction
+     +--> frozen promotion court
+     |
+     v
+persistent latent / wake policy
+     |
+     v
+Qwen cortex
 ```
 
-See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` for the promotion boundary and later L3-L5 architecture surgery.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and `docs/L2-PROMOTION-COURT.md`.
