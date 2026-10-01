@@ -38,7 +38,7 @@ Schema:
       "metadata": {}
     }
   ],
-  "thread_reviews": [{"thread_id": string, "action": "keep|resolve", "reason": string}],
+  "thread_reviews": [{"thread_id": string, "action": "keep|resolve", "reason": string, "source_memory_ids": [string]}],
   "active_intent": string|null,
   "uncertainty": number
 }
@@ -202,6 +202,7 @@ class QwenCortex:
                     thread_id=str(item.get("thread_id", "")),
                     action=str(item.get("action", "keep")),
                     reason=str(item.get("reason", ""))[:300],
+                    source_memory_ids=[str(x) for x in item.get("source_memory_ids", [])],
                 )
                 for item in payload.get("thread_reviews", [])
                 if isinstance(item, dict)
