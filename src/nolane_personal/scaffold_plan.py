@@ -79,7 +79,10 @@ def calibrate_scaffold_regions(
             min_width=min_region_width,
             max_width=max_region_width,
             max_islands=1,
-            edge_layers_to_keep=0,
+            edge_layers_to_keep=min(
+                config.min_head_layers,
+                config.min_tail_layers,
+            ),
             min_gap_layers=0,
         ),
     )
