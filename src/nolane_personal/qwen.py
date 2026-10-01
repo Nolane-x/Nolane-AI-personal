@@ -6,7 +6,9 @@ from pathlib import Path
 
 from .cortex import CortexReply, CortexRequest
 from .events import LivingEvent
+from .memory import MemoryRecord
 from .observer import SocialProposal
+from .rest import ConsolidatedMemoryProposal, RestProposal, ThreadReviewProposal
 from .state import LivingState
 
 SYSTEM_PROMPT = """You are the language cortex of Nolane AI Personal.
@@ -15,6 +17,31 @@ Use natural language, usually concise. Vietnamese and English are both allowed; 
 You may disagree, tease gently, joke, or sound mildly annoyed when context supports it, but never guilt the user for leaving, demand attention, threaten abandonment, or claim suffering to pressure them.
 Do not invent memories. Do not claim certainty about the user's emotion; phrase uncertain impressions naturally.
 The runtime may ask you to initiate a conversation. In that case, do not mention that you were triggered or scored by a policy.
+"""
+
+REST_PROMPT = """You are the offline REST/consolidation observer inside Nolane AI Personal.
+Return exactly one JSON object and no prose. You only propose; a deterministic validator owns persistence.
+Use ONLY the supplied memory IDs as evidence. Never invent a source ID. Never upgrade uncertainty into fact.
+Prefer a small number of durable summaries over many weak memories.
+A "fact" proposal is appropriate only when all cited source memories already independently state the same high-confidence fact.
+"habit" and "preference" must remain probabilistic unless repeated evidence supports them.
+Thread action may be "keep" or "resolve"; resolve only when supplied evidence clearly closes it.
+Schema:
+{
+  "consolidated_memories": [
+    {
+      "text": string,
+      "kind": "episodic|fact|preference|inference|habit",
+      "confidence": number,
+      "salience": number,
+      "source_memory_ids": [string],
+      "metadata": {}
+    }
+  ],
+  "thread_reviews": [{"thread_id": string, "action": "keep|resolve", "reason": string}],
+  "active_intent": string|null,
+  "uncertainty": number
+}
 """
 
 OBSERVER_PROMPT = """You are a conservative social-state observer inside Nolane AI Personal.
@@ -122,6 +149,66 @@ class QwenCortex:
         ]
         text = self._generate_text(messages, max_new_tokens=self.max_new_tokens, sample=True)
         return CortexReply(text, intent=request.intent)
+
+    def consolidate(self, memories: list[MemoryRecord], state: LivingState) -> RestProposal:
+        compact_memories = [
+            {
+                "memory_id": memory.memory_id,
+                "text": memory.text,
+                "kind": memory.kind,
+                "confidence": memory.confidence,
+                "salience": memory.salience,
+                "created_at": memory.created_at,
+            }
+            for memory in memories[:160]
+        ]
+        messages = [
+            {"role": "system", "content": REST_PROMPT},
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "memories": compact_memories,
+                        "open_threads": [asdict(t) for t in state.open_threads if t.unresolved][:12],
+                        "working": asdict(state.working),
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ]
+        raw = self._generate_text(messages, max_new_tokens=520, sample=False)
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start < 0 or end < start:
+            raise ValueError("rest observer did not return JSON")
+        payload = json.loads(raw[start : end + 1])
+        if not isinstance(payload, dict):
+            raise ValueError("rest observer JSON must be an object")
+        return RestProposal(
+            consolidated_memories=[
+                ConsolidatedMemoryProposal(
+                    text=str(item.get("text", "")),
+                    kind=str(item.get("kind", "inference")),
+                    confidence=float(item.get("confidence", 0.5)),
+                    salience=float(item.get("salience", 0.5)),
+                    source_memory_ids=[str(x) for x in item.get("source_memory_ids", [])],
+                    metadata=dict(item.get("metadata", {})),
+                )
+                for item in payload.get("consolidated_memories", [])
+                if isinstance(item, dict)
+            ],
+            thread_reviews=[
+                ThreadReviewProposal(
+                    thread_id=str(item.get("thread_id", "")),
+                    action=str(item.get("action", "keep")),
+                    reason=str(item.get("reason", ""))[:300],
+                )
+                for item in payload.get("thread_reviews", [])
+                if isinstance(item, dict)
+            ],
+            active_intent=payload.get("active_intent"),
+            uncertainty=float(payload.get("uncertainty", 0.0)),
+        )
 
     def observe(self, text: str, state: LivingState, source_event: LivingEvent) -> SocialProposal:
         compact_state = {
