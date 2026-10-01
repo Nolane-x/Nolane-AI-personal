@@ -119,12 +119,30 @@ Live or REST conversations never update model weights directly. REST may form ev
 
 ## L5 — Architecture surgery
 
-Only after replay benchmarks exist:
+Engineering substrate: **SHADOW-COURT-READY / UNPROMOTED**.
 
-- insert recurrent/state-space blocks;
-- add social-state heads;
-- dynamic-depth routing;
-- distill unused language capacity;
-- compare against untouched Qwen3-0.6B under identical histories.
+- [x] isolated 32D-latent residual adapter candidate
+- [x] exact analytical adapter parameter audit
+- [x] bounded residual gate
+- [x] deterministic candidate initialization
+- [x] bind candidate to pinned base-model identity/revision
+- [x] hidden-size compatibility gate
+- [x] paired baseline/counterfactual forwards
+- [x] baseline-only served authority
+- [x] counterfactual KL/logit/cosine/latency metrics
+- [x] lightweight base-parameter mutation guard
+- [x] exception-safe decoder hooks
+- [x] structural shadow-admission court
+- [x] one-load multi-prompt Qwen surgery suite
+- [x] frozen multilingual structural prompt suite
+- [x] real tiny `Qwen3ForCausalLM` compatibility court
+- [x] L3 persistent-latent regression remains in neural court
+- [ ] train candidate adapters only on frozen train evidence
+- [ ] freeze matched held-out personalization/continuity cases
+- [ ] compare untouched Qwen vs latent-conditioned Qwen under identical contexts
+- [ ] prove held-out quality benefit without unacceptable general regression
+- [ ] pass latency/resource promotion gates
+- [ ] allow a promoted adapter to influence production generation
+- [ ] evaluate later recurrent/state-space replacement blocks and dynamic-depth routing
 
-No surgery is promoted without measured benefit.
+A structural shadow-admission pass is not a quality promotion. No surgery is promoted without measured held-out benefit.
