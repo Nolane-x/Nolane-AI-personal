@@ -13,7 +13,7 @@ from nolane_personal.surgery import (
     module_parameter_digest,
     resolve_transformer_layers,
 )
-from nolane_personal.surgery_court import evaluate_shadow_admission
+from nolane_personal.surgery_court import ShadowAdmissionThresholds, evaluate_shadow_admission
 
 
 class ToyBlock(nn.Module):
@@ -88,7 +88,17 @@ def test_counterfactual_probe_changes_shadow_logits_but_serves_baseline_and_pres
     assert receipt.layer_indices == [1, 2]
     assert all(len(layer._forward_hooks) == 0 for layer in resolve_transformer_layers(model))
 
-    decision = evaluate_shadow_admission([receipt])
+    decision = evaluate_shadow_admission(
+        [receipt],
+        ShadowAdmissionThresholds(
+            parameter_cap=100_000,
+            max_abs_gate=0.10,
+            max_kl=1_000.0,
+            min_cosine_similarity=-1.0,
+            max_overhead_ratio=1_000.0,
+            min_receipts=1,
+        ),
+    )
     assert decision.status == "SHADOW_ADMISSION_PASS"
     assert decision.summary["authority"] == "SHADOW_ONLY_NO_PROMOTION"
 
