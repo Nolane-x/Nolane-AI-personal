@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.2.1
+## Current executable milestone: Living Runtime v0.3.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 now has a **frozen held-out promotion court**, but the neural core remains **UNPROMOTED** until real replay evidence passes it.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 now has persistent neural latent continuity in **shadow-only mode** across restarts.
 
 ### Persistent runtime
 
@@ -87,6 +87,31 @@ Default promotion requires protocol verification, checkpoint/protocol identity, 
 
 See `docs/L2-PROMOTION-COURT.md` for the exact gates.
 
+### L3 persistent latent shadow
+
+The recurrent latent can now survive process restarts independently of Qwen context. It is atomically sealed with identity, exact checkpoint SHA-256, protocol SHA-256, latent dimension and the last processed state version.
+
+Run one shadow catch-up:
+
+```bash
+python scripts/run_shadow_living_core.py \
+  --db runtime-data/living.db \
+  --checkpoint runtime-data/living-core-dev/living-core.pt \
+  --protocol runtime-data/replay-protocol-v1.json
+```
+
+Continuously follow committed transitions:
+
+```bash
+python scripts/run_shadow_living_core.py \
+  --db runtime-data/living.db \
+  --checkpoint runtime-data/living-core-dev/living-core.pt \
+  --protocol runtime-data/replay-protocol-v1.json \
+  --follow
+```
+
+Shadow mode emits neural predictions and advances the latent but has **zero authority** over LivingState, memory, initiative or Qwen. See `docs/L3-PERSISTENT-LATENT.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -153,10 +178,17 @@ tiny recurrent living core
      +--> frozen promotion court
      |
      v
-persistent latent / wake policy
+persistent 32D latent (shadow)
+     |
+     +--> restart continuity
+     +--> checkpoint/protocol binding
+     +--> no production authority yet
+     |
+     v
+future promoted adapters / wake policy
      |
      v
 Qwen cortex
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and `docs/L2-PROMOTION-COURT.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, and `docs/L3-PERSISTENT-LATENT.md`.
