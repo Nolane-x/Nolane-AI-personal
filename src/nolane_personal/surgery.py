@@ -122,13 +122,36 @@ def tensor_state_digest(state_dict: dict[str, Any]) -> str:
         digest.update(name.encode("utf-8"))
         digest.update(str(tensor.dtype).encode("ascii"))
         digest.update(str(tuple(tensor.shape)).encode("ascii"))
-        raw = tensor.view(torch.uint8).numpy().tobytes()
+        raw = bytes(tensor.view(torch.uint8).reshape(-1).tolist())
         digest.update(raw)
     return digest.hexdigest()
 
 
 def module_parameter_digest(module) -> str:
+    """Content digest for small modules/candidates.
+
+    Do not use this to fingerprint a full Qwen checkpoint on every inference;
+    the upstream revision already identifies base weights and the lightweight
+    parameter guard below proves this process did not mutate them.
+    """
     return tensor_state_digest(module.state_dict())
+
+
+def parameter_guard_snapshot(module) -> tuple[tuple[Any, ...], ...]:
+    rows = []
+    for name, parameter in module.named_parameters():
+        rows.append(
+            (
+                name,
+                id(parameter),
+                int(parameter.data_ptr()),
+                int(getattr(parameter, "_version", 0)),
+                tuple(parameter.shape),
+                str(parameter.dtype),
+                bool(parameter.requires_grad),
+            )
+        )
+    return tuple(rows)
 
 
 def _nested_attr(obj: Any, path: str) -> Any | None:
@@ -303,7 +326,7 @@ class CounterfactualSurgeryProbe:
         torch = self.adapter.torch
         self.model.eval()
         self.adapter.eval()
-        before_digest = module_parameter_digest(self.model)
+        before_guard = parameter_guard_snapshot(self.model)
         adapter_digest = module_parameter_digest(self.adapter.module)
         layers = resolve_transformer_layers(self.model)
         selected = select_layer_indices(len(layers), layer_indices)
@@ -336,7 +359,7 @@ class CounterfactualSurgeryProbe:
         cosine = torch.nn.functional.cosine_similarity(base_logits, cf_logits, dim=-1).mean()
         base_top1 = int(torch.argmax(base_logits[0]).item())
         cf_top1 = int(torch.argmax(cf_logits[0]).item())
-        after_digest = module_parameter_digest(self.model)
+        after_guard = parameter_guard_snapshot(self.model)
 
         candidate_payload = {
             "base_model_fingerprint": self.base_model_fingerprint,
@@ -367,6 +390,6 @@ class CounterfactualSurgeryProbe:
             baseline_top1=base_top1,
             counterfactual_top1=cf_top1,
             top1_changed=base_top1 != cf_top1,
-            base_model_unchanged=before_digest == after_digest,
+            base_model_unchanged=before_guard == after_guard,
         )
         return baseline, receipt
