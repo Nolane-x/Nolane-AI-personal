@@ -6,8 +6,10 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from .continuity_targets import return_targets
 from .dynamics import seconds_between
 from .living_core import EventFeaturizer, LivingCoreConfig, TinyLivingCore, state_vector, time_features
+from .replay_protocol import records_for_split, verify_replay_protocol
 from .store import LivingStore
 
 
@@ -19,13 +21,19 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _load_protocol(path: str | Path) -> dict[str, Any]:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def train_from_store(
     db_path: str | Path,
     output_dir: str | Path,
     *,
+    protocol_path: str | Path | None = None,
     epochs: int = 4,
     learning_rate: float = 1e-3,
     truncation: int = 16,
+    return_horizon_seconds: float = 3600.0,
     config: LivingCoreConfig | None = None,
 ) -> dict[str, Any]:
     try:
@@ -39,11 +47,25 @@ def train_from_store(
 
     store = LivingStore(db_path)
     try:
-        records = store.replay_records()
+        all_records = store.replay_records()
+        protocol = _load_protocol(protocol_path) if protocol_path is not None else None
+        if protocol is not None:
+            verify_replay_protocol(store, protocol)
+            records = records_for_split(store, protocol, "train")
+            protocol_sha = str(protocol["protocol_sha256"])
+            evidence_status = "FROZEN_TRAIN_DEVELOPMENT"
+        else:
+            records = all_records
+            protocol_sha = None
+            evidence_status = "UNFROZEN_DEVELOPMENT"
     finally:
         store.close()
+
     if not records:
-        raise ValueError("no replay transitions available")
+        raise ValueError("no replay transitions available for training")
+
+    targets = return_targets(records, horizon_seconds=return_horizon_seconds)
+    observed_return_targets = sum(1 for target in targets.values() if target.observed)
 
     core = TinyLivingCore(config)
     model = core.module
@@ -69,12 +91,17 @@ def train_from_store(
             event_v = torch.tensor([featurizer.encode(event)], dtype=torch.float32)
             dt_v = torch.tensor([time_features(dt)], dtype=torch.float32)
 
-            latent, predicted_delta, _action_logits, confidence = core(before_v, event_v, dt_v, latent)
+            latent, predicted_delta, _action_logits, return_logit = core(before_v, event_v, dt_v, latent)
             target_delta = torch.clamp(after_v - before_v, -0.12, 0.12)
             state_loss = torch.nn.functional.smooth_l1_loss(predicted_delta, target_delta)
-            target_confidence = torch.exp(-8.0 * torch.mean(torch.abs(target_delta), dim=-1, keepdim=True))
-            confidence_loss = torch.nn.functional.mse_loss(confidence, target_confidence)
-            loss = state_loss + 0.05 * confidence_loss
+            loss = state_loss
+
+            return_target = targets[event.event_id]
+            if return_target.observed:
+                label = torch.tensor([[float(return_target.returned_within_horizon)]], dtype=torch.float32)
+                return_loss = torch.nn.functional.binary_cross_entropy_with_logits(return_logit, label)
+                loss = loss + 0.15 * return_loss
+
             chunk_losses.append(loss)
             scalar_losses.append(float(loss.detach().cpu()))
 
@@ -92,21 +119,27 @@ def train_from_store(
     checkpoint_path = output_dir / "living-core.pt"
     torch.save(
         {
+            "schema": "NOLANE-LIVING-CORE-CHECKPOINT-V2",
             "model_state": model.state_dict(),
             "config": asdict(core.config),
-            "evidence_status": "DEVELOPMENT_UNPROMOTED",
+            "protocol_sha256": protocol_sha,
+            "return_horizon_seconds": float(return_horizon_seconds),
+            "evidence_status": evidence_status,
         },
         checkpoint_path,
     )
     manifest = {
-        "schema": "NOLANE-LIVING-CORE-DEV-V1",
-        "evidence_status": "DEVELOPMENT_UNPROMOTED",
+        "schema": "NOLANE-LIVING-CORE-DEV-V2",
+        "evidence_status": evidence_status,
         "parameter_count": core.parameter_count(),
         "replay_transitions": len(records),
+        "observed_return_targets": observed_return_targets,
         "epochs": max(1, int(epochs)),
         "learning_rate": float(learning_rate),
         "truncation": max(1, int(truncation)),
+        "return_horizon_seconds": float(return_horizon_seconds),
         "epoch_losses": epoch_losses,
+        "protocol_sha256": protocol_sha,
         "source_db_sha256": _file_sha256(db_path),
         "checkpoint_sha256": _file_sha256(checkpoint_path),
         "config": asdict(core.config),
