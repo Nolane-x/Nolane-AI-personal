@@ -51,7 +51,7 @@ This adds a recurrent path *across Transformer depth*. It is not another prompt 
 
 For hidden size 1024, latent 32D, bridge 32D and 64 possible layer identities:
 
-**84,321 trainable parameters**
+**84,289 trainable parameters**
 
 The production quality court caps L7 at **100,000 parameters**.
 
