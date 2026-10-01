@@ -129,6 +129,10 @@ class ConsolidationValidator:
         for review in proposal.thread_reviews:
             if review.action != "resolve":
                 continue
+            evidence_ids = list(dict.fromkeys(review.source_memory_ids[: self.policy.max_sources_per_memory]))
+            if not evidence_ids or any(memory_id not in source_memories for memory_id in evidence_ids):
+                receipt.rejected.append(f"thread_evidence_missing:{review.thread_id}")
+                continue
             if allowed_resolutions >= self.policy.max_thread_resolutions:
                 receipt.rejected.append(f"thread_resolution_limit:{review.thread_id}")
                 continue
