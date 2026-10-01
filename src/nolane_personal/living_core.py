@@ -73,6 +73,18 @@ def time_features(dt_seconds: float) -> list[float]:
     ]
 
 
+def analytical_parameter_count(config: LivingCoreConfig | None = None) -> int:
+    c = config or LivingCoreConfig()
+    input_dim = c.observed_state_dim + c.event_dim + 4
+    input_layer = input_dim * c.hidden_dim + c.hidden_dim
+    layer_norm = 2 * c.hidden_dim
+    gru = 3 * c.latent_dim * c.hidden_dim + 3 * c.latent_dim * c.latent_dim + 6 * c.latent_dim
+    state_head = c.latent_dim * c.observed_state_dim + c.observed_state_dim
+    action_head = c.latent_dim * c.action_dim + c.action_dim
+    confidence_head = c.latent_dim + 1
+    return input_layer + layer_norm + gru + state_head + action_head + confidence_head
+
+
 class TinyLivingCore:
     """Optional ~15K-parameter recurrent neural transition core.
 
@@ -130,8 +142,13 @@ class TinyLivingCore:
 def core_audit(config: LivingCoreConfig | None = None) -> dict[str, Any]:
     core = TinyLivingCore(config)
     c = core.config
+    actual = core.parameter_count()
+    analytical = analytical_parameter_count(c)
+    if actual != analytical:
+        raise RuntimeError(f"parameter audit mismatch: actual={actual} analytical={analytical}")
     return {
-        "parameter_count": core.parameter_count(),
+        "parameter_count": actual,
+        "analytical_parameter_count": analytical,
         "event_dim": c.event_dim,
         "observed_state_dim": c.observed_state_dim,
         "latent_dim": c.latent_dim,
