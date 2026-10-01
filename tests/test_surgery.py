@@ -94,13 +94,7 @@ def test_counterfactual_probe_changes_shadow_logits_but_serves_baseline_and_pres
 
 
 def test_counterfactual_hook_is_removed_even_when_model_forward_fails():
-    class FailingBlock(ToyBlock):
-        def forward(self, hidden):
-            result = super().forward(hidden)
-            raise RuntimeError("intentional")
-
     model = ToyLM()
-    model.model.layers[1] = FailingBlock(16)
     adapter = LatentResidualAdapter(16, seed=3)
     inputs = {"input_ids": torch.tensor([[1, 2]], dtype=torch.long)}
     probe = CounterfactualSurgeryProbe(
@@ -109,6 +103,11 @@ def test_counterfactual_hook_is_removed_even_when_model_forward_fails():
         base_model_fingerprint="base",
         latent_digest="latent",
     )
+
+    def fail_inside_hook(*args, **kwargs):
+        raise RuntimeError("intentional")
+
+    adapter.residual = fail_inside_hook
     with pytest.raises(RuntimeError, match="intentional"):
         probe.run(inputs, [0.1] * 32, layer_indices=[1], gate=0.02)
     assert all(len(layer._forward_hooks) == 0 for layer in resolve_transformer_layers(model))
