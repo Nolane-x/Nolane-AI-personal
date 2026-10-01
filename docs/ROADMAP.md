@@ -240,6 +240,9 @@ Engineering substrate: **FOUR-WAY-COURT-READY / UNPROMOTED**.
 - [x] four-way evaluator: Qwen vs L6 vs L7 Hybrid vs L8
 - [x] mandatory held-out improvement over Qwen, L6 and L7 Hybrid
 - [x] Vietnamese/English general-regression gate
+- [x] latency-overhead resource court
+- [x] artifact-size resource court
+- [x] checkpoint-bound quality+resource promotion ceremony
 - [ ] train L6/L7/L8 on sufficient real approved personalization history
 - [ ] freeze real held-out protocol
 - [ ] prove L8 beats L7 Hybrid by >=0.005 held-out NLL
