@@ -81,16 +81,16 @@ def analytical_parameter_count(config: LivingCoreConfig | None = None) -> int:
     gru = 3 * c.latent_dim * c.hidden_dim + 3 * c.latent_dim * c.latent_dim + 6 * c.latent_dim
     state_head = c.latent_dim * c.observed_state_dim + c.observed_state_dim
     action_head = c.latent_dim * c.action_dim + c.action_dim
-    confidence_head = c.latent_dim + 1
-    return input_layer + layer_norm + gru + state_head + action_head + confidence_head
+    return_head = c.latent_dim + 1
+    return input_layer + layer_norm + gru + state_head + action_head + return_head
 
 
 class TinyLivingCore:
-    """Optional ~15K-parameter recurrent neural transition core.
+    """Optional 14,515-parameter recurrent neural transition core.
 
-    It predicts bounded observed-state deltas and an action prior while carrying
-    a 32D latent state between events. It is a DEVELOPMENT substrate until it
-    passes the replay court; merely instantiating it does not promote authority.
+    The model predicts bounded observed-state deltas, an action prior and a
+    future-return logit while carrying a 32D latent state between events. It is
+    DEVELOPMENT-only until a frozen held-out promotion court passes.
     """
 
     def __init__(self, config: LivingCoreConfig | None = None) -> None:
@@ -116,15 +116,15 @@ class TinyLivingCore:
                 self.recurrent = nn.GRUCell(c.hidden_dim, c.latent_dim)
                 self.state_delta = nn.Linear(c.latent_dim, c.observed_state_dim)
                 self.action = nn.Linear(c.latent_dim, c.action_dim)
-                self.confidence = nn.Linear(c.latent_dim, 1)
+                self.return_head = nn.Linear(c.latent_dim, 1)
 
             def forward(self, observed, event_features, dt_features, latent):
                 x = self.input(torch.cat([observed, event_features, dt_features], dim=-1))
                 next_latent = self.recurrent(x, latent)
                 delta = 0.12 * torch.tanh(self.state_delta(next_latent))
                 action_logits = self.action(next_latent)
-                confidence = torch.sigmoid(self.confidence(next_latent))
-                return next_latent, delta, action_logits, confidence
+                return_logit = self.return_head(next_latent)
+                return next_latent, delta, action_logits, return_logit
 
         self.module = Module()
 
@@ -132,8 +132,7 @@ class TinyLivingCore:
         return sum(p.numel() for p in self.module.parameters())
 
     def initial_latent(self, batch_size: int = 1, *, device: str | None = None):
-        torch = self.torch
-        return torch.zeros(batch_size, self.config.latent_dim, device=device)
+        return self.torch.zeros(batch_size, self.config.latent_dim, device=device)
 
     def __call__(self, observed, event_features, dt_features, latent):
         return self.module(observed, event_features, dt_features, latent)
