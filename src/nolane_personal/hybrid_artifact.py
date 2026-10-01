@@ -24,6 +24,7 @@ def save_hybrid_artifact(
     receipt: HybridTrainingReceipt,
     *,
     base_model_fingerprint: str,
+    dataset_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     torch = cortex.mixer.torch
     path = Path(path)
@@ -37,6 +38,7 @@ def save_hybrid_artifact(
         "cortex_config": asdict(cortex.config),
         "mixer_state": cortex.mixer.module.state_dict(),
         "training_receipt": receipt.to_dict(),
+        "dataset_fingerprint": dataset_fingerprint,
     }
     torch.save(payload, path)
     checkpoint_sha = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -49,6 +51,7 @@ def save_hybrid_artifact(
         "mixer_parameters": receipt.mixer_parameters,
         "mixer_digest": module_parameter_digest(cortex.mixer.module),
         "training": receipt.to_dict(),
+        "dataset_fingerprint": dataset_fingerprint,
     }
 
 
@@ -97,5 +100,6 @@ def load_hybrid_artifact(
         "mixer_digest": module_parameter_digest(mixer.module),
         "checkpoint_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "training_receipt": payload.get("training_receipt"),
+        "dataset_fingerprint": payload.get("dataset_fingerprint"),
     }
     return cortex, metadata
