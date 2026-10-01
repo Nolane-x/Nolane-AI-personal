@@ -37,7 +37,7 @@ L1 does not claim the observer infers human emotion perfectly. It gives model in
 
 ## L2 — Recurrent living core
 
-Engineering substrate: **DEV-READY / UNPROMOTED**.
+Engineering substrate: **COURT-READY / UNPROMOTED**.
 
 - [x] deterministic replay records from real runtime history
 - [x] exact state vector contract
@@ -47,19 +47,27 @@ Engineering substrate: **DEV-READY / UNPROMOTED**.
 - [x] tiny GRU transition model
 - [x] bounded state-delta head
 - [x] action-prior head
-- [x] confidence head
+- [x] future-return prediction head
 - [x] exact analytical parameter audit
 - [x] default core footprint: **14,515 parameters**
 - [x] replay trainer with truncated BPTT
 - [x] gradient clipping
 - [x] checkpoint + manifest + DB/checkpoint SHA-256
-- [x] replay court infrastructure
+- [x] chronological train/dev/test freeze protocol
+- [x] per-record before/after state digests
+- [x] protocol self-digest and drift verification
+- [x] censored future-return labels to prevent tail leakage
+- [x] held-out evaluator
+- [x] state-fidelity gates
+- [x] Brier improvement gate against train base-rate
+- [x] parameter-cap gate
+- [x] checkpoint/protocol SHA match gate
 - [ ] train on a sufficiently large real interaction history
-- [ ] freeze train/dev/test replay partitions
-- [ ] beat deterministic baseline on held-out continuity/calibration gates
+- [ ] obtain >=50 held-out state cases and >=20 uncensored return cases
+- [ ] pass the frozen promotion court
 - [ ] promote recurrent core to production state authority
 
-The neural core remains development-only until those final scientific gates pass.
+A neural core that only imitates the deterministic reducer has not earned replacement authority. It must preserve state continuity and add held-out predictive value.
 
 ## L3 — Persistent latent continuity
 
