@@ -33,6 +33,7 @@ jobs:
           tests/test_state_space_cortex.py
           tests/test_shrinking_scaffold.py
           tests/test_minimal_anchor_cortex.py
+          tests/test_native_boundary.py
       - run: python scripts/audit_living_core.py
       - run: python scripts/audit_state_space_cortex.py
       - run: python scripts/audit_multiscale_cortex.py
