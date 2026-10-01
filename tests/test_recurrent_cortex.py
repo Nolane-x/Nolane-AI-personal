@@ -146,6 +146,7 @@ def test_real_qwen3_recurrent_mixer_trains_with_zero_base_gradients_and_heldout_
         cortex,
         receipt,
         base_model_fingerprint="tiny-qwen3",
+        dataset_fingerprint="protocol-a",
     )
     loaded, metadata = load_hybrid_artifact(
         path,
@@ -156,6 +157,7 @@ def test_real_qwen3_recurrent_mixer_trains_with_zero_base_gradients_and_heldout_
     )
     assert loaded.mixer.parameter_count() == mixer.parameter_count()
     assert metadata["mixer_digest"] == manifest["mixer_digest"]
+    assert metadata["dataset_fingerprint"] == "protocol-a"
 
 
 def test_recurrent_generate_keeps_state_across_decode_and_cleans_hooks():
