@@ -143,10 +143,11 @@ def main() -> int:
     probe = torch.tensor([encoded[0]], dtype=torch.long, device=qwen.device)
     before_mutation = standalone.forward(input_ids=probe, state=None).logits.detach().clone()
     with torch.no_grad():
-        source_value = qwen.model.model.embed_tokens.weight[0, 0].detach().clone()
-        qwen.model.model.embed_tokens.weight[0, 0].add_(1.0)
+        probe_token = int(encoded[0][0])
+        source_row = qwen.model.model.embed_tokens.weight[probe_token].detach().clone()
+        qwen.model.model.embed_tokens.weight[probe_token].add_(1.0)
         after_mutation = standalone.forward(input_ids=probe, state=None).logits.detach().clone()
-        qwen.model.model.embed_tokens.weight[0, 0].copy_(source_value)
+        qwen.model.model.embed_tokens.weight[probe_token].copy_(source_row)
     isolated = bool(torch.equal(before_mutation, after_mutation))
 
     cortex_equal = (
