@@ -122,7 +122,7 @@ def tensor_state_digest(state_dict: dict[str, Any]) -> str:
         digest.update(name.encode("utf-8"))
         digest.update(str(tensor.dtype).encode("ascii"))
         digest.update(str(tuple(tensor.shape)).encode("ascii"))
-        raw = bytes(tensor.view(torch.uint8).reshape(-1).tolist())
+        raw = bytes(tensor.reshape(-1).view(torch.uint8).tolist())
         digest.update(raw)
     return digest.hexdigest()
 
