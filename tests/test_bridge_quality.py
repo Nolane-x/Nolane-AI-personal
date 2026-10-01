@@ -17,7 +17,7 @@ def _evidence(**overrides):
         anchor_baseline_nll=1.5,
         anchor_bridge_nll=1.53,
         anchor_nll_regression=0.03,
-        bridge_parameters=84_321,
+        bridge_parameters=84_289,
         base_model_unchanged=True,
         base_gradients_seen=0,
     )
