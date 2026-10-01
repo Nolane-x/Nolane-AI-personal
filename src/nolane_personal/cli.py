@@ -14,14 +14,23 @@ def _build_engine(args: argparse.Namespace) -> LivingEngine:
     store = LivingStore(Path(args.db))
     cortex = None
     observer = None
+    rest_observer = None
     if not getattr(args, "no_model", False):
         cortex = QwenCortex(args.model, device=args.device)
         if getattr(args, "social_observer", False):
             observer = cortex
-    elif getattr(args, "social_observer", False):
+        if getattr(args, "deep_rest", False):
+            rest_observer = cortex
+    elif getattr(args, "social_observer", False) or getattr(args, "deep_rest", False):
         store.close()
-        raise SystemExit("--social-observer requires the local model; remove --no-model")
-    return LivingEngine(store, cortex=cortex, observer=observer)
+        raise SystemExit("--social-observer/--deep-rest require the local model; remove --no-model")
+    return LivingEngine(
+        store,
+        cortex=cortex,
+        observer=observer,
+        rest_observer=rest_observer,
+        enable_rest=not getattr(args, "no_rest", False),
+    )
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -29,6 +38,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     engine = LivingEngine(store)
     print(f"identity_id={engine.state.identity_id}")
     print(f"state_version={engine.state.version}")
+    print(f"schema_version={engine.state.schema_version}")
     print(f"db={Path(args.db).resolve()}")
     store.close()
     return 0
@@ -42,9 +52,12 @@ def cmd_status(args: argparse.Namespace) -> int:
         store.close()
         return 1
     print(f"identity_id={state.identity_id}")
+    print(f"schema_version={state.schema_version}")
     print(f"version={state.version} tick={state.tick}")
     print(f"interactions={state.relationship.interaction_count}")
     print(f"open_threads={sum(1 for t in state.open_threads if t.unresolved)}")
+    print(f"rest_cycles={state.rest.cycles}")
+    print(f"memory_links={len(store.memory_links())}")
     print(f"replay_transitions={len(store.replay_records())}")
     print(f"snapshot_digest={store.snapshot_digest()}")
     store.close()
@@ -70,7 +83,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"Nolane AI Personal alive: {engine.state.identity_id}")
     if args.social_observer:
         print("Social observer: Qwen proposal mode + deterministic validator")
-    print("Commands: /quit, /status, /thread <topic>")
+    if args.deep_rest:
+        print("REST observer: Qwen deep consolidation + deterministic validator")
+    elif not args.no_rest:
+        print("REST observer: deterministic low-cost consolidation")
+    print("Commands: /quit, /status, /thread <topic>, /rest")
 
     try:
         while True:
@@ -81,7 +98,21 @@ def cmd_run(args: argparse.Namespace) -> int:
                     break
                 if command == "/status":
                     s = engine.state
-                    print(f"state> v{s.version} tick={s.tick} social_drive={s.affect.social_drive:.2f} concern={s.affect.concern:.2f}")
+                    print(
+                        f"state> v{s.version} tick={s.tick} rest={s.rest.cycles} "
+                        f"social_drive={s.affect.social_drive:.2f} concern={s.affect.concern:.2f}"
+                    )
+                    continue
+                if command == "/rest":
+                    result = engine.run_rest_now()
+                    if result.rest_error:
+                        print(f"rest> rejected ({result.rest_error})")
+                    elif result.rest_receipt:
+                        print(
+                            f"rest> stored={len(result.rest_receipt.stored_memory_ids)} "
+                            f"links={result.rest_receipt.memory_links} "
+                            f"resolved={len(result.rest_receipt.resolved_thread_ids)}"
+                        )
                     continue
                 if command.startswith("/thread "):
                     thread = engine.add_open_thread(command[len("/thread "):].strip())
@@ -94,6 +125,10 @@ def cmd_run(args: argparse.Namespace) -> int:
                     print(f"nolane> {result.speech}")
             except queue.Empty:
                 result = engine.tick()
+                if result.rest_error:
+                    print(f"\nrest> rejected ({result.rest_error})")
+                elif result.rest_receipt and result.rest_receipt.stored_memory_ids:
+                    print(f"\nrest> consolidated {len(result.rest_receipt.stored_memory_ids)} memories")
                 if result.speech:
                     print(f"\nnolane> {result.speech}")
     except KeyboardInterrupt:
@@ -122,6 +157,8 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--tick-seconds", type=float, default=15.0)
     run.add_argument("--no-model", action="store_true", help="run state/memory/heartbeat without loading Qwen")
     run.add_argument("--social-observer", action="store_true", help="reuse Qwen for structured social proposals before validated persistence")
+    run.add_argument("--deep-rest", action="store_true", help="reuse Qwen for evidence-cited REST consolidation proposals")
+    run.add_argument("--no-rest", action="store_true", help="disable automatic REST/consolidation cycles")
     run.set_defaults(func=cmd_run)
     return p
 
