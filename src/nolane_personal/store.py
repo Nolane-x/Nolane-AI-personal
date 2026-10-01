@@ -135,6 +135,38 @@ class LivingStore:
             for row in rows
         ]
 
+    def replay_records(self, limit: int = 10000) -> list[dict[str, object]]:
+        rows = self.db.execute(
+            """
+            SELECT s.version, p.state_json AS before_json, s.state_json AS after_json,
+                   e.event_id, e.at, e.kind, e.source, e.salience, e.payload_json
+            FROM snapshots AS s
+            JOIN events AS e ON e.event_id = s.event_id
+            JOIN snapshots AS p ON p.version = s.version - 1
+            ORDER BY s.version ASC
+            LIMIT ?
+            """,
+            (max(0, int(limit)),),
+        ).fetchall()
+        result: list[dict[str, object]] = []
+        for row in rows:
+            result.append(
+                {
+                    "version": int(row["version"]),
+                    "before": LivingState.from_dict(json.loads(row["before_json"])),
+                    "after": LivingState.from_dict(json.loads(row["after_json"])),
+                    "event": LivingEvent(
+                        event_id=row["event_id"],
+                        at=row["at"],
+                        kind=row["kind"],
+                        source=row["source"],
+                        salience=float(row["salience"]),
+                        payload=json.loads(row["payload_json"]),
+                    ),
+                }
+            )
+        return result
+
     def snapshot_digest(self, version: int | None = None) -> str | None:
         if version is None:
             row = self.db.execute("SELECT digest FROM snapshots ORDER BY version DESC LIMIT 1").fetchone()

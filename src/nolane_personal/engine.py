@@ -9,6 +9,8 @@ from .dynamics import advance_time, apply_event, seconds_between
 from .events import LivingEvent
 from .initiative import InitiativeDecision, InitiativeEngine
 from .memory import MemoryRecord, rank_memories
+from .mutations import MutationReceipt, MutationValidator
+from .observer import SocialObserver
 from .state import LivingState, OpenThread
 from .store import LivingStore
 
@@ -18,15 +20,32 @@ class EngineResult:
     state: LivingState
     speech: str = ""
     initiative: InitiativeDecision | None = None
+    observer_receipt: MutationReceipt | None = None
+    observer_error: str | None = None
 
 
 class LivingEngine:
-    """Event-driven persistent runtime. The LLM is a replaceable cortex."""
+    """Event-driven persistent runtime. The LLM is a replaceable cortex.
 
-    def __init__(self, store: LivingStore, *, cortex: Cortex | None = None, initiative: InitiativeEngine | None = None) -> None:
+    Social observers have proposal authority only. All persistent observer
+    mutations pass through MutationValidator and are written as separate,
+    auditable transitions.
+    """
+
+    def __init__(
+        self,
+        store: LivingStore,
+        *,
+        cortex: Cortex | None = None,
+        initiative: InitiativeEngine | None = None,
+        observer: SocialObserver | None = None,
+        mutation_validator: MutationValidator | None = None,
+    ) -> None:
         self.store = store
         self.cortex = cortex or NullCortex()
         self.initiative = initiative or InitiativeEngine()
+        self.observer = observer
+        self.mutation_validator = mutation_validator or MutationValidator()
         state = self.store.load_state()
         self.state = state if state is not None else self.store.initialize(LivingState())
 
@@ -36,6 +55,39 @@ class LivingEngine:
 
     def _relevant_memories(self, query: str, limit: int = 6) -> list[MemoryRecord]:
         return rank_memories(self.store.memories(limit=300), query, limit=limit)
+
+    def _run_observer(self, text: str, source_event: LivingEvent) -> tuple[MutationReceipt | None, str | None]:
+        if self.observer is None:
+            return None, None
+        try:
+            proposal = self.observer.observe(text, deepcopy(self.state), source_event)
+            next_state, memories, receipt = self.mutation_validator.apply(self.state, proposal, source_event)
+            mutation_event = LivingEvent(
+                kind="observer_mutation",
+                payload={
+                    "source_event_id": source_event.event_id,
+                    "proposal": proposal.to_dict(),
+                    "receipt": receipt.to_dict(),
+                },
+                source="mutation_validator",
+                at=source_event.at,
+                salience=0.25,
+            )
+            self.state = self.store.commit_transition(mutation_event, next_state, memories)
+            return receipt, None
+        except Exception as exc:
+            error_name = type(exc).__name__
+            rejected = LivingEvent(
+                kind="observer_rejected",
+                payload={"source_event_id": source_event.event_id, "error_type": error_name},
+                source="mutation_validator",
+                at=source_event.at,
+                salience=0.0,
+            )
+            self.state.last_event_at = source_event.at
+            self.state.updated_at = source_event.at
+            self.state = self.store.commit_transition(rejected, deepcopy(self.state))
+            return None, error_name
 
     def handle_user_message(self, text: str, *, at: str | None = None, reply: bool = True) -> EngineResult:
         event = LivingEvent(kind="user_message", payload={"text": text}, source="user", at=at or self._now())
@@ -51,6 +103,8 @@ class LivingEngine:
         memories = [memory] if text.strip() else []
         self.state = self.store.commit_transition(event, self.state, memories)
 
+        receipt, observer_error = self._run_observer(text, event)
+
         speech = ""
         if reply:
             reply_obj = self.cortex.generate(CortexRequest(
@@ -63,7 +117,12 @@ class LivingEngine:
             speech = reply_obj.utterance.strip()
             if speech:
                 self._record_speech(reply_obj, at=event.at)
-        return EngineResult(deepcopy(self.state), speech=speech)
+        return EngineResult(
+            deepcopy(self.state),
+            speech=speech,
+            observer_receipt=receipt,
+            observer_error=observer_error,
+        )
 
     def tick(self, *, at: str | None = None) -> EngineResult:
         at = at or self._now()

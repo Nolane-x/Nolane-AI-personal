@@ -13,9 +13,15 @@ from .store import LivingStore
 def _build_engine(args: argparse.Namespace) -> LivingEngine:
     store = LivingStore(Path(args.db))
     cortex = None
+    observer = None
     if not getattr(args, "no_model", False):
         cortex = QwenCortex(args.model, device=args.device)
-    return LivingEngine(store, cortex=cortex)
+        if getattr(args, "social_observer", False):
+            observer = cortex
+    elif getattr(args, "social_observer", False):
+        store.close()
+        raise SystemExit("--social-observer requires the local model; remove --no-model")
+    return LivingEngine(store, cortex=cortex, observer=observer)
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -39,6 +45,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"version={state.version} tick={state.tick}")
     print(f"interactions={state.relationship.interaction_count}")
     print(f"open_threads={sum(1 for t in state.open_threads if t.unresolved)}")
+    print(f"replay_transitions={len(store.replay_records())}")
     print(f"snapshot_digest={store.snapshot_digest()}")
     store.close()
     return 0
@@ -61,6 +68,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     threading.Thread(target=read_stdin, daemon=True).start()
     print(f"Nolane AI Personal alive: {engine.state.identity_id}")
+    if args.social_observer:
+        print("Social observer: Qwen proposal mode + deterministic validator")
     print("Commands: /quit, /status, /thread <topic>")
 
     try:
@@ -79,6 +88,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                     print(f"state> opened {thread.thread_id}")
                     continue
                 result = engine.handle_user_message(line)
+                if result.observer_error:
+                    print(f"state> observer rejected ({result.observer_error}); state preserved")
                 if result.speech:
                     print(f"nolane> {result.speech}")
             except queue.Empty:
@@ -110,6 +121,7 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     run.add_argument("--tick-seconds", type=float, default=15.0)
     run.add_argument("--no-model", action="store_true", help="run state/memory/heartbeat without loading Qwen")
+    run.add_argument("--social-observer", action="store_true", help="reuse Qwen for structured social proposals before validated persistence")
     run.set_defaults(func=cmd_run)
     return p
 
