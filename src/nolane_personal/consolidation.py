@@ -151,6 +151,8 @@ class ConsolidationValidator:
             next_state.working.active_intent = intent or None
             receipt.active_intent = intent or None
 
+        receipt.memory_links = len(links)
+
         next_state.rest.cycles += 1
         next_state.rest.last_cycle_at = source_event.at
         next_state.rest.last_cycle_source_count = len(source_memories)
