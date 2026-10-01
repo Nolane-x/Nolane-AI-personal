@@ -34,7 +34,7 @@ def main() -> int:
         cases.append(ReplayCase(before=before, event=event, dt_seconds=dt, target=after))
 
     metrics = evaluate_predictor(cases, deterministic_predict, mae_gate=1e-9, max_error_gate=1e-9)
-    print(json.dumps(metrics.__dict__, indent=2, sort_keys=True))
+    print(json.dumps(asdict(metrics), indent=2, sort_keys=True))
     return 0 if metrics.decision == "COURT_PASS" else 2
 
 
