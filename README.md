@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.3.0
+## Current executable milestone: Living Runtime v0.4.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 now has persistent neural latent continuity in **shadow-only mode** across restarts.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 now adds audited REST/consolidation so the runtime can reorganize existing evidence during idle periods without erasing provenance.
 
 ### Persistent runtime
 
@@ -112,6 +112,38 @@ python scripts/run_shadow_living_core.py \
 
 Shadow mode emits neural predictions and advances the latent but has **zero authority** over LivingState, memory, initiative or Qwen. See `docs/L3-PERSISTENT-LATENT.md`.
 
+### L4 REST / consolidation
+
+After at least 30 minutes of user inactivity, and no more than once every 45 minutes, the runtime may enter a bounded REST cycle.
+
+The default path is cheap and deterministic:
+
+```bash
+nolane-personal run --no-model
+```
+
+For semantic consolidation using the already-loaded Qwen instance:
+
+```bash
+nolane-personal run --deep-rest
+```
+
+REST can derive durable memories only from existing evidence. A derived memory must cite at least two source memories; confidence cannot exceed its weakest source. Original memories remain intact and are connected through an append-only `memory_links` provenance graph.
+
+Manual development cycle:
+
+```text
+/rest
+```
+
+Audit the graph:
+
+```bash
+python scripts/audit_rest_state.py --db runtime-data/living.db
+```
+
+REST cannot directly modify affect, relationship or personality state and does not update model weights. See `docs/L4-REST-CONSOLIDATION.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -185,10 +217,17 @@ persistent 32D latent (shadow)
      +--> no production authority yet
      |
      v
+REST / consolidation
+     |
+     +--> evidence graph
+     +--> durable memory proposals
+     +--> thread review
+     |
+     v
 future promoted adapters / wake policy
      |
      v
 Qwen cortex
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, and `docs/L3-PERSISTENT-LATENT.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, and `docs/L4-REST-CONSOLIDATION.md`.
