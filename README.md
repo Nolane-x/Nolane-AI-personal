@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.4.0
+## Current executable milestone: Living Runtime v0.5.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 now adds audited REST/consolidation so the runtime can reorganize existing evidence during idle periods without erasing provenance.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 now provides a **counterfactual Qwen3 latent-adapter surgery substrate** that can alter shadow logits while the untouched baseline remains the only served path.
 
 ### Persistent runtime
 
@@ -144,6 +144,54 @@ python scripts/audit_rest_state.py --db runtime-data/living.db
 
 REST cannot directly modify affect, relationship or personality state and does not update model weights. See `docs/L4-REST-CONSOLIDATION.md`.
 
+### L5 counterfactual latent adapter
+
+L5 can now project the persistent 32D Living latent into selected Qwen decoder hidden states through a tiny bounded residual adapter.
+
+The critical authority rule is:
+
+```text
+same prompt
+   |
+   +--> untouched Qwen --------------------> served baseline
+   |
+   +--> Qwen + latent residual adapter ----> metrics only
+```
+
+A candidate is a separate artifact bound to the pinned base-model identity, revision, hidden size, deterministic seed and adapter digest. It never rewrites Qwen weights.
+
+Create a candidate from the actual local Qwen config:
+
+```bash
+python scripts/init_latent_adapter.py \
+  --model models/Qwen3-0.6B \
+  --output-dir runtime-data/l5-adapter-candidate
+```
+
+Probe a single prompt:
+
+```bash
+python scripts/probe_latent_adapter.py \
+  --prompt "Nói chuyện với tôi tự nhiên một chút nhé." \
+  --adapter runtime-data/l5-adapter-candidate/latent-adapter.pt \
+  --latent runtime-data/living-core-shadow/latent.json \
+  --output runtime-data/l5-probe.json
+```
+
+Or run the frozen multilingual structural suite while loading Qwen once:
+
+```bash
+python scripts/run_qwen_surgery_suite.py \
+  --adapter runtime-data/l5-adapter-candidate/latent-adapter.pt \
+  --latent runtime-data/living-core-shadow/latent.json
+```
+
+The court measures KL divergence, logit shift, cosine similarity, latency overhead, top-token changes, hook cleanup and base-parameter mutation guards.
+
+Neural CI also instantiates a real tiny `Qwen3ForCausalLM` and proves that the hook contract works against the actual Qwen3 architecture class. **This is structural shadow evidence, not evidence that the adapter improves quality.** Production use remains blocked until matched held-out quality courts pass.
+
+See `docs/L5-SHADOW-SURGERY.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -224,10 +272,17 @@ REST / consolidation
      +--> thread review
      |
      v
-future promoted adapters / wake policy
+L5 latent adapter (counterfactual shadow)
+     |
+     +--> paired baseline/counterfactual forward
+     +--> Qwen3 structural court
+     +--> no production authority
+     |
+     v
+future promoted adapter / wake policy
      |
      v
 Qwen cortex
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, and `docs/L4-REST-CONSOLIDATION.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, and `docs/L5-SHADOW-SURGERY.md`.
