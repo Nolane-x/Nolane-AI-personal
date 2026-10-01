@@ -327,6 +327,20 @@ python scripts/evaluate_depth_bridge.py
 
 The evaluator compares untouched Qwen, L6 Personal Cortex, L7 Hybrid Recurrent Cortex and L8 Depth Bridge on the same held-out examples. L8 is blocked unless it beats all three required baselines while staying within the Vietnamese/English regression and <=100K parameter gates.
 
+A separate resource court also requires median forward latency <=1.50× Qwen and artifact size <=2 MB:
+
+```bash
+python scripts/benchmark_depth_bridge_resources.py
+```
+
+Final promotion requires both quality and resource PASS on the exact same checkpoint:
+
+```bash
+python scripts/decide_depth_bridge_promotion.py \
+  --quality runtime-data/l8-quality.json \
+  --resources runtime-data/l8-resources.json
+```
+
 Experimental generation:
 
 ```bash
