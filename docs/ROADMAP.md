@@ -190,7 +190,7 @@ Engineering substrate: **TRAINING-COURT-READY / UNPROMOTED**.
 - [x] learned layer identity embedding
 - [x] learned bounded gate per recurrent step
 - [x] exact analytical parameter audit
-- [x] default Qwen hidden-size-1024 footprint: **84,321 parameters**
+- [x] default Qwen hidden-size-1024 footprint: **84,289 parameters**
 - [x] hard <=100K production parameter gate
 - [x] base-Qwen parameter freeze and zero-gradient boundary
 - [x] trainable bridge path through real Qwen3 decoder computation
