@@ -82,6 +82,7 @@ class RecurrentReplacementCortex:
             self.latent,
             layer_indices=self.config.layer_indices,
             initial_states=initial,
+            reset_states_each_model_forward=not bool(generation_inputs.get("use_cache", False)),
         ) as session:
             output = self.model.generate(**generation_inputs)
             self.last_bypass_counts = dict(session.bypass_counts)
