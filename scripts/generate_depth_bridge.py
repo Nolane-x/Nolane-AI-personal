@@ -16,7 +16,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-lock", default=str(ROOT / "model.lock.json"))
     parser.add_argument("--model", default=str(ROOT / "models/Qwen3-0.6B"))
-    parser.add_argument("--bridge", default="runtime-data/l8-depth-bridge/living-bridge.pt")
+    parser.add_argument("--bridge", default="runtime-data/l8-depth-bridge/depth-bridge.pt")
     parser.add_argument("--latent", default="runtime-data/living-core-shadow/latent.json")
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--prompt", required=True)
