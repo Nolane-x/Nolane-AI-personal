@@ -68,6 +68,19 @@ Optionally an example may carry its own 32D latent and weight.
 
 Private training data belongs under `runtime-data/` and is ignored by Git.
 
+## Capture preferred replies
+
+A preferred reply can be captured together with the exact persistent latent that was active at that point:
+
+```bash
+python scripts/add_personal_example.py \
+  --prompt "Nay mệt quá." \
+  --target "Thế nghỉ tí đi, đừng cố quá :))" \
+  --language vi
+```
+
+The local record includes the 32D latent, latent digest, identity, state-version cursor, neural checkpoint identity and replay-protocol identity. This allows later training to distinguish not only *what the user said*, but also *which living state the AI was in when that response was preferred*.
+
 ## Frozen protocol
 
 Freeze the chronological train/dev/test split before training:
