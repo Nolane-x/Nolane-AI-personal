@@ -348,3 +348,40 @@ Engineering substrate: **REGION-COLLAPSE-COURT-READY / UNPROMOTED**.
 - [ ] promote islands only when region compression yields measurable quality/compute value
 
 L11 is the first wave where one Nolane recurrent computation can stand in for multiple contiguous Transformer blocks. It remains hybrid and unpromoted until real Qwen3-0.6B evidence passes.
+
+## L12 — Selective State-Space Cortex
+
+Engineering substrate: **WIDE-REGION-STATE-SPACE-COURT-READY / UNPROMOTED**.
+
+- [x] non-attentional token-recurrent state-space cortex
+- [x] token-conditioned proposal, decay and output gates
+- [x] persistent 32D Living latent conditions the state-space transition
+- [x] RMS latent normalization preserves sign/common-mode information
+- [x] exact analytical parameter audit
+- [x] default Qwen-hidden-1024 / state-32 footprint: **72,897 parameters**
+- [x] hard <=100K cortex parameter cap
+- [x] full-sequence scan == incremental carried-state scan court
+- [x] one wide contiguous Qwen region collapses to one state-space cortex call
+- [x] every original Qwen attention/MLP block inside the region is absent
+- [x] direct whole-region hidden-state calibration
+- [x] nested widening curriculum with protected edge layers
+- [x] default target ~60% decoder depth when dev evidence allows
+- [x] whole-region Qwen teacher distillation at every widening stage
+- [x] true replacement task training with Qwen region absent
+- [x] dev-regression rollback to previous accepted cortex weights
+- [x] cached autoregressive state carry
+- [x] replay-safe no-cache state reset
+- [x] cached/replay deterministic sequence equivalence court
+- [x] quality court compares Qwen vs L11 vs L12
+- [x] quality court requires >=40% real Transformer depth replacement
+- [x] resource court requires speedup versus Qwen and L11
+- [x] checkpoint + frozen-plan identity binding for promotion
+- [x] real tiny Qwen3 court proves wide-region bypass and state-space semantics
+- [x] zero-gradient boundary on all Qwen parameters
+- [ ] freeze a real Qwen3-0.6B state-space widening plan from sufficient approved history
+- [ ] train enough accepted stages to replace >=40% of real Qwen depth
+- [ ] pass real held-out non-inferiority court against L11
+- [ ] pass real CPU/GPU forward and cached-generation resource court
+- [ ] promote only if the SSM cortex earns its larger architectural departure from Qwen
+
+L12 is the first wave where a compact token-recurrent state-space sequence model can replace a single large contiguous share of Qwen depth. It remains hybrid and unpromoted until real Qwen3-0.6B evidence passes.

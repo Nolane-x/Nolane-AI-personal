@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.11.0
+## Current executable milestone: Living Runtime v0.12.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 adds **Recurrent Transformer Islands**: one recurrent computation can replace an entire contiguous region of multiple Qwen attention/MLP blocks. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a **Selective State-Space Cortex** whose compact state recurs across tokens and can replace one wide contiguous share of Qwen depth with a single non-attentional sequence module. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -503,6 +503,59 @@ Neural CI proves on real tiny Qwen3 that a width-3 island causes all three origi
 
 See `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`.
 
+### L12 Selective State-Space Cortex
+
+L12 changes the replacement itself. Instead of a depth-only recurrent substitute, one compact **state-space sequence model** carries a 32D neural state across tokens:
+
+```text
+Qwen outer layers
+      |
+      v
+wide region [start..end]
+      |
+      v
+Selective State-Space Cortex
+  token-conditioned decay/proposal/output gates
+  one sequence scan
+      |
+      +--> all original attention/MLP blocks inside region skipped
+      |
+      v
+Qwen outer layers
+```
+
+For hidden size 1024 and state dimension 32, the cortex has **72,897 trainable parameters**.
+
+Freeze nested region widening:
+
+```bash
+python scripts/freeze_state_space_plan.py
+```
+
+Train whole-region teacher distillation plus true replacement stages:
+
+```bash
+python scripts/train_state_space_cortex.py
+```
+
+Evaluate untouched Qwen vs L11 vs L12 on the same frozen held-out evidence:
+
+```bash
+python scripts/evaluate_state_space_cortex.py
+```
+
+Benchmark whether replacing a much larger share of Transformer depth is actually faster:
+
+```bash
+python scripts/benchmark_state_space_resources.py
+```
+
+Neural CI proves full-sequence scan equals token-by-token carried-state scan, cached and replay-safe generations match, a wide Qwen region executes zero original attention/MLP blocks, and all Qwen parameters stay frozen with zero gradients.
+
+Default real promotion requires at least **40% of Qwen decoder depth** genuinely replaced, non-inferiority against L11, <=100K cortex parameters, and real speed/resource gains.
+
+See `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -615,12 +668,18 @@ L10 Progressive Transformer-Depth Replacement
      v
 L11 Recurrent Transformer Islands
      |
-     +--> whole contiguous regions collapse to one recurrent call
-     +--> region-level teacher distillation
-     +--> compression + quality + speed courts
+     +--> multiple contiguous regions collapse to recurrent calls
      |
      v
-future larger state-space/recurrent cortex replacing most Transformer depth
+L12 Selective State-Space Cortex
+     |
+     +--> one wide region replaced by token-recurrent SSM
+     +--> full-scan == incremental-state contract
+     +--> nested widening toward ~60% Qwen depth
+     +--> quality + speed + plan-lineage courts
+     |
+     v
+future mostly-independent Nolane cortex with Qwen only as shrinking scaffold
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, and `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, and `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`.
