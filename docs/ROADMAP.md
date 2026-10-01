@@ -318,3 +318,33 @@ Engineering substrate: **PROGRESSIVE-COURT-READY / UNPROMOTED**.
 - [ ] promote only if progressive depth removal earns measurable quality/compute value
 
 L10 turns block replacement into a rollback-safe curriculum rather than a fixed proof-of-concept. It remains hybrid and unpromoted until real evidence passes.
+
+## L11 — Recurrent Transformer Islands
+
+Engineering substrate: **REGION-COLLAPSE-COURT-READY / UNPROMOTED**.
+
+- [x] contiguous Transformer region abstraction with width >=2 blocks
+- [x] one recurrent call replaces an entire island
+- [x] all later Qwen blocks inside an island become identity mappings
+- [x] original attention/MLP calls inside an island are absent from the forward path
+- [x] direct whole-region calibration from pre-region to post-region hidden states
+- [x] default candidate widths 2–4 blocks
+- [x] edge-layer protection, non-overlap and minimum-gap constraints
+- [x] frozen island selection order, stages and plan SHA-256
+- [x] plan bound to Qwen fingerprint + personalization protocol
+- [x] whole-region teacher distillation
+- [x] staged island addition with dev-regression rollback
+- [x] cached and replay-safe generation paths
+- [x] region compression gate >=2 removed Transformer blocks per island
+- [x] quality court compares untouched Qwen vs L10 vs L11
+- [x] resource court requires speedup versus both Qwen and L10
+- [x] artifact bound to checkpoint, plan, dataset and base-model identity
+- [x] real tiny Qwen3 court proves width-3 region = 0 original block calls + 1 recurrent call
+- [x] zero-gradient boundary on all Qwen parameters
+- [ ] freeze real Qwen3-0.6B island plan from sufficient approved history
+- [ ] replace >=25% of real Qwen depth with accepted islands
+- [ ] pass real held-out quality/non-inferiority court against L10
+- [ ] pass real CPU/GPU speed and cached-generation court
+- [ ] promote islands only when region compression yields measurable quality/compute value
+
+L11 is the first wave where one Nolane recurrent computation can stand in for multiple contiguous Transformer blocks. It remains hybrid and unpromoted until real Qwen3-0.6B evidence passes.
