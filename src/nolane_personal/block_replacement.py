@@ -202,18 +202,18 @@ class BlockReplacementSession(contextlib.AbstractContextManager):
         self.gate_means: dict[int, list[float]] = {i: [] for i in self.layer_indices}
 
     def __enter__(self):
-        if self.reset_states_each_model_forward:
-            def reset_hook(_module, _args, _kwargs):
-                self.model_forward_count += 1
+        def model_forward_hook(_module, _args, _kwargs):
+            self.model_forward_count += 1
+            if self.reset_states_each_model_forward:
                 self.states = {
                     index: state.detach().clone()
                     for index, state in self.initial_states.items()
                 }
 
-            self.model_pre_handle = self.model.register_forward_pre_hook(
-                reset_hook,
-                with_kwargs=True,
-            )
+        self.model_pre_handle = self.model.register_forward_pre_hook(
+            model_forward_hook,
+            with_kwargs=True,
+        )
 
         for index in self.layer_indices:
             layer = self.layers[index]
