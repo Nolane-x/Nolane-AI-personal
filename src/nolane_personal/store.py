@@ -67,6 +67,7 @@ class LivingStore:
             );
             CREATE INDEX IF NOT EXISTS idx_events_at ON events(at);
             CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_snapshots_version ON snapshots(version);
             """
         )
         self.db.commit()
@@ -135,7 +136,7 @@ class LivingStore:
             for row in rows
         ]
 
-    def replay_records(self, limit: int = 10000) -> list[dict[str, object]]:
+    def replay_records(self, limit: int = 10000, *, after_version: int = 0) -> list[dict[str, object]]:
         rows = self.db.execute(
             """
             SELECT s.version, p.state_json AS before_json, s.state_json AS after_json,
@@ -143,10 +144,11 @@ class LivingStore:
             FROM snapshots AS s
             JOIN events AS e ON e.event_id = s.event_id
             JOIN snapshots AS p ON p.version = s.version - 1
+            WHERE s.version > ?
             ORDER BY s.version ASC
             LIMIT ?
             """,
-            (max(0, int(limit)),),
+            (max(0, int(after_version)), max(0, int(limit))),
         ).fetchall()
         result: list[dict[str, object]] = []
         for row in rows:
