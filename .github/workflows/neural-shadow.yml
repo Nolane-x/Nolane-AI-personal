@@ -29,4 +29,5 @@ jobs:
           tests/test_depth_bridge.py
           tests/test_block_replacement.py
           tests/test_progressive_replacement.py
+          tests/test_recurrent_islands.py
       - run: python scripts/audit_living_core.py
