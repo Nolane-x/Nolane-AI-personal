@@ -183,6 +183,7 @@ class BlockReplacementSession(contextlib.AbstractContextManager):
         *,
         layer_indices: Iterable[int] | None = None,
         initial_states: dict[int, Any] | None = None,
+        reset_states_each_model_forward: bool = False,
     ) -> None:
         self.model = model
         self.replacement = replacement
@@ -191,12 +192,29 @@ class BlockReplacementSession(contextlib.AbstractContextManager):
         self.layer_indices = select_layer_indices(len(self.layers), layer_indices)
         if max(self.layer_indices) >= replacement.config.max_layers:
             raise ValueError("selected layer exceeds replacement max_layers")
-        self.states = dict(initial_states or {})
+        self.initial_states = dict(initial_states or {})
+        self.states = dict(self.initial_states)
+        self.reset_states_each_model_forward = bool(reset_states_each_model_forward)
+        self.model_pre_handle = None
+        self.model_forward_count = 0
         self.original_forwards: dict[int, Any] = {}
         self.bypass_counts: dict[int, int] = {i: 0 for i in self.layer_indices}
         self.gate_means: dict[int, list[float]] = {i: [] for i in self.layer_indices}
 
     def __enter__(self):
+        if self.reset_states_each_model_forward:
+            def reset_hook(_module, _args, _kwargs):
+                self.model_forward_count += 1
+                self.states = {
+                    index: state.detach().clone()
+                    for index, state in self.initial_states.items()
+                }
+
+            self.model_pre_handle = self.model.register_forward_pre_hook(
+                reset_hook,
+                with_kwargs=True,
+            )
+
         for index in self.layer_indices:
             layer = self.layers[index]
             self.original_forwards[index] = layer.forward
@@ -229,4 +247,7 @@ class BlockReplacementSession(contextlib.AbstractContextManager):
         for index in self.layer_indices:
             self.layers[index].forward = self.original_forwards[index]
         self.original_forwards.clear()
+        if self.model_pre_handle is not None:
+            self.model_pre_handle.remove()
+            self.model_pre_handle = None
         return False
