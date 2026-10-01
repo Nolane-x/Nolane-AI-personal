@@ -71,7 +71,25 @@ A neural core that only imitates the deterministic reducer has not earned replac
 
 ## L3 — Persistent latent continuity
 
-Checkpoint a compact neural latent state outside the Qwen KV cache and inject it into selected layers/adapters. Restart must not require replaying the full conversation.
+Engineering substrate: **SHADOW-READY / NO PRODUCTION AUTHORITY**.
+
+- [x] 32D latent checkpoint independent from Qwen KV cache
+- [x] atomic latent persistence across restart
+- [x] latent self-digest verification
+- [x] bind latent to Living Runtime identity
+- [x] bind latent to exact neural checkpoint SHA-256
+- [x] bind latent to replay protocol SHA-256 when present
+- [x] persist source-state version cursor
+- [x] scalable replay resume via `after_version`
+- [x] shadow prediction receipts
+- [x] explicit `SHADOW_ONLY_NO_STATE_MUTATION` authority
+- [x] explicit reset required for incompatible latent lineage
+- [ ] pass L2 promotion court on real replay history
+- [ ] evaluate latent stability across long restarts
+- [ ] inject promoted latent into selected Qwen adapters
+- [ ] permit promoted latent to influence wake policy
+
+L3 may run in shadow before L2 promotion because it cannot mutate state, memory, initiative or Qwen behavior.
 
 ## L4 — Rest/consolidation
 
