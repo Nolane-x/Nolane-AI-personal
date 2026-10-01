@@ -49,7 +49,7 @@ Engineering substrate: **DEV-READY / UNPROMOTED**.
 - [x] action-prior head
 - [x] confidence head
 - [x] exact analytical parameter audit
-- [x] default core footprint: **14,451 parameters**
+- [x] default core footprint: **14,515 parameters**
 - [x] replay trainer with truncated BPTT
 - [x] gradient clipping
 - [x] checkpoint + manifest + DB/checkpoint SHA-256
