@@ -1,0 +1,22 @@
+# Local model weights and Hugging Face cache
+models/*
+!models/README.md
+.hf-cache/
+.cache/huggingface/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime state (must stay local by default)
+runtime-data/
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
