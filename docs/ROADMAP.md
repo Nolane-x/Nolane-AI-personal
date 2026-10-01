@@ -178,3 +178,40 @@ Engineering substrate: **TRAINING-COURT-READY / UNPROMOTED**.
 - [ ] allow a promoted Personal Cortex artifact in the normal runtime
 
 L6 changes Qwen hidden-state computation through trained neural parameters. It is no longer prompt-only personalization, but production authority remains blocked until real held-out evidence passes.
+
+
+## L7 — Hybrid Recurrent Cortex
+
+Engineering substrate: **REAL-QWEN3-COURT-READY / UNPROMOTED**.
+
+- [x] recurrent neural mixer inside selected Qwen decoder layers
+- [x] token-by-token recurrent state transition
+- [x] persistent Living latent initializes recurrent state
+- [x] selected layers share mixer weights but keep separate states
+- [x] exact analytical parameter audit
+- [x] default Qwen-hidden-1024 / recurrent-24 footprint: **56,641 parameters**
+- [x] <=100K parameter cap in real trainer
+- [x] frozen base-Qwen gradient boundary
+- [x] recurrent-mixer-only optimizer ownership
+- [x] same-input carry-state divergence court
+- [x] reset restores original recurrent trajectory court
+- [x] real tiny Qwen3 recurrent training court
+- [x] held-out different-token-sequence gain court
+- [x] trained hybrid artifact with base-model fingerprint binding
+- [x] held-out personal NLL evaluator
+- [x] Vietnamese/English general-regression anchor
+- [x] persistent per-layer recurrent state across generation calls
+- [x] recurrent-state self-digest
+- [x] recurrent-state binding to AI identity, base model, mixer and Living latent
+- [x] explicit recurrent-state reset path
+- [x] experimental real local-Qwen training command
+- [x] experimental real local-Qwen generation command
+- [ ] collect enough real approved personalization data
+- [ ] train the real Qwen3-0.6B recurrent mixer
+- [ ] pass real held-out personal/general court
+- [ ] measure real Qwen3-0.6B latency/RAM overhead
+- [ ] compare static L6 adapter vs L7 recurrent mixer under the same frozen protocol
+- [ ] promote only if L7 earns a better quality/continuity/resource tradeoff
+- [ ] experiment with replacing/bypassing selected Transformer blocks only after L7 promotion evidence
+
+L7 is a genuine recurrent neural path inside Qwen. It does **not** yet remove Transformer attention; it establishes the hybrid architecture and evidence boundary required before deeper block replacement.
