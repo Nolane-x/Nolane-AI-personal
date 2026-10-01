@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.10.0
+## Current executable milestone: Living Runtime v0.11.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into **Progressive Transformer-Depth Replacement**: Qwen blocks are calibrated, ranked and replaced through a rollback-safe curriculum with cached autoregressive generation. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 adds **Recurrent Transformer Islands**: one recurrent computation can replace an entire contiguous region of multiple Qwen attention/MLP blocks. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -459,6 +459,50 @@ L10 also fixes recurrent-state semantics during generation. In no-cache mode the
 
 Quality/resource promotion is bound to both the exact checkpoint SHA and frozen progressive-plan SHA. See `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`.
 
+### L11 Recurrent Transformer Islands
+
+L11 stops treating every replaced Transformer block as a separate recurrent call. A contiguous region can now collapse into one recurrent island:
+
+```text
+Qwen block 3
+    |
+    v
+ island [4..7] ---- one recurrent call
+    |               blocks 4,5,6,7 original attention/MLP: skipped
+    v
+Qwen block 8
+```
+
+Candidate regions are calibrated directly from the hidden state before the first block to the hidden state after the last block. Default candidate widths are 2–4 blocks; edge regions are protected and islands cannot overlap.
+
+Freeze a region plan:
+
+```bash
+python scripts/freeze_recurrent_island_plan.py
+```
+
+Train with whole-region teacher targets and rollback-safe stages:
+
+```bash
+python scripts/train_recurrent_islands.py
+```
+
+Evaluate against untouched Qwen and L10 on the same frozen held-out protocol:
+
+```bash
+python scripts/evaluate_recurrent_islands.py
+```
+
+Benchmark whether region collapse is actually faster than both Qwen and L10:
+
+```bash
+python scripts/benchmark_recurrent_island_resources.py
+```
+
+Neural CI proves on real tiny Qwen3 that a width-3 island causes all three original decoder blocks to execute zero times while the recurrent substitute executes once. Promotion still requires real Qwen3-0.6B quality and resource evidence.
+
+See `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -566,13 +610,17 @@ L9 Recurrent Block Replacement
      v
 L10 Progressive Transformer-Depth Replacement
      |
-     +--> calibrated block ranking
-     +--> rollback-safe 1 -> 2 -> 4 -> ... curriculum
-     +--> cache-correct recurrent generation
-     +--> quality + real speed + plan-lineage court
+     +--> calibrated individual block removal
      |
      v
-future recurrent/state-space islands replacing larger Transformer regions
+L11 Recurrent Transformer Islands
+     |
+     +--> whole contiguous regions collapse to one recurrent call
+     +--> region-level teacher distillation
+     +--> compression + quality + speed courts
+     |
+     v
+future larger state-space/recurrent cortex replacing most Transformer depth
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, and `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, and `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`.
