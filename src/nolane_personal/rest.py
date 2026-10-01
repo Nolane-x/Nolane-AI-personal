@@ -43,6 +43,7 @@ class ThreadReviewProposal:
     thread_id: str
     action: str = "keep"
     reason: str = ""
+    source_memory_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
