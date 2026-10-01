@@ -258,7 +258,7 @@ residual gate
     Qwen hidden
 ```
 
-For a Qwen hidden size of 1024, the default bridge has **84,321 trainable parameters**. Qwen itself remains frozen.
+For a Qwen hidden size of 1024, the default bridge has **84,289 trainable parameters**. Qwen itself remains frozen.
 
 Train on the same frozen personalization train split used by L6:
 
