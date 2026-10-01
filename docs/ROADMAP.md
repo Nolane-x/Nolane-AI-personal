@@ -93,15 +93,29 @@ L3 may run in shadow before L2 promotion because it cannot mutate state, memory,
 
 ## L4 — Rest/consolidation
 
-Idle periods may propose:
+Engineering closure: **COMPLETE**.
 
-- duplicate-memory merging;
-- semantic preference extraction;
-- working-state decay;
-- unresolved-thread review;
-- habit/personality updates.
+- [x] idle-window REST scheduler
+- [x] REST cooldown
+- [x] deterministic zero-model consolidation baseline
+- [x] optional Qwen deep-rest using the already-loaded cortex
+- [x] proposal-only REST authority
+- [x] deterministic ConsolidationValidator
+- [x] minimum two-source evidence for derived memory
+- [x] source IDs verified against the local DB
+- [x] derived confidence capped by the weakest source
+- [x] unsupported fact claims downgraded to inference
+- [x] evidence required before REST can resolve a thread
+- [x] append-only memory provenance graph
+- [x] original memories preserved after consolidation
+- [x] persistent REST cycle state
+- [x] schema-v1 -> schema-v2 migration
+- [x] manual `/rest` command
+- [x] `--deep-rest` and `--no-rest` runtime controls
+- [x] provenance audit script
+- [x] automated REST courts
 
-Live conversations never update model weights directly.
+Live or REST conversations never update model weights directly. REST may form evidence-backed summaries, preferences, habits, inferences and intentions, but it cannot directly edit affect, relationship or personality state.
 
 ## L5 — Architecture surgery
 
