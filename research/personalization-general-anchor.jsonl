@@ -1,0 +1,8 @@
+{"prompt":"2 + 2 bằng bao nhiêu?","target":"4.","language":"vi"}
+{"prompt":"Dịch từ 'thank you' sang tiếng Việt.","target":"Cảm ơn.","language":"vi"}
+{"prompt":"Viết một câu chào buổi sáng ngắn.","target":"Chào buổi sáng!","language":"vi"}
+{"prompt":"Nước đóng băng ở bao nhiêu độ C trong điều kiện áp suất tiêu chuẩn?","target":"0°C.","language":"vi"}
+{"prompt":"What is 3 times 4?","target":"12.","language":"en"}
+{"prompt":"Translate 'xin chào' to English.","target":"Hello.","language":"en"}
+{"prompt":"Complete the sentence: The sky is usually ___ on a clear day.","target":"blue.","language":"en"}
+{"prompt":"Give a short polite response to 'Thank you'.","target":"You're welcome.","language":"en"}
