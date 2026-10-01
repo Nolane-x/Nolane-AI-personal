@@ -73,6 +73,8 @@ def main() -> int:
         latent=latent.values,
         model=qwen.model,
     )
+    if metadata.get("dataset_fingerprint") != protocol.get("protocol_sha256"):
+        raise SystemExit("hybrid artifact personalization-protocol mismatch")
     cortex.mixer.to(qwen.device).eval()
 
     test_encoded = encode_examples(
