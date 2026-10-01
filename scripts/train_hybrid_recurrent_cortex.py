@@ -115,6 +115,7 @@ def main() -> int:
         cortex,
         receipt,
         base_model_fingerprint=fingerprint,
+        dataset_fingerprint=protocol["protocol_sha256"],
     )
     print(json.dumps({"training": receipt.to_dict(), "artifact": manifest}, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if receipt.base_model_unchanged and receipt.base_gradients_seen == 0 else 2
