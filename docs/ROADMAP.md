@@ -178,3 +178,34 @@ Engineering substrate: **TRAINING-COURT-READY / UNPROMOTED**.
 - [ ] allow a promoted Personal Cortex artifact in the normal runtime
 
 L6 changes Qwen hidden-state computation through trained neural parameters. It is no longer prompt-only personalization, but production authority remains blocked until real held-out evidence passes.
+
+
+## L7 — Cross-Layer Living Bridge
+
+Engineering substrate: **TRAINING-COURT-READY / UNPROMOTED**.
+
+- [x] recurrent GRU pathway across selected Qwen decoder layers
+- [x] persistent 32D Living latent initializes the bridge state
+- [x] current hidden-state summary feeds each recurrent depth step
+- [x] learned layer identity embedding
+- [x] learned bounded gate per recurrent step
+- [x] exact analytical parameter audit
+- [x] default Qwen hidden-size-1024 footprint: **84,321 parameters**
+- [x] hard <=100K production parameter gate
+- [x] base-Qwen parameter freeze and zero-gradient boundary
+- [x] trainable bridge path through real Qwen3 decoder computation
+- [x] latent-sensitive same-prompt behavior court
+- [x] recurrent layer-trace court
+- [x] generation path with hook cleanup
+- [x] bridge artifact save/load and lineage binding
+- [x] reuse L6 frozen personalization protocol
+- [x] held-out comparison against untouched Qwen
+- [x] mandatory held-out comparison against L6 Personal Cortex
+- [x] Vietnamese/English general-regression gate
+- [ ] train L6 and L7 on sufficient real approved personalization history
+- [ ] freeze real held-out protocol
+- [ ] prove L7 beats both Qwen base and L6 on the same held-out split
+- [ ] measure real Qwen3-0.6B latency/RAM overhead
+- [ ] promote L7 only if its extra recurrence earns the added complexity
+
+L7 introduces a recurrent non-Transformer path across Transformer depth. Engineering success does not imply quality promotion.
