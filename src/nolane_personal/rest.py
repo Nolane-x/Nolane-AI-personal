@@ -135,13 +135,12 @@ class RestScheduler:
         last_rest = _parse(state.rest.last_cycle_at)
         reasons: list[str] = []
 
-        if last_user is not None:
-            idle = (now - last_user).total_seconds()
-            if idle < self.policy.min_idle_seconds:
-                return False, ["user_not_idle_enough"]
-            reasons.append("idle_window")
-        else:
-            reasons.append("no_user_event_yet")
+        if last_user is None:
+            return False, ["no_user_history"]
+        idle = (now - last_user).total_seconds()
+        if idle < self.policy.min_idle_seconds:
+            return False, ["user_not_idle_enough"]
+        reasons.append("idle_window")
 
         if last_rest is not None:
             since_rest = (now - last_rest).total_seconds()
