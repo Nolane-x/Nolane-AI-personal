@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from .consolidation import ConsolidationReceipt, ConsolidationValidator
 from .cortex import Cortex, CortexReply, CortexRequest, NullCortex
 from .dynamics import advance_time, apply_event, seconds_between
 from .events import LivingEvent
@@ -11,6 +12,7 @@ from .initiative import InitiativeDecision, InitiativeEngine
 from .memory import MemoryRecord, rank_memories
 from .mutations import MutationReceipt, MutationValidator
 from .observer import SocialObserver
+from .rest import DeterministicRestObserver, RestObserver, RestPolicy, RestScheduler
 from .state import LivingState, OpenThread
 from .store import LivingStore
 
@@ -22,15 +24,12 @@ class EngineResult:
     initiative: InitiativeDecision | None = None
     observer_receipt: MutationReceipt | None = None
     observer_error: str | None = None
+    rest_receipt: ConsolidationReceipt | None = None
+    rest_error: str | None = None
 
 
 class LivingEngine:
-    """Event-driven persistent runtime. The LLM is a replaceable cortex.
-
-    Social observers have proposal authority only. All persistent observer
-    mutations pass through MutationValidator and are written as separate,
-    auditable transitions.
-    """
+    """Event-driven persistent runtime. Language models remain bounded organs."""
 
     def __init__(
         self,
@@ -40,12 +39,20 @@ class LivingEngine:
         initiative: InitiativeEngine | None = None,
         observer: SocialObserver | None = None,
         mutation_validator: MutationValidator | None = None,
+        rest_observer: RestObserver | None = None,
+        rest_scheduler: RestScheduler | None = None,
+        consolidation_validator: ConsolidationValidator | None = None,
+        enable_rest: bool = True,
     ) -> None:
         self.store = store
         self.cortex = cortex or NullCortex()
         self.initiative = initiative or InitiativeEngine()
         self.observer = observer
         self.mutation_validator = mutation_validator or MutationValidator()
+        self.rest_scheduler = rest_scheduler or RestScheduler()
+        self.rest_observer = rest_observer or DeterministicRestObserver(self.rest_scheduler.policy)
+        self.consolidation_validator = consolidation_validator or ConsolidationValidator()
+        self.enable_rest = bool(enable_rest)
         state = self.store.load_state()
         self.state = state if state is not None else self.store.initialize(LivingState())
 
@@ -55,6 +62,15 @@ class LivingEngine:
 
     def _relevant_memories(self, query: str, limit: int = 6) -> list[MemoryRecord]:
         return rank_memories(self.store.memories(limit=300), query, limit=limit)
+
+    def _rest_source_memories(self) -> list[MemoryRecord]:
+        policy: RestPolicy = self.rest_scheduler.policy
+        already_consolidated = self.store.consolidated_parent_ids()
+        return [
+            memory
+            for memory in self.store.memories(limit=policy.memory_window)
+            if memory.memory_id not in already_consolidated
+        ]
 
     def _run_observer(self, text: str, source_event: LivingEvent) -> tuple[MutationReceipt | None, str | None]:
         if self.observer is None:
@@ -87,6 +103,50 @@ class LivingEngine:
             self.state.last_event_at = source_event.at
             self.state.updated_at = source_event.at
             self.state = self.store.commit_transition(rejected, deepcopy(self.state))
+            return None, error_name
+
+    def _run_rest_cycle(self, at: str) -> tuple[ConsolidationReceipt | None, str | None]:
+        source_memories = self._rest_source_memories()
+        rest_event = LivingEvent(
+            kind="rest_cycle",
+            payload={"candidate_memory_ids": [m.memory_id for m in source_memories]},
+            source="rest_scheduler",
+            at=at,
+            salience=0.0,
+        )
+        try:
+            rest_state = deepcopy(self.state)
+            rest_state.rest_mode = True
+            proposal = self.rest_observer.consolidate(source_memories, rest_state)
+            source_map = {memory.memory_id: memory for memory in source_memories}
+            next_state, memories, links, receipt = self.consolidation_validator.apply(
+                rest_state,
+                proposal,
+                rest_event,
+                source_map,
+            )
+            rest_event.payload["proposal"] = proposal.to_dict()
+            rest_event.payload["receipt"] = receipt.to_dict()
+            self.state = self.store.commit_transition(rest_event, next_state, memories, links)
+            return receipt, None
+        except Exception as exc:
+            error_name = type(exc).__name__
+            rejected = LivingEvent(
+                kind="rest_rejected",
+                payload={"error_type": error_name},
+                source="consolidation_validator",
+                at=at,
+                salience=0.0,
+            )
+            failed = deepcopy(self.state)
+            failed.rest_mode = False
+            failed.rest.cycles += 1
+            failed.rest.last_cycle_at = at
+            failed.rest.last_cycle_source_count = len(source_memories)
+            failed.rest.last_cycle_new_memories = 0
+            failed.updated_at = at
+            failed.last_event_at = at
+            self.state = self.store.commit_transition(rejected, failed)
             return None, error_name
 
     def handle_user_message(self, text: str, *, at: str | None = None, reply: bool = True) -> EngineResult:
@@ -131,12 +191,24 @@ class LivingEngine:
         self.state = apply_event(deepcopy(self.state), event)
         self.state = self.store.commit_transition(event, self.state)
 
+        rest_receipt = None
+        rest_error = None
         now = datetime.fromisoformat(at)
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
+        if self.enable_rest:
+            due, _reasons = self.rest_scheduler.due(self.state, now=now)
+            if due:
+                rest_receipt, rest_error = self._run_rest_cycle(at)
+
         decision = self.initiative.decide(self.state, now=now)
         if not decision.speak:
-            return EngineResult(deepcopy(self.state), initiative=decision)
+            return EngineResult(
+                deepcopy(self.state),
+                initiative=decision,
+                rest_receipt=rest_receipt,
+                rest_error=rest_error,
+            )
 
         query = decision.intent.replace("follow_up:", "")
         reply_obj = self.cortex.generate(CortexRequest(
@@ -149,7 +221,19 @@ class LivingEngine:
         speech = reply_obj.utterance.strip()
         if speech:
             self._record_speech(reply_obj, at=at)
-        return EngineResult(deepcopy(self.state), speech=speech, initiative=decision)
+        return EngineResult(
+            deepcopy(self.state),
+            speech=speech,
+            initiative=decision,
+            rest_receipt=rest_receipt,
+            rest_error=rest_error,
+        )
+
+    def run_rest_now(self, *, at: str | None = None) -> EngineResult:
+        at = at or self._now()
+        self._advance_to(at)
+        receipt, error = self._run_rest_cycle(at)
+        return EngineResult(deepcopy(self.state), rest_receipt=receipt, rest_error=error)
 
     def add_open_thread(self, topic: str, *, importance: float = 0.6, due_at: str | None = None, at: str | None = None) -> OpenThread:
         at = at or self._now()
