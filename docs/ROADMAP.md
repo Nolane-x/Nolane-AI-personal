@@ -146,3 +146,35 @@ Engineering substrate: **SHADOW-COURT-READY / UNPROMOTED**.
 - [ ] evaluate later recurrent/state-space replacement blocks and dynamic-depth routing
 
 A structural shadow-admission pass is not a quality promotion. No surgery is promoted without measured held-out benefit.
+
+
+## L6 — Trainable Personal Cortex
+
+Engineering substrate: **TRAINING-COURT-READY / UNPROMOTED**.
+
+- [x] freeze every base-Qwen parameter
+- [x] adapter-only optimizer ownership
+- [x] latent-conditioned Qwen forward path
+- [x] latent-conditioned Qwen generation path
+- [x] explicit Qwen gradient-boundary abort
+- [x] warm-start bounded residual gate for trainability
+- [x] training receipts with loss/grad/digest evidence
+- [x] trained adapter artifact separate from Qwen weights
+- [x] artifact bound to base-model fingerprint and hidden size
+- [x] local JSONL personalization dataset format
+- [x] frozen chronological personalization train/dev/test protocol
+- [x] dataset and per-example SHA-256 drift detection
+- [x] train split only consumed by trainer
+- [x] matched untouched-Qwen vs Personal-Cortex held-out NLL evaluation
+- [x] frozen Vietnamese/English general-language regression anchor
+- [x] parameter, gradient and base-mutation quality gates
+- [x] explicit experimental generation command
+- [x] real tiny Qwen3 gradient-training court
+- [ ] collect sufficient real approved personalization examples
+- [ ] freeze a real user personalization protocol
+- [ ] train the real Qwen3-0.6B adapter
+- [ ] pass held-out personal-quality + general-regression court
+- [ ] measure real 0.6B latency/RAM overhead
+- [ ] allow a promoted Personal Cortex artifact in the normal runtime
+
+L6 changes Qwen hidden-state computation through trained neural parameters. It is no longer prompt-only personalization, but production authority remains blocked until real held-out evidence passes.

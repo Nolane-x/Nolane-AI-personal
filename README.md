@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.5.0
+## Current executable milestone: Living Runtime v0.6.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 now provides a **counterfactual Qwen3 latent-adapter surgery substrate** that can alter shadow logits while the untouched baseline remains the only served path.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a **trainable Personal Cortex**: base Qwen is frozen while the latent-conditioned neural adapter receives real gradients through Qwen decoder computation.
 
 ### Persistent runtime
 
@@ -192,6 +192,52 @@ Neural CI also instantiates a real tiny `Qwen3ForCausalLM` and proves that the h
 
 See `docs/L5-SHADOW-SURGERY.md`.
 
+### L6 trainable Personal Cortex
+
+L6 moves beyond counterfactual probing. Qwen remains the pinned language foundation, but a latent-conditioned neural path can now be trained through actual Qwen decoder blocks.
+
+The ownership boundary is explicit:
+
+```text
+Qwen3-0.6B parameters  -> frozen, no gradients
+Persistent latent 32D  -> adapter input
+Latent adapter         -> trainable
+Qwen hidden states     -> modified by trained residual
+Output logits          -> Personal Cortex path
+```
+
+Freeze a local personalization dataset before training:
+
+```bash
+python scripts/freeze_personalization_protocol.py \
+  --dataset runtime-data/personalization.jsonl
+```
+
+Train only the frozen train split:
+
+```bash
+python scripts/train_personal_cortex.py \
+  --dataset runtime-data/personalization.jsonl \
+  --protocol runtime-data/personalization-protocol-v1.json
+```
+
+Evaluate the same trained artifact on the held-out personal split plus the frozen Vietnamese/English general anchor:
+
+```bash
+python scripts/evaluate_personal_cortex.py
+```
+
+Exercise the neural path explicitly:
+
+```bash
+python scripts/generate_personal_cortex.py \
+  --prompt "Nay tôi hơi mệt."
+```
+
+The trained artifact stays `TRAINED_CANDIDATE_UNPROMOTED` until real held-out data passes the quality and regression courts. Neural CI trains a real tiny `Qwen3ForCausalLM` and verifies that adapter weights learn while every base-Qwen parameter remains frozen.
+
+See `docs/L6-PERSONAL-CORTEX.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -279,10 +325,14 @@ L5 latent adapter (counterfactual shadow)
      +--> no production authority
      |
      v
-future promoted adapter / wake policy
+L6 trained Personal Cortex candidate
+     |
+     +--> base Qwen frozen
+     +--> adapter receives gradients
+     +--> held-out personal/general court
      |
      v
-Qwen cortex
+future promoted Personal Cortex / deeper surgery
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, and `docs/L5-SHADOW-SURGERY.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, and `docs/L6-PERSONAL-CORTEX.md`.
