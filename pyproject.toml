@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nolane-ai-personal"
-version = "0.4.0"
+version = "0.5.0"
 description = "Event-driven persistent living runtime for Nolane AI Personal"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,7 @@ neural = [
 ]
 qwen = [
   "torch>=2.2",
-  "transformers>=4.51",
+  "transformers>=4.51,<5",
   "safetensors>=0.4",
 ]
 dev = ["pytest>=8"]
