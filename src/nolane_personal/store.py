@@ -8,6 +8,7 @@ from typing import Iterable
 
 from .events import LivingEvent
 from .memory import MemoryRecord
+from .consolidation import MemoryLink
 from .state import LivingState
 
 
@@ -67,7 +68,17 @@ class LivingStore:
             );
             CREATE INDEX IF NOT EXISTS idx_events_at ON events(at);
             CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at DESC);
+            CREATE TABLE IF NOT EXISTS memory_links (
+                parent_memory_id TEXT NOT NULL,
+                child_memory_id TEXT NOT NULL,
+                relation TEXT NOT NULL,
+                source_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(parent_memory_id, child_memory_id, relation)
+            );
             CREATE INDEX IF NOT EXISTS idx_snapshots_version ON snapshots(version);
+            CREATE INDEX IF NOT EXISTS idx_memory_links_parent ON memory_links(parent_memory_id);
+            CREATE INDEX IF NOT EXISTS idx_memory_links_child ON memory_links(child_memory_id);
             """
         )
         self.db.commit()
@@ -97,6 +108,7 @@ class LivingStore:
         event: LivingEvent,
         state: LivingState,
         memories: Iterable[MemoryRecord] = (),
+        memory_links: Iterable[MemoryLink] = (),
     ) -> LivingState:
         current = self.load_state()
         if current is None:
@@ -118,6 +130,11 @@ class LivingStore:
                     "INSERT OR IGNORE INTO memories(memory_id,created_at,kind,text,salience,confidence,source_event_id,metadata_json) VALUES(?,?,?,?,?,?,?,?)",
                     (memory.memory_id, memory.created_at, memory.kind, memory.text, float(memory.salience), float(memory.confidence), memory.source_event_id, canonical_json(memory.metadata)),
                 )
+            for link in memory_links:
+                self.db.execute(
+                    "INSERT OR IGNORE INTO memory_links(parent_memory_id,child_memory_id,relation,source_event_id,created_at) VALUES(?,?,?,?,?)",
+                    (link.parent_memory_id, link.child_memory_id, link.relation, link.source_event_id, link.created_at),
+                )
         return state
 
     def memories(self, limit: int = 200) -> list[MemoryRecord]:
@@ -135,6 +152,42 @@ class LivingStore:
             )
             for row in rows
         ]
+
+    def memory_by_ids(self, memory_ids: Iterable[str]) -> dict[str, MemoryRecord]:
+        ids = list(dict.fromkeys(str(x) for x in memory_ids))
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        rows = self.db.execute(
+            f"SELECT * FROM memories WHERE memory_id IN ({placeholders})",
+            ids,
+        ).fetchall()
+        return {
+            row["memory_id"]: MemoryRecord(
+                memory_id=row["memory_id"],
+                created_at=row["created_at"],
+                kind=row["kind"],
+                text=row["text"],
+                salience=row["salience"],
+                confidence=row["confidence"],
+                source_event_id=row["source_event_id"],
+                metadata=json.loads(row["metadata_json"]),
+            )
+            for row in rows
+        }
+
+    def consolidated_parent_ids(self) -> set[str]:
+        rows = self.db.execute(
+            "SELECT DISTINCT parent_memory_id FROM memory_links WHERE relation='consolidated_into'"
+        ).fetchall()
+        return {str(row["parent_memory_id"]) for row in rows}
+
+    def memory_links(self, limit: int = 1000) -> list[dict[str, str]]:
+        rows = self.db.execute(
+            "SELECT parent_memory_id,child_memory_id,relation,source_event_id,created_at FROM memory_links ORDER BY created_at ASC LIMIT ?",
+            (max(0, int(limit)),),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def replay_records(self, limit: int = 10000, *, after_version: int = 0) -> list[dict[str, object]]:
         rows = self.db.execute(
