@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nolane-ai-personal"
-version = "0.41.0"
+version = "0.42.0"
 description = "Event-driven persistent living runtime for Nolane AI Personal"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,10 +21,16 @@ qwen = [
   "transformers>=4.51,<5",
   "safetensors>=0.4",
 ]
+product = [
+  "torch>=2.2",
+  "transformers>=4.51,<5",
+  "safetensors>=0.4",
+]
 dev = ["pytest>=8"]
 
 [project.scripts]
 nolane-personal = "nolane_personal.cli:main"
+nolane-product-runtime = "nolane_personal.product_server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
