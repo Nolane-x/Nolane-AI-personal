@@ -1,3 +1,4 @@
+use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -18,7 +19,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Clone, Debug)]
 enum RuntimeTarget {
-    Local { endpoint: String },
+    Local { endpoint: String, token: String },
     Remote { endpoint: String, token: String },
     Unconfigured { endpoint_hint: Option<String> },
     Error { message: String },
@@ -34,7 +35,7 @@ struct RuntimeTargetView {
 impl RuntimeTarget {
     fn view(&self) -> RuntimeTargetView {
         match self {
-            Self::Local { endpoint } => RuntimeTargetView {
+            Self::Local { endpoint, .. } => RuntimeTargetView {
                 mode: "local".into(),
                 endpoint: Some(endpoint.clone()),
                 error: None,
@@ -59,7 +60,9 @@ impl RuntimeTarget {
 
     fn request_parts(&self) -> Result<(String, Option<String>), String> {
         match self {
-            Self::Local { endpoint } => Ok((endpoint.clone(), None)),
+            Self::Local { endpoint, token } => {
+                Ok((endpoint.clone(), Some(token.clone())))
+            },
             Self::Remote { endpoint, token } => {
                 Ok((endpoint.clone(), Some(token.clone())))
             }
@@ -187,6 +190,12 @@ fn spawn_windows_runtime(
 
     let port = portpicker::pick_unused_port()
         .ok_or_else(|| "Could not allocate a local Nolane runtime port".to_string())?;
+    let mut token_bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut token_bytes);
+    let auth_token = token_bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
 
     let mut command = Command::new(&runtime_exe);
     command
@@ -202,6 +211,8 @@ fn spawn_windows_runtime(
         .arg(&tokenizer_dir)
         .arg("--device")
         .arg("auto")
+        .arg("--auth-token")
+        .arg(&auth_token)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -220,6 +231,7 @@ fn spawn_windows_runtime(
     Ok((
         RuntimeTarget::Local {
             endpoint: format!("http://127.0.0.1:{port}"),
+            token: auth_token,
         },
         child,
     ))
