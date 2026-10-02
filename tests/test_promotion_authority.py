@@ -647,6 +647,8 @@ def test_l36_persisted_receipt_tamper_is_detected(tmp_path):
         )
     with pytest.raises(ValueError, match="digest mismatch"):
         audit_promotion_ceremonies(registry)
+    with pytest.raises(ValueError, match="digest mismatch"):
+        registry.verify_registry()
 
 
 def test_l36_registry_lookup_helpers_are_evidence_verified(tmp_path):
