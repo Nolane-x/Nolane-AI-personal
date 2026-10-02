@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.16.0
+## Current executable milestone: Living Runtime v0.17.0
 
 The runtime now contains two very different compute scales:
 
 - **Qwen3-0.6B**: language cortex, used only when language inference is needed.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**: a fast/slow multi-timescale cortex progressively replaces the center while Qwen decoder anchors at the head and tail become an explicitly minimized resource. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**. L14 pushes the decoder down to a minimal 1+1 anchor shell. L15 removes the Transformer decoder entirely from native inference. L16 exports every remaining inference tensor into a standalone Nolane-owned checkpoint. L17 now factorizes and distills the inherited dense language boundary so model size can fall sharply without changing the recurrent cortex. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -695,7 +695,7 @@ Neural CI proves L15/L16 logit-state-generation parity, independent tensor stora
 
 The first L16 export deliberately preserves inherited vocabulary/output matrices exactly. It is runtime-independent from Qwen weights, but those matrices still have Qwen provenance. See `docs/L16-STANDALONE-NOLANE-WEIGHTS.md`.
 
-## Bootstrap Qwen
+### L17 Factorized Language Boundary\n\nL17 targets the largest remaining tensors in the standalone model: the inherited dense token embedding and output projection.\n\n```text\ndense vocab x hidden\n      |\n      v\nvocab x rank  +  rank x hidden\n```\n\nWith the default rank 128 and a representative 151,936 x 1,024 tied boundary, the analytical parameter ratio is about **12.6%** of the dense boundary.\n\n```bash\npython scripts/export_factorized_boundary.py --rank 128\npython scripts/train_factorized_boundary.py\npython scripts/evaluate_factorized_boundary.py\npython scripts/benchmark_factorized_resources.py\n```\n\nFull-rank SVD is used as a numerical parity court; low-rank candidates must satisfy separate compression, held-out quality and resource gates. Boundary distillation is allowed to update only the low-rank factors: the deep recurrent cortex is frozen and its digest must remain identical to L16.\n\nThe core L17 runtime still needs only owned tensors + PyTorch. Tokenization remains vocabulary-compatible with the inherited frontend; a native Vietnamese/English tokenizer is intentionally a later experiment, not an L17 claim.\n\nSee `docs/L17-FACTORIZED-LANGUAGE-BOUNDARY.md`.\n\n## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
 
