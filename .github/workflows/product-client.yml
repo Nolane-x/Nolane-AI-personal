@@ -1,11 +1,12 @@
 name: Product Client Court
 
 concurrency:
-  group: product-client-${{ github.workflow }}-${{ github.ref }}
+  group: product-client-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 on:
   push:
+    branches: ["main"]
     paths:
       - "apps/product-client/**"
       - "src/nolane_personal/product_*.py"
