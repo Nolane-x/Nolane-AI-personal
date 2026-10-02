@@ -82,6 +82,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install pinned Tauri CLI
         run: npm install --global @tauri-apps/cli@2.12.0
+      - name: Generate product icons
+        working-directory: apps/product-client
+        shell: pwsh
+        run: tauri icon icon-source.svg
       - name: Build Windows app executable
         working-directory: apps/product-client
         shell: pwsh
@@ -116,7 +120,9 @@ jobs:
         working-directory: apps/product-client
         shell: bash
         run: |
+          tauri icon icon-source.svg
           tauri android init --ci --skip-targets-install
+          tauri icon icon-source.svg
           tauri android build --apk --target aarch64
       - name: Verify APK exists
         shell: bash
