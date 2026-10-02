@@ -766,3 +766,38 @@ Engineering substrate: **CONSENT-BOUND-EVIDENCE-INTAKE-READY / UNPROMOTED**.
 - [ ] inspect the first empirical model-quality/resource blocker
 
 L23 closes the consent/intake gap without fabricating personal evidence. It does not automatically ingest chats and does not infer consent from conversation history.
+
+
+## L24 — Local Review Queue
+
+Engineering substrate: **LOCAL-HUMAN-REVIEW-BOUNDARY-READY / NO AUTOMATIC CONSENT**.
+
+- [x] generic JSON/JSONL conversation export intake
+- [x] only user and assistant roles considered
+- [x] system/tool roles skipped
+- [x] user→assistant pair extraction
+- [x] imported candidates always `approved:false`
+- [x] imported candidates always `reviewed:false`
+- [x] imported sensitivity starts unknown
+- [x] queue manifest stores hashes/counts rather than text
+- [x] queue SHA-256 binding
+- [x] source export SHA-256 binding
+- [x] editing queue to self-approve invalidates verification
+- [x] explicit separate decisions JSONL
+- [x] decision requires boolean `approved`
+- [x] decision requires boolean `sensitive`
+- [x] unknown candidate decisions fail closed
+- [x] duplicate candidate decisions fail closed
+- [x] approved candidate requires VI/EN language
+- [x] partial decisions leave undecided rows unapproved
+- [x] reviewed-source manifest binds queue manifest + decisions file + output SHA
+- [x] reviewed-source manifest contains no raw prompt/target/conversation ID
+- [x] exact duplicate imported pairs fail closed
+- [x] reviewed source feeds L23 without bypassing L23 filters
+- [x] L23 court proves only approved non-sensitive rows survive
+- [ ] import a real local conversation export
+- [ ] manually review enough candidate pairs
+- [ ] build first real L23 approved evidence pack
+- [ ] execute L21 on that pack with valid model/latent/L14 prerequisites
+
+L24 deliberately refuses to infer approval, sensitivity, usefulness or representativeness from imported conversations.
