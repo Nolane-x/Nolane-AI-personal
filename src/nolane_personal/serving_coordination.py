@@ -333,6 +333,7 @@ class ServingCoordinator:
         receipt = _seal(
             {
                 "schema": CONVERGENCE_SCHEMA,
+                "assessed_at": current.isoformat(),
                 "authority": AUTHORITY,
                 "status": "PASS" if not reasons else "BLOCKED",
                 "reasons": sorted(set(reasons)),
@@ -391,6 +392,27 @@ class ServingCoordinator:
             },
             "gate_sha256",
         )
+
+
+
+
+def verify_serving_convergence_receipt(
+    receipt: dict[str, Any],
+    *,
+    require_pass: bool = True,
+) -> dict[str, Any]:
+    _verify_digest(
+        receipt,
+        schema=CONVERGENCE_SCHEMA,
+        digest_field="convergence_sha256",
+        what="serving convergence",
+    )
+    _parse_time(str(receipt.get("assessed_at")))
+    if receipt.get("authority") != AUTHORITY:
+        raise ValueError("serving convergence authority mismatch")
+    if require_pass and receipt.get("status") != "PASS":
+        raise ValueError("serving convergence did not PASS")
+    return receipt
 
 
 class ServingSession:
