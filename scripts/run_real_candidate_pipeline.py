@@ -77,6 +77,11 @@ def main() -> int:
         "approved_evidence_authority":(
             approved_manifest.get("authority") if approved_manifest else None
         ),
+        "evidence_quality_status":readiness.evidence.get("evidence_quality_status"),
+        "evidence_quality_court_sha256":readiness.evidence.get("evidence_quality_court_sha256"),
+        "approved_evidence_quality_court_sha256":(
+            approved_manifest.get("quality_court_sha256") if approved_manifest else None
+        ),
         "stage_contract_sha256":evidence_chain_contract_sha256(),
         "stage_count_expected":len(REAL_CANDIDATE_STAGE_ORDER),
         "stages":[],
