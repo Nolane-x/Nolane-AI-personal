@@ -17,6 +17,7 @@ class RealCandidateReadinessThresholds:
     min_train_examples: int = 1
     min_dev_examples: int = 1
     min_test_examples: int = 2
+    min_test_source_groups: int = 2
     min_anchor_examples: int = 4
     latent_dim: int = 32
 
@@ -31,6 +32,7 @@ class RealCandidateReadinessEvidence:
     train_examples: int
     dev_examples: int
     test_examples: int
+    test_source_groups: int
     evidence_quality_status: str | None
     evidence_quality_court_sha256: str | None
     evidence_quality_reasons: list[str]
@@ -96,6 +98,7 @@ def assess_real_candidate_readiness(
     dataset_sha=None
     protocol_sha=None
     dataset_examples=train_examples=dev_examples=test_examples=0
+    test_source_groups=0
     evidence_quality_status=None
     evidence_quality_court_sha256=None
     evidence_quality_reasons: list[str]=[]
@@ -117,6 +120,12 @@ def assess_real_candidate_readiness(
             train_examples=int(counts.get("train",0))
             dev_examples=int(counts.get("dev",0))
             test_examples=int(counts.get("test",0))
+            test_source_groups=len({
+                str(row.get("source_group_sha256"))
+                for row in frozen.get("splits",{}).get("test",[])
+                if isinstance(row.get("source_group_sha256"),str)
+                and row.get("source_group_sha256")
+            })
             if int(counts.get("total",0))!=dataset_examples:
                 reasons.append("protocol_dataset_count_mismatch")
             quality=assess_evidence_quality(examples,frozen)
@@ -194,6 +203,8 @@ def assess_real_candidate_readiness(
         reasons.append("insufficient_dev_examples")
     if test_examples<t.min_test_examples:
         reasons.append("insufficient_test_examples")
+    if test_source_groups<t.min_test_source_groups:
+        reasons.append("insufficient_test_source_groups")
     if anchor_examples<t.min_anchor_examples:
         reasons.append("insufficient_anchor_examples")
     if latent_valid and latent_dim!=t.latent_dim:
@@ -208,6 +219,7 @@ def assess_real_candidate_readiness(
         train_examples=train_examples,
         dev_examples=dev_examples,
         test_examples=test_examples,
+        test_source_groups=test_source_groups,
         evidence_quality_status=evidence_quality_status,
         evidence_quality_court_sha256=evidence_quality_court_sha256,
         evidence_quality_reasons=evidence_quality_reasons,

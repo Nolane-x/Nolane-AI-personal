@@ -7,10 +7,11 @@ from dataclasses import asdict
 from pathlib import Path
 
 from nolane_personal.anchor_artifact import build_anchor_model
+from nolane_personal.heldout_group_robustness import HeldoutGroupRobustnessPolicy, assess_group_robustness
 from nolane_personal.latent import LatentStore
 from nolane_personal.native_artifact import build_native_boundary_model
 from nolane_personal.native_court import run_with_decoder_call_count
-from nolane_personal.native_evaluation import NativeQualityEvidence, decide_native_quality
+from nolane_personal.native_evaluation import NativeQualityEvidence, NativeQualityThresholds, decide_native_quality
 from nolane_personal.native_training import mean_encoded_nll as native_mean_nll
 from nolane_personal.personal_dataset import encode_chat_example, load_jsonl
 from nolane_personal.personal_protocol import examples_for_split, load_protocol, verify_personalization_protocol
@@ -94,9 +95,21 @@ def main() -> int:
     anchor = encode(qwen.tokenizer, anchor_examples, latent.values, args.max_length)
     before = parameter_guard_snapshot(qwen.model)
 
-    baseline = native_mean_nll(native, test, native_enabled=False)
-    l14_nll = anchor_mean_nll(l14, test, cortex_enabled=True)
-    native_nll = native_mean_nll(native, test, native_enabled=True)
+    baseline_values = [
+        native_mean_nll(native, [row], native_enabled=False)
+        for row in test
+    ]
+    l14_values = [
+        anchor_mean_nll(l14, [row], cortex_enabled=True)
+        for row in test
+    ]
+    native_values = [
+        native_mean_nll(native, [row], native_enabled=True)
+        for row in test
+    ]
+    baseline = sum(baseline_values) / max(1, len(baseline_values))
+    l14_nll = sum(l14_values) / max(1, len(l14_values))
+    native_nll = sum(native_values) / max(1, len(native_values))
     anchor_base = native_mean_nll(native, anchor, native_enabled=False)
     anchor_native = native_mean_nll(native, anchor, native_enabled=True)
 
@@ -150,6 +163,15 @@ def main() -> int:
         qwen_gradients_seen=sum(1 for p in qwen.model.parameters() if p.grad is not None),
     )
     decision = decide_native_quality(evidence)
+    group_robustness = assess_group_robustness(
+        protocol,
+        split="test",
+        reference_values=l14_values,
+        candidate_values=native_values,
+        policy=HeldoutGroupRobustnessPolicy(
+            max_worst_group_regression=NativeQualityThresholds().max_degradation_vs_l14,
+        ),
+    )
     result = {
         "schema": "NOLANE-L15-NATIVE-BOUNDARY-QUALITY-EVAL-V1",
         "authority": "EVALUATION_ONLY_UNPROMOTED",
@@ -157,6 +179,7 @@ def main() -> int:
         "l14_checkpoint_sha256": l14_meta["checkpoint_sha256"],
         "spec_sha256": native_meta["spec_sha256"],
         "decision": asdict(decision),
+        "group_robustness": group_robustness,
     }
     rendered = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
     if args.output:
@@ -166,7 +189,10 @@ def main() -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
-    return 0 if decision.status == "NATIVE_BOUNDARY_QUALITY_PASS" else 2
+    return 0 if (
+        decision.status == "NATIVE_BOUNDARY_QUALITY_PASS"
+        and group_robustness["status"] == "PASS"
+    ) else 2
 
 
 if __name__ == "__main__":

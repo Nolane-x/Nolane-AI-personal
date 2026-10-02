@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from nolane_personal.quantized_promotion import decide_quantized_promotion
+from nolane_personal.heldout_group_robustness import effective_quality_status
 
 
 def main():
@@ -16,8 +17,10 @@ def main():
     a=p.parse_args()
     q=json.loads(Path(a.quality).read_text(encoding="utf-8"))
     r=json.loads(Path(a.resources).read_text(encoding="utf-8"))
+    group=q.get("group_robustness")
+    effective_status=effective_quality_status(q)
     d=decide_quantized_promotion(
-        quality_status=q.get("decision",{}).get("status",""),
+        quality_status=effective_status,
         quality_checkpoint_sha256=q.get("quantized_checkpoint_sha256"),
         quality_source_factorized_checkpoint_sha256=q.get("source_factorized_checkpoint_sha256"),
         quality_source_l16_checkpoint_sha256=q.get("source_l16_checkpoint_sha256"),
@@ -26,7 +29,7 @@ def main():
         resource_source_factorized_checkpoint_sha256=r.get("source_factorized_checkpoint_sha256"),
         resource_source_l16_checkpoint_sha256=r.get("source_l16_checkpoint_sha256"),
     )
-    result={"schema":"NOLANE-L19-QUANTIZED-PROMOTION-V1","decision":asdict(d)}
+    result={"schema":"NOLANE-L19-QUANTIZED-PROMOTION-V1","group_robustness_status":group.get("status") if isinstance(group,dict) else None,"group_robustness_court_sha256":group.get("court_sha256") if isinstance(group,dict) else None,"decision":asdict(d)}
     rendered=json.dumps(result,indent=2,sort_keys=True)
     if a.output:
         path=Path(a.output)

@@ -4,7 +4,8 @@ import argparse,hashlib,json
 from pathlib import Path
 
 from nolane_personal.factorized_artifact import load_factorized_model
-from nolane_personal.factorized_evaluation import FactorizedQualityEvidence,decide_factorized_quality
+from nolane_personal.heldout_group_robustness import HeldoutGroupRobustnessPolicy,assess_group_robustness
+from nolane_personal.factorized_evaluation import FactorizedQualityEvidence,FactorizedQualityThresholds,decide_factorized_quality
 from nolane_personal.latent import LatentStore
 from nolane_personal.personal_dataset import encode_chat_example,load_jsonl
 from nolane_personal.personal_protocol import examples_for_split,load_protocol,verify_personalization_protocol
@@ -36,7 +37,7 @@ def metrics(model,examples):
             o=model.forward(input_ids=x,labels=y,state=None)
             losses.append(float(o.loss.detach().cpu())*float(weight))
             preds.append(torch.argmax(o.logits,dim=-1).detach().cpu())
-    return sum(losses)/max(1,len(losses)),preds
+    return sum(losses)/max(1,len(losses)),preds,losses
 
 def main():
     p=argparse.ArgumentParser()
@@ -60,7 +61,8 @@ def main():
     student,smeta=load_factorized_model(a.factorized,latent.values,device=a.device,expected_source_l16_checkpoint_sha256=tmeta["checkpoint_sha256"],expected_dataset_fingerprint=protocol["protocol_sha256"])
     tok=AutoTokenizer.from_pretrained(a.tokenizer,local_files_only=True)
     t=encode(tok,test,latent.values,a.max_length); g=encode(tok,anchor,latent.values,a.max_length)
-    n16,p16=metrics(teacher,t); n17,p17=metrics(student,t); a16,_=metrics(teacher,g); a17,_=metrics(student,g)
+    n16,p16,l16_values=metrics(teacher,t); n17,p17,l17_values=metrics(student,t)
+    a16,_,_=metrics(teacher,g); a17,_,_=metrics(student,g)
     total=agree=0
     for x,y in zip(p16,p17):
         total+=x.numel(); agree+=int((x==y).sum())
@@ -75,11 +77,24 @@ def main():
         cortex_digest_equal_to_l16=smeta["cortex_state_digest"]==tmeta["cortex_state_digest"],runtime_requires_qwen_model=False,runtime_requires_transformers=False,
     )
     decision=decide_factorized_quality(ev)
-    result={"schema":"NOLANE-L17-FACTORIZED-BOUNDARY-QUALITY-EVAL-V1","authority":"EVALUATION_ONLY_UNPROMOTED","factorized_checkpoint_sha256":smeta["checkpoint_sha256"],"source_l16_checkpoint_sha256":tmeta["checkpoint_sha256"],"decision":decision}
+    group_robustness=assess_group_robustness(
+        protocol,
+        split="test",
+        reference_values=l16_values,
+        candidate_values=l17_values,
+        policy=HeldoutGroupRobustnessPolicy(
+            max_worst_group_regression=FactorizedQualityThresholds().max_nll_regression_vs_l16,
+        ),
+    )
+    result={"schema":"NOLANE-L17-FACTORIZED-BOUNDARY-QUALITY-EVAL-V1","authority":"EVALUATION_ONLY_UNPROMOTED","factorized_checkpoint_sha256":smeta["checkpoint_sha256"],"source_l16_checkpoint_sha256":tmeta["checkpoint_sha256"],"decision":decision,"group_robustness":group_robustness}
     s=json.dumps(result,indent=2,sort_keys=True)
     if a.output:
         path=Path(a.output)
         if path.exists(): raise SystemExit(f"refusing to overwrite evaluation: {path}")
         path.parent.mkdir(parents=True,exist_ok=True); path.write_text(s+"\n",encoding="utf-8")
-    print(s); return 0 if decision["status"]=="FACTORIZED_BOUNDARY_QUALITY_PASS" else 2
+    print(s)
+    return 0 if (
+        decision["status"]=="FACTORIZED_BOUNDARY_QUALITY_PASS"
+        and group_robustness["status"]=="PASS"
+    ) else 2
 if __name__=="__main__": raise SystemExit(main())
