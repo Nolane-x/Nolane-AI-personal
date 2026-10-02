@@ -124,6 +124,7 @@ def main() -> int:
     parser.add_argument("--temperature", type=float, default=2.0)
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
     parser.add_argument("--max-length", type=int, default=384)
+    parser.add_argument("--run-receipt", default=None)
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -293,14 +294,24 @@ def main() -> int:
         "training": training_receipt,
         "artifact": manifest,
     }
-    print(
-        json.dumps(
-            result,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        )
+    rendered = json.dumps(
+        result,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
     )
+    receipt_path = (
+        Path(args.run_receipt)
+        if args.run_receipt
+        else output_dir / "l31-run-receipt.json"
+    )
+    if receipt_path.exists():
+        raise SystemExit(
+            f"refusing to overwrite L31 run receipt: {receipt_path}"
+        )
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    receipt_path.write_text(rendered + "\n", encoding="utf-8")
+    print(rendered)
 
     passed = (
         receipt.candidate_boundary_changed
