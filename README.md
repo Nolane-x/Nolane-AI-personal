@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.40.0
+## Current executable milestone: Living Runtime v0.41.0
 
 The runtime now contains two very different compute scales:
 
@@ -1276,6 +1276,28 @@ python scripts/authorize_unified_promotion.py \
 L40 is intentionally not consumed by L33 yet. A later integration wave must preserve transaction recovery, serving convergence and hard-kill courts before recurrent-cortex candidates can change production authority.
 
 See `docs/L40-UNIFIED-PROMOTION-AUTHORITY.md`.
+
+### L41 Unified Promotion Integration
+
+L41 connects L40 mixed-plasticity authorization to the existing crash-recoverable production path without replacing the older L35/L31 mechanism.
+
+The L33 registry now dispatches candidate bundles by their native receipt: L31 boundary updates remain valid, while L38 recurrent-cortex candidates are independently reverified and must match the L40 authorization's final composite model-state SHA. The production parent is likewise checked against the authorization's initial model-state SHA.
+
+Authorization and staged candidate evidence are rechecked at begin, verify and commit. L36 final ceremony now records which authorization schema/kind justified the release and can bind either an L32/L35 chain or an L39/L40 chain.
+
+The Platform Crash Court also exercises L40-authorized L38 transactions with real child-process `os._exit()` termination on Linux and Windows, including both pre-swap abort recovery and post-swap committed recovery.
+
+```text
+L39 mixed chain
+ -> L40 AUTHORIZED
+ -> L33 atomic transaction
+ -> L34 serving convergence
+ -> L36 COMPLETE ceremony
+```
+
+This closes the mechanical release path. A real recurrent-cortex production claim still requires approved real multi-window evidence and a real ceremony on trained checkpoints.
+
+See `docs/L41-UNIFIED-PROMOTION-INTEGRATION.md`.
 
 ## Bootstrap Qwen
 

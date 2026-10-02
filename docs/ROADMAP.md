@@ -1349,11 +1349,43 @@ Engineering substrate: **MIXED-PLASTICITY-AUTHORIZATION-READY / TRANSACTION-INTE
 - [x] authorization expiry court
 - [x] authorization tamper court
 - [x] local authorization CLI
-- [ ] teach L33 transaction registry to consume L40 authorization
-- [ ] verify final candidate bundle according to native L31/L38 schema
-- [ ] extend L36 ceremony to record unified authorization schema
-- [ ] rerun Linux/Windows hard-kill court on unified promotion path
+- [x] teach L33 transaction registry to consume L40 authorization
+- [x] verify final candidate bundle according to native L31/L38 schema
+- [x] extend L36 ceremony to record unified authorization schema
+- [x] rerun Linux/Windows hard-kill court on unified promotion path
 - [ ] execute real mixed-plasticity production ceremony
 
 L40 can authorize L39 evidence but deliberately cannot yet change the active checkpoint. Transaction and ceremony integration remain fail-closed.
+
+## L41 — Unified Promotion Integration
+
+Engineering substrate: **MIXED-PLASTICITY-RELEASE-PATH-READY / REAL-DATA-CLOSURE-PENDING**.
+
+- [x] authorization dispatcher preserves L35 and adds L40
+- [x] candidate-bundle dispatcher preserves L31 and adds L38
+- [x] ambiguous L31+L38 candidate bundles rejected
+- [x] L40 active-parent composite model-state binding
+- [x] L40 final-candidate composite model-state binding
+- [x] candidate run schema bound into PREPARED transaction evidence
+- [x] candidate run receipt SHA bound into PREPARED transaction evidence
+- [x] L40 authorization reverified at begin
+- [x] L40 authorization reverified at transaction verify
+- [x] L40 authorization reverified at commit
+- [x] L38 candidate reverified after staging
+- [x] L38 candidate reverified immediately before commit
+- [x] staged L38 receipt tamper court
+- [x] L36 ceremony accepts L35 or L40 through dispatcher
+- [x] ceremony records authorization schema + kind
+- [x] ceremony binds L39 evidence-chain SHA for L40
+- [x] registry audit accepts and reverifies L40 authorization
+- [x] end-to-end L39 -> L40 -> L33 -> L34 -> L36 court
+- [x] L40/L38 hard-kill pointer-snapshot court on Linux + Windows
+- [x] L40/L38 hard-kill active-swap court on Linux + Windows
+- [ ] execute L41 with real approved L39 evidence
+- [ ] run 5+ real mixed plasticity cycles
+- [ ] run actual trained checkpoint serving convergence
+- [ ] run resource/GPU teardown court when applicable
+- [ ] complete a real immutable L36 ceremony for recurrent-cortex promotion
+
+L41 closes the mechanical release path for recurrent-cortex plasticity while preserving the older L35/L31 path. The remaining closure is empirical, not another synthetic authority shortcut.
 

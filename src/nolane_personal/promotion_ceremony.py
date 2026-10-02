@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .promotion_authority import verify_promotion_authorization
+from .promotion_authority_dispatch import (
+    authorization_chain_sha256,
+    authorization_kind,
+    verify_any_promotion_authorization,
+)
 from .serving_coordination import verify_serving_convergence_receipt
 from .state import utc_now_iso
 from .store import canonical_json, payload_digest
@@ -150,10 +154,10 @@ def verify_promotion_ceremony_against_registry(
     ):
         raise ValueError("promotion ceremony authorization mismatch")
     if (
-        authorization["multicycle_chain_sha256"]
+        authorization_chain_sha256(authorization)
         != receipt["multicycle_chain_sha256"]
     ):
-        raise ValueError("promotion ceremony multicycle evidence mismatch")
+        raise ValueError("promotion ceremony continual-chain evidence mismatch")
     if (
         authorization["long_horizon_retention_court_sha256"]
         != receipt["long_horizon_retention_court_sha256"]
@@ -262,7 +266,7 @@ def finalize_promotion_ceremony(
     authorization = registry.promotion_authorization_for_transaction(
         transaction_id
     )
-    verify_promotion_authorization(
+    verify_any_promotion_authorization(
         authorization,
         require_authorized=True,
         check_expiry=False,
@@ -359,9 +363,11 @@ def finalize_promotion_ceremony(
         "reasons": sorted(set(reasons)),
         "transaction_id": transaction_id,
         "authorization_sha256": authorization["authorization_sha256"],
-        "multicycle_chain_sha256": authorization[
-            "multicycle_chain_sha256"
-        ],
+        "authorization_schema": authorization["schema"],
+        "authorization_kind": authorization_kind(authorization),
+        "multicycle_chain_sha256": authorization_chain_sha256(
+            authorization
+        ),
         "long_horizon_retention_court_sha256": authorization[
             "long_horizon_retention_court_sha256"
         ],

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nolane-ai-personal"
-version = "0.40.0"
+version = "0.41.0"
 description = "Event-driven persistent living runtime for Nolane AI Personal"
 readme = "README.md"
 requires-python = ">=3.10"
