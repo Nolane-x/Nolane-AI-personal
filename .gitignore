@@ -33,4 +33,4 @@ apps/product-client/src-tauri/resources/tokenizer/*
 !apps/product-client/src-tauri/resources/tokenizer/README.md
 dist/
 build/
-
+artifacts/product-ui/
