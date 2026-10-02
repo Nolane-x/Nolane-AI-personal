@@ -801,3 +801,36 @@ Engineering substrate: **LOCAL-HUMAN-REVIEW-BOUNDARY-READY / NO AUTOMATIC CONSEN
 - [ ] execute L21 on that pack with valid model/latent/L14 prerequisites
 
 L24 deliberately refuses to infer approval, sensitivity, usefulness or representativeness from imported conversations.
+
+
+## L25 — Local Evidence Intake Pipeline
+
+Engineering substrate: **LOCAL-EVIDENCE-LINEAGE-READY / NO MODEL PROMOTION AUTHORITY**.
+
+- [x] L24 queue manifest verification before intake
+- [x] explicit decisions-file SHA-256 binding
+- [x] reviewed-source manifest self-digest verification
+- [x] reviewed-source file SHA-256 verification
+- [x] reviewed approved/rejected/sensitive/undecided count verification
+- [x] eligible reviewed rows require VI/EN
+- [x] L23 approved-pack build from verified reviewed source
+- [x] L23 approved-pack independent verification
+- [x] approved-pack manifest SHA-256 binding
+- [x] dataset SHA-256 binding
+- [x] frozen personalization protocol SHA-256 binding
+- [x] complete queue -> decisions -> reviewed -> approved-pack lineage receipt
+- [x] final intake manifest contains no raw prompt/target/source IDs
+- [x] non-empty output workspace never overwritten
+- [x] decisions tamper after freeze fails closed
+- [x] reviewed-source tamper after freeze fails closed
+- [x] fewer than seven eligible approved rows fail closed
+- [x] default held-out reserve remains >=2 test examples
+- [x] final approved pack directly drives L21 check-only
+- [x] L21 receipt remains free of private prompt/target sentinels
+- [ ] finalize an intake from a real local review queue
+- [ ] manually approve enough representative non-sensitive examples
+- [ ] verify the real L25 intake receipt
+- [ ] run L21 --execute using the L25 approved-pack manifest
+- [ ] treat downstream quality/resource failure as empirical evidence, not an orchestration error
+
+L25 closes the local evidence lineage from human review to the exact frozen dataset/protocol consumed by L21. It does not infer consent, sensitivity, usefulness, balance or representativeness.
