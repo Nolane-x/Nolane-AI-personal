@@ -7,8 +7,13 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .evidence_quality import assess_evidence_quality, verify_evidence_quality_receipt
 from .personal_dataset import PersonalizationExample, load_jsonl
-from .personal_protocol import PersonalizationSplitPolicy, build_personalization_protocol, verify_personalization_protocol
+from .personal_protocol import (
+    PersonalizationSplitPolicy,
+    build_personalization_protocol,
+    verify_personalization_protocol,
+)
 from .store import canonical_json, payload_digest
 
 
@@ -57,6 +62,7 @@ class ApprovedEvidenceBuildResult:
     manifest: dict[str, Any]
     dataset_path: Path
     protocol_path: Path
+    quality_path: Path
     manifest_path: Path
 
 
@@ -86,12 +92,7 @@ def _source_id_digest(value: Any) -> str | None:
 
 
 def _source_group_digest(value: Any) -> str | None:
-    """Hash the conversation/source group without exposing its raw identifier.
-
-    L24 source IDs use "<conversation>:pair:<index>". Grouping by the prefix
-    lets later courts detect train/dev/test leakage from the same conversation.
-    For other sources the whole source ID is treated as the group.
-    """
+    """Hash a conversation/source group without retaining the raw identifier."""
     if value is None:
         return None
     rendered = str(value).strip()
@@ -167,6 +168,7 @@ def _load_approved_rows(
                 continue
             seen_pairs.add(pair_sha)
             language_counts[language] = language_counts.get(language, 0) + 1
+
             source_id = payload.get("source_id")
             source_id_sha = _source_id_digest(source_id)
             if source_id_sha is not None:
@@ -201,6 +203,25 @@ def _load_approved_rows(
     return rows, stats, sorted(source_digests), source_group_digests
 
 
+def _dataset_text(rows: list[dict[str, Any]]) -> str:
+    return "".join(
+        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
+        for row in rows
+    )
+
+
+def _protocol_groups(protocol: dict[str, Any]) -> list[str | None]:
+    rows = (
+        list(protocol["splits"]["train"])
+        + list(protocol["splits"]["dev"])
+        + list(protocol["splits"]["test"])
+    )
+    result: list[str | None] = [None] * len(rows)
+    for row in rows:
+        result[int(row["index"])] = row.get("source_group_sha256")
+    return result
+
+
 def build_approved_evidence_pack(
     source: str | Path,
     output_dir: str | Path,
@@ -216,6 +237,41 @@ def build_approved_evidence_pack(
     rows, stats, source_id_sha256, example_source_group_sha256 = _load_approved_rows(
         source, policy=policy
     )
+
+    # Build all frozen artifacts in memory first. L28 must PASS before the output
+    # directory is created, so a blocked quality court cannot leave a partial
+    # evidence pack that looks usable.
+    dataset_text = _dataset_text(rows)
+    dataset_sha256 = hashlib.sha256(dataset_text.encode("utf-8")).hexdigest()
+    examples = [
+        PersonalizationExample(
+            prompt=row["prompt"],
+            target=row["target"],
+            language=row["language"],
+            weight=float(row["weight"]),
+        )
+        for row in rows
+    ]
+    protocol = build_personalization_protocol(
+        examples,
+        dataset_sha256=dataset_sha256,
+        policy=split_policy,
+        source_group_sha256=example_source_group_sha256,
+    )
+    verify_personalization_protocol(protocol, dataset_sha256=dataset_sha256)
+
+    quality = assess_evidence_quality(examples, protocol)
+    if quality["status"] != "PASS":
+        reasons = ",".join(quality["reasons"])
+        raise ValueError(f"L28 evidence quality court blocked approved pack: {reasons}")
+
+    counts = protocol["counts"]
+    stats.train_examples = int(counts["train"])
+    stats.dev_examples = int(counts["dev"])
+    stats.test_examples = int(counts["test"])
+    if stats.test_examples < 2:
+        raise RuntimeError("approved evidence pack must reserve at least two held-out test examples")
+
     output = Path(output_dir)
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(
@@ -225,31 +281,18 @@ def build_approved_evidence_pack(
 
     dataset_path = output / "personalization.jsonl"
     protocol_path = output / "personalization-protocol-v1.json"
+    quality_path = output / "evidence-quality-receipt.json"
     manifest_path = output / "approved-evidence-manifest.json"
 
-    with dataset_path.open("w", encoding="utf-8") as fh:
-        for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
-
-    dataset_sha256 = sha256_file(dataset_path)
-    examples = load_jsonl(dataset_path)
-    protocol = build_personalization_protocol(
-        examples,
-        dataset_sha256=dataset_sha256,
-        policy=split_policy,
-    )
-    verify_personalization_protocol(protocol, dataset_sha256=dataset_sha256)
+    dataset_path.write_text(dataset_text, encoding="utf-8")
     protocol_path.write_text(
         json.dumps(protocol, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-
-    counts = protocol["counts"]
-    stats.train_examples = int(counts["train"])
-    stats.dev_examples = int(counts["dev"])
-    stats.test_examples = int(counts["test"])
-    if stats.test_examples < 2:
-        raise RuntimeError("approved evidence pack must reserve at least two held-out test examples")
+    quality_path.write_text(
+        json.dumps(quality, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     manifest = {
         "schema": SCHEMA,
@@ -267,8 +310,12 @@ def build_approved_evidence_pack(
         ),
         "dataset_sha256": dataset_sha256,
         "protocol_sha256": str(protocol["protocol_sha256"]),
+        "quality_status": str(quality["status"]),
+        "quality_court_sha256": str(quality["court_sha256"]),
+        "quality_receipt_sha256": sha256_file(quality_path),
         "dataset_filename": dataset_path.name,
         "protocol_filename": protocol_path.name,
+        "quality_receipt_filename": quality_path.name,
         "stats": asdict(stats),
         "policy": asdict(policy),
         "split_policy": asdict(split_policy),
@@ -280,6 +327,7 @@ def build_approved_evidence_pack(
         manifest=manifest,
         dataset_path=dataset_path,
         protocol_path=protocol_path,
+        quality_path=quality_path,
         manifest_path=manifest_path,
     )
 
@@ -298,11 +346,17 @@ def verify_approved_evidence_pack(
     body.pop("manifest_sha256", None)
     if payload_digest(body) != supplied:
         raise ValueError("approved evidence manifest digest mismatch")
+
     base = Path(root) if root is not None else path.parent
     dataset = base / str(manifest["dataset_filename"])
     protocol = base / str(manifest["protocol_filename"])
+    quality_path = base / str(manifest["quality_receipt_filename"])
+
     if sha256_file(dataset) != manifest.get("dataset_sha256"):
         raise ValueError("approved evidence dataset digest mismatch")
+    if sha256_file(quality_path) != manifest.get("quality_receipt_sha256"):
+        raise ValueError("approved evidence quality receipt digest mismatch")
+
     frozen = json.loads(protocol.read_text(encoding="utf-8"))
     verify_personalization_protocol(
         frozen,
@@ -310,9 +364,11 @@ def verify_approved_evidence_pack(
     )
     if str(frozen["protocol_sha256"]) != str(manifest.get("protocol_sha256")):
         raise ValueError("approved evidence protocol digest mismatch")
+
     examples = load_jsonl(dataset)
     if len(examples) != int(manifest["stats"]["output_examples"]):
         raise ValueError("approved evidence example count mismatch")
+
     groups = manifest.get("example_source_group_sha256")
     if not isinstance(groups, list) or len(groups) != len(examples):
         raise ValueError("approved evidence source-group lineage mismatch")
@@ -322,6 +378,21 @@ def verify_approved_evidence_pack(
         1 for value in groups if value is not None
     ):
         raise ValueError("approved evidence source-group coverage mismatch")
+    if _protocol_groups(frozen) != groups:
+        raise ValueError("approved evidence protocol/source-group lineage mismatch")
+
+    quality = json.loads(quality_path.read_text(encoding="utf-8"))
+    verify_evidence_quality_receipt(
+        quality,
+        dataset_path=dataset,
+        protocol_path=protocol,
+    )
+    if quality.get("status") != "PASS":
+        raise ValueError("approved evidence quality court is not PASS")
+    if str(quality.get("court_sha256")) != str(manifest.get("quality_court_sha256")):
+        raise ValueError("approved evidence quality court lineage mismatch")
+    if str(manifest.get("quality_status")) != "PASS":
+        raise ValueError("approved evidence manifest quality status is not PASS")
     return manifest
 
 
