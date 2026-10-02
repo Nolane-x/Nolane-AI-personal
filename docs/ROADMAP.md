@@ -1217,3 +1217,37 @@ Engineering substrate: **END-TO-END-RELEASE-CEREMONY-READY / REAL PRODUCTION EVI
 
 L36 closes the release-evidence chain mechanically. Synthetic CI proves the ceremony protocol, not that any learned candidate has earned real production authority.
 
+## L37 — Cross-Platform Hard-Kill Court
+
+Engineering substrate: **REAL-PROCESS-CRASH-RECOVERY-COURT-READY / REAL LARGE-CHECKPOINT DEPLOYMENT UNPROVEN**.
+
+- [x] commit fault hook at durable authority boundaries
+- [x] child process terminated with os._exit rather than Python exception
+- [x] stale registry lock survives hard process death
+- [x] explicit stale-lock recovery court
+- [x] crash after artifact install is representable
+- [x] crash after pointer snapshot is representable
+- [x] crash after active pointer swap is representable
+- [x] crash after pointer audit event is representable
+- [x] crash after COMMITTED event is representable
+- [x] detect orphan N+1 pointer snapshot when active remains N
+- [x] remove orphan pointer only when transaction/checkpoint/parent lineage all match
+- [x] unexpected orphan snapshot becomes RECOVERY_CONFLICT
+- [x] hard kill after pointer snapshot recovers RECOVERED_ABORTED
+- [x] hard kill after active swap recovers RECOVERED_COMMITTED
+- [x] hard kill after COMMITTED preserves one terminal state
+- [x] authorized L35 transaction path used by hard-kill checkpoint courts
+- [x] serving reload process kill before lease ACK
+- [x] serving reload process kill after lease ACK
+- [x] old lease remains drain-required after pre-ACK crash
+- [x] restarted worker must register active checkpoint before serving
+- [x] dedicated Linux + Windows GitHub Actions crash matrix
+- [ ] repeat process-kill court with real trained factorized checkpoint files
+- [ ] stress very large artifact copy/install interruption
+- [ ] run real multi-worker service restart under hard kill
+- [ ] test accelerator/GPU teardown and reload where available
+- [ ] exercise real L36 promotion -> hard kill -> convergence -> ceremony path
+- [ ] define power-loss expectations beyond process-crash/fsync guarantees
+
+L37 replaces exception-only crash simulation with real child-process death and closes the orphan-pointer window discovered between pointer-history write and active authority swap.
+
