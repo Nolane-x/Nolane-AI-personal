@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.31.0
+## Current executable milestone: Living Runtime v0.32.0
 
 The runtime now contains two very different compute scales:
 
@@ -1032,6 +1032,33 @@ python scripts/train_continual_factorized_update.py \
 The saved artifact binds the parent checkpoint plus old/new dataset, protocol, L28 and L30 lineage. It remains unpromoted.
 
 See `docs/L31-FACTORIZED-CONTINUAL-NEURAL-UPDATE.md`.
+
+### L32 Multi-Cycle Continual Learning Ledger
+
+L32 extends the real L31 neural updater from one checkpoint transition into an auditable chain of updates.
+
+Each cycle must preserve exact artifact ancestry and neural boundary-state continuity, must carry a valid PASS L30 court, and must save the exact L31 training receipt inside the produced artifact. Reusing the same adaptation protocol does not count as a fresh learning cycle by default.
+
+Per-cycle PASS is still not enough. L32 also evaluates the final factorized checkpoint directly against the checkpoint that existed before cycle 1 on one fixed L28-approved held-out retention panel. This catches cumulative forgetting that can remain hidden when every small update is considered separately.
+
+```bash
+python scripts/evaluate_long_horizon_retention.py \
+  --initial /path/to/checkpoint-0/factorized-nolane.pt \
+  --final /path/to/checkpoint-N/factorized-nolane.pt \
+  --dataset /private/fixed-panel/personalization.jsonl \
+  --protocol /private/fixed-panel/personalization-protocol-v1.json \
+  --output runtime-data/l32/long-horizon-retention.json
+
+python scripts/assess_multicycle_continual.py \
+  --cycle runtime-data/cycle-1/l31-run-receipt.json \
+  --cycle runtime-data/cycle-2/l31-run-receipt.json \
+  --long-horizon runtime-data/l32/long-horizon-retention.json \
+  --output runtime-data/l32/multicycle-chain.json
+```
+
+This remains evidence-only and unpromoted. Production authority still requires real multi-cycle runs plus transactional update/rollback safety.
+
+See `docs/L32-MULTICYCLE-CONTINUAL-LEARNING-LEDGER.md`.
 
 ## Bootstrap Qwen
 
