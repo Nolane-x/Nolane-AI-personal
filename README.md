@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.25.0
+## Current executable milestone: Living Runtime v0.26.0
 
 The runtime now contains two very different compute scales:
 
 - **Standalone Nolane language model path**: owned recurrent cortex plus compressed language-boundary weights; Qwen remains an upstream teacher/provenance source for experimental training, not a required model object in the standalone runtime.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**. L14 pushes the decoder down to a minimal 1+1 anchor shell. L15 removes the Transformer decoder entirely from native inference. L16 exports every remaining inference tensor into a standalone Nolane-owned checkpoint. L17 factorizes and distills the inherited dense language boundary. L18 adds an **Adaptive Rank Frontier** that searches progressively smaller ranks and keeps only ranks that pass development compression/quality gates before the selected artifact is exposed to held-out promotion courts. L19 adds an **int8 Quantized Factor Runtime** that stores the selected low-rank factors as row-wise int8 + scales and dequantizes vocabulary chunks only when computing logits. L20 adds a **Real Qwen3-0.6B Weight Court** that downloads and executes the exact pinned checkpoint, catches model-lock drift, and runs the factorization/int8 mechanics on learned weights from the full model. L21 adds a **Real Candidate Evidence Pipeline** that fail-closes the complete L15→L16→L18→L19 training/evaluation/promotion chain and refuses to fabricate missing personal evidence. L22 adds a **shared End-to-End Evidence Harness**: CI executes the same canonical 17-stage contract with synthetic non-authority artifacts, verifies artifact SHA-256 coverage, proves first-failure stop behavior, and rejects stage-order drift. L23 adds an **Approved Evidence Pack Builder** that accepts only explicitly approved, non-sensitive local VI/EN examples, freezes their train/dev/test protocol, and binds the pack into L21 without copying raw private text into audit receipts. L24 adds a **Local Review Queue** so conversation exports become review candidates with `approved:false` by construction; a separate explicit decisions file is required before L23 can accept anything. L25 adds a **Local Evidence Intake Pipeline** that cryptographically binds the queue, review decisions, reviewed source, approved pack, dataset and frozen protocol into one privacy-preserving lineage receipt that L21 can consume. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**. L14 pushes the decoder down to a minimal 1+1 anchor shell. L15 removes the Transformer decoder entirely from native inference. L16 exports every remaining inference tensor into a standalone Nolane-owned checkpoint. L17 factorizes and distills the inherited dense language boundary. L18 adds an **Adaptive Rank Frontier** that searches progressively smaller ranks and keeps only ranks that pass development compression/quality gates before the selected artifact is exposed to held-out promotion courts. L19 adds an **int8 Quantized Factor Runtime** that stores the selected low-rank factors as row-wise int8 + scales and dequantizes vocabulary chunks only when computing logits. L20 adds a **Real Qwen3-0.6B Weight Court** that downloads and executes the exact pinned checkpoint, catches model-lock drift, and runs the factorization/int8 mechanics on learned weights from the full model. L21 adds a **Real Candidate Evidence Pipeline** that fail-closes the complete L15→L16→L18→L19 training/evaluation/promotion chain and refuses to fabricate missing personal evidence. L22 adds a **shared End-to-End Evidence Harness**: CI executes the same canonical 17-stage contract with synthetic non-authority artifacts, verifies artifact SHA-256 coverage, proves first-failure stop behavior, and rejects stage-order drift. L23 adds an **Approved Evidence Pack Builder** that accepts only explicitly approved, non-sensitive local VI/EN examples, freezes their train/dev/test protocol, and binds the pack into L21 without copying raw private text into audit receipts. L24 adds a **Local Review Queue** so conversation exports become review candidates with `approved:false` by construction; a separate explicit decisions file is required before L23 can accept anything. L25 adds a **Local Evidence Intake Pipeline** that cryptographically binds the queue, review decisions, reviewed source, approved pack, dataset and frozen protocol into one privacy-preserving lineage receipt that L21 can consume. L26 adds an **Interactive Local Reviewer** so a human can review candidates one-by-one, resume safely, and persist immutable explicit decisions without any model/network call or automatic approval. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -884,7 +884,7 @@ python scripts/apply_review_decisions.py \
 
 Import never implies consent. Editing a frozen queue to `approved:true` invalidates its digest; valid approval must come from a separate explicit decision record.
 
-See `docs/L24-LOCAL-REVIEW-QUEUE.md`, and `docs/L25-LOCAL-EVIDENCE-INTAKE.md`.
+See `docs/L24-LOCAL-REVIEW-QUEUE.md`, and `docs/L25-LOCAL-EVIDENCE-INTAKE.md`, and `docs/L26-INTERACTIVE-LOCAL-REVIEWER.md`.
 
 ### L25 Local Evidence Intake Pipeline
 
@@ -913,6 +913,22 @@ python scripts/finalize_local_evidence_intake.py \
 The final L25 manifest stores only hashes, counts and lineage. Raw prompt/target text remains local in the reviewed source and approved dataset. Any post-freeze change to the queue, decisions, reviewed source, approved pack, dataset or protocol fails verification.
 
 See `docs/L25-LOCAL-EVIDENCE-INTAKE.md`.
+
+### L26 Interactive Local Reviewer
+
+L26 provides a local-only terminal workflow for reviewing L24 candidates.
+
+```bash
+python scripts/review_local_queue.py \
+  --queue-manifest runtime-data/review-queue/review-queue-manifest.json \
+  --decisions runtime-data/review-decisions.jsonl
+```
+
+Each candidate can be explicitly approved, rejected, marked sensitive, skipped, or left for a later resumed session. Opening the reviewer never creates consent. Completed decisions are written atomically and cannot be silently replaced through the review session.
+
+The progress manifest stores only hashes and counts; raw conversation text is shown only in the local terminal.
+
+See `docs/L26-INTERACTIVE-LOCAL-REVIEWER.md`.
 
 ## Bootstrap Qwen
 
@@ -1105,6 +1121,13 @@ L25 Local Evidence Intake Pipeline
      +--> queue + decisions + reviewed source + L23 pack
      +--> dataset/protocol lineage bound into one receipt
      +--> direct L21 evidence-pack bridge
+     ^
+     |
+L26 Interactive Local Reviewer
+     |
+     +--> local-only human review
+     +--> resumable immutable explicit decisions
+     +--> no model/network or auto-approval
 ```
 
 See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`, `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`, `docs/L14-MINIMAL-QWEN-ANCHOR-CORTEX.md`, `docs/L15-NATIVE-NOLANE-BOUNDARY.md`, `docs/L16-STANDALONE-NOLANE-WEIGHTS.md`, `docs/L17-FACTORIZED-LANGUAGE-BOUNDARY.md`, `docs/L18-ADAPTIVE-RANK-FRONTIER.md`, `docs/L19-QUANTIZED-FACTOR-RUNTIME.md`, `docs/L20-REAL-QWEN06-WEIGHT-COURT.md`, `docs/L21-REAL-CANDIDATE-EVIDENCE-PIPELINE.md`, `docs/L22-END-TO-END-EVIDENCE-HARNESS.md`, `docs/L23-APPROVED-EVIDENCE-PACK.md`, and `docs/L24-LOCAL-REVIEW-QUEUE.md`.

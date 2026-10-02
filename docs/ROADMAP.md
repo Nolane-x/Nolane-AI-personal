@@ -834,3 +834,36 @@ Engineering substrate: **LOCAL-EVIDENCE-LINEAGE-READY / NO MODEL PROMOTION AUTHO
 - [ ] treat downstream quality/resource failure as empirical evidence, not an orchestration error
 
 L25 closes the local evidence lineage from human review to the exact frozen dataset/protocol consumed by L21. It does not infer consent, sensitivity, usefulness, balance or representativeness.
+
+
+## L26 — Interactive Local Reviewer
+
+Engineering substrate: **LOCAL-HUMAN-REVIEW-UX-READY / NO AUTOMATIC CONSENT**.
+
+- [x] local terminal reviewer over verified L24 queue
+- [x] no model dependency
+- [x] no network dependency
+- [x] opening a queue creates no decisions and no approvals
+- [x] explicit approve/reject/sensitive/skip/quit actions
+- [x] approved non-sensitive decision requires VI/EN
+- [x] inherited VI/EN metadata reused when available
+- [x] missing approval language requested explicitly
+- [x] decisions persisted immediately after each reviewed candidate
+- [x] atomic decisions-file replacement
+- [x] existing decisions verified on resume
+- [x] unknown existing candidate IDs fail closed
+- [x] duplicate existing decisions fail closed
+- [x] frozen decision cannot be silently overwritten
+- [x] decided candidates skipped on resume
+- [x] progress manifest bound to queue manifest + queue file + decisions SHA
+- [x] progress manifest contains counts only, no candidate IDs
+- [x] progress manifest contains no raw prompt/target/conversation ID
+- [x] progress-manifest tamper detection
+- [x] partial review remains valid with undecided candidates
+- [x] generated decisions directly accepted by L24 apply-review path
+- [ ] import the user's real conversation export locally
+- [ ] manually review enough representative candidates
+- [ ] finalize and verify a real L25 evidence intake
+- [ ] execute L21 using that real approved pack
+
+L26 reduces the manual-review friction without moving the consent boundary. It never infers approval, sensitivity, usefulness, or representativeness.
