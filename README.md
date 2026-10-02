@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.39.0
+## Current executable milestone: Living Runtime v0.40.0
 
 The runtime now contains two very different compute scales:
 
@@ -1251,6 +1251,31 @@ python scripts/assess_unified_continual.py \
 L39 remains unpromoted. L35 understands L32/L31 evidence only; a later authority layer must explicitly recompute and authorize the L39 mixed model-state chain.
 
 See `docs/L39-UNIFIED-CONTINUAL-MODEL-LEDGER.md`.
+
+### L40 Unified Promotion Authority
+
+L40 adds a separate authorization path for the L39 mixed continual-learning ledger. It does not reinterpret L38 as L31 and does not weaken the older L35 schema.
+
+Before issuing authorization, L40 re-verifies the fixed long-horizon receipt and recomputes the complete L39 chain from the ordered raw L31/L38 cycle receipts. The authorization binds the expected production parent, final candidate artifact, L39 chain SHA, long-horizon court, boundary/cortex cycle counts and initial/final composite model-state identities.
+
+Operator intent remains explicit and short-lived: approval is a boolean, the raw nonce is never persisted, and authorization expires according to policy.
+
+```bash
+python scripts/authorize_unified_promotion.py \
+  --cycle runtime-data/cycle-1/l31-run-receipt.json \
+  --cycle runtime-data/cycle-2/l38-run-receipt.json \
+  --long-horizon runtime-data/l39/long-horizon-retention.json \
+  --unified-chain runtime-data/l39/unified-chain.json \
+  --active-parent-checkpoint-sha256 <parent-sha> \
+  --candidate-checkpoint-sha256 <candidate-sha> \
+  --nonce "<one-time-secret>" \
+  --approve \
+  --output runtime-data/l40/unified-authorization.json
+```
+
+L40 is intentionally not consumed by L33 yet. A later integration wave must preserve transaction recovery, serving convergence and hard-kill courts before recurrent-cortex candidates can change production authority.
+
+See `docs/L40-UNIFIED-PROMOTION-AUTHORITY.md`.
 
 ## Bootstrap Qwen
 
