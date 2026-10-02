@@ -223,8 +223,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--port", type=int, default=46831)
     p.add_argument("--data-dir", required=True)
     p.add_argument("--model-bundle", required=True)
-    p.add_argument("--tokenizer", required=True)
-    p.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
+    p.add_argument("--tokenizer", required=True)\n    p.add_argument("--ceremony", required=True)\n    p.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     p.add_argument("--auth-token", default="")
     return p
 
@@ -241,6 +240,7 @@ def main() -> int:
         checkpoint=Path(args.model_bundle),
         tokenizer_path=Path(args.tokenizer),
         device=args.device,
+        release_ceremony=Path(args.ceremony),
     )
     server = ProductHTTPServer(
         (args.host, args.port),
