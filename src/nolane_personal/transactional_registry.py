@@ -262,6 +262,56 @@ class CheckpointRegistry:
             raise ValueError("checkpoint pointer artifact digest mismatch")
         return path
 
+    def pointer_by_sha256(self, pointer_sha256: str) -> dict[str, Any]:
+        value = str(pointer_sha256)
+        if len(value) != 64:
+            raise ValueError("pointer sha must be a sha256 hex string")
+        try:
+            int(value, 16)
+        except ValueError as exc:
+            raise ValueError("pointer sha must be a sha256 hex string") from exc
+        for path in sorted(self.pointers_dir.glob("*.json")):
+            pointer = _verify_pointer(_read_json(path))
+            if pointer["pointer_sha256"] == value:
+                return pointer
+        raise ValueError("unknown checkpoint pointer sha")
+
+    def promotion_authorization_for_transaction(
+        self,
+        transaction_id: str,
+    ) -> dict[str, Any]:
+        events = self.transaction_events(transaction_id)
+        if not events or events[0].get("state") != "PREPARED":
+            raise ValueError("transaction has no PREPARED authorization binding")
+        prepared = events[0].get("details", {})
+        auth_sha = prepared.get("promotion_authorization_sha256")
+        if auth_sha is None:
+            raise ValueError("transaction is not promotion-authorized")
+        auth_path = (
+            self._tx_dir(transaction_id)
+            / "promotion-authorization.json"
+        )
+        if not auth_path.exists():
+            raise ValueError("promotion authorization file missing")
+        authorization = verify_promotion_authorization(
+            _read_json(auth_path),
+            require_authorized=True,
+            check_expiry=False,
+        )
+        if authorization["authorization_sha256"] != auth_sha:
+            raise ValueError("promotion authorization transaction mismatch")
+        if (
+            authorization["active_parent_checkpoint_sha256"]
+            != prepared.get("parent_checkpoint_sha256")
+        ):
+            raise ValueError("promotion authorization parent binding mismatch")
+        if (
+            authorization["candidate_checkpoint_sha256"]
+            != prepared.get("candidate_checkpoint_sha256")
+        ):
+            raise ValueError("promotion authorization candidate binding mismatch")
+        return authorization
+
     def _write_pointer_snapshot(self, pointer: dict[str, Any]) -> None:
         path = self._pointer_snapshot_path(int(pointer["generation"]))
         if path.exists():
