@@ -17,4 +17,5 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -e '.[dev]'
       - run: pytest
+      - run: python scripts/audit_evidence_chain_contract.py
       - run: python -m compileall -q src scripts
