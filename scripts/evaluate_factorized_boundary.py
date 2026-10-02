@@ -92,5 +92,9 @@ def main():
         path=Path(a.output)
         if path.exists(): raise SystemExit(f"refusing to overwrite evaluation: {path}")
         path.parent.mkdir(parents=True,exist_ok=True); path.write_text(s+"\n",encoding="utf-8")
-    print(s); return 0 if decision["status"]=="FACTORIZED_BOUNDARY_QUALITY_PASS" else 2
+    print(s)
+    return 0 if (
+        decision["status"]=="FACTORIZED_BOUNDARY_QUALITY_PASS"
+        and group_robustness["status"]=="PASS"
+    ) else 2
 if __name__=="__main__": raise SystemExit(main())
