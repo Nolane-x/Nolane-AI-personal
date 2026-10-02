@@ -8,6 +8,7 @@ from .heldout_group_robustness import (
     assess_group_robustness,
     verify_group_robustness_digest,
 )
+from .personal_protocol import verify_personalization_protocol
 from .store import payload_digest
 
 
@@ -60,6 +61,10 @@ def assess_long_horizon_retention(
     final_checkpoint_sha256 = _validate_sha256(
         final_checkpoint_sha256,
         name="final_checkpoint_sha256",
+    )
+    verify_personalization_protocol(
+        protocol,
+        dataset_sha256=str(protocol.get("dataset_sha256")),
     )
 
     reasons: list[str] = []
