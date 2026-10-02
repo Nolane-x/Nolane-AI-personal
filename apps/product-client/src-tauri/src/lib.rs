@@ -3,18 +3,23 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     fs,
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::Child,
     sync::Mutex,
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tauri::{Manager, RunEvent, State};
 use url::Url;
 
 #[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
+    os::windows::process::CommandExt,
+    process::{Command, Stdio},
+    time::Instant,
+};
 
+#[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Clone, Debug)]
@@ -143,6 +148,7 @@ fn validate_api_path(path: &str) -> Result<&str, String> {
     Ok(path)
 }
 
+#[cfg(target_os = "windows")]
 fn wait_for_port(port: u16, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
