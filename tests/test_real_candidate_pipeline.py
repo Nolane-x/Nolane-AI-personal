@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from nolane_personal.evidence_chain import REAL_CANDIDATE_STAGE_ORDER, evidence_chain_contract_sha256
 from nolane_personal.latent import LatentStore
 from nolane_personal.personal_dataset import load_jsonl
 from nolane_personal.personal_protocol import build_personalization_protocol
@@ -87,6 +88,8 @@ def test_pipeline_check_only_writes_privacy_preserving_ready_receipt(tmp_path):
     assert receipt["status"]=="REAL_CANDIDATE_READY_NOT_EXECUTED"
     assert receipt["blocked_stage"] is None
     assert receipt["stages"]==[]
+    assert receipt["stage_count_expected"]==len(REAL_CANDIDATE_STAGE_ORDER)==17
+    assert receipt["stage_contract_sha256"]==evidence_chain_contract_sha256()
     rendered=receipt_path.read_text(encoding="utf-8")
     assert "private-prompt" not in rendered
     assert "private-target" not in rendered
