@@ -117,6 +117,8 @@ def test_continual_factorized_update_changes_only_candidate_boundary():
         reference,
         adaptation,
         retention,
+        retention_eval_examples=retention,
+        adaptation_eval_examples=adaptation,
         adaptation_group_sha256=new_groups,
         retention_group_sha256=old_groups,
         config=ContinualFactorizedUpdateConfig(
@@ -151,6 +153,14 @@ def test_continual_factorized_update_can_train_but_fail_strict_l30_court():
         reference,
         [example([1, 11, 12, 13]), example([1, 14, 15, 16])],
         [example([1, 5, 6, 7]), example([1, 8, 9, 10])],
+        retention_eval_examples=[
+            example([1, 17, 18, 19]),
+            example([1, 20, 21, 22]),
+        ],
+        adaptation_eval_examples=[
+            example([1, 23, 24, 25]),
+            example([1, 26, 27, 28]),
+        ],
         adaptation_group_sha256=[digest("new-a"), digest("new-b")],
         retention_group_sha256=[digest("old-a"), digest("old-b")],
         config=ContinualFactorizedUpdateConfig(
@@ -182,6 +192,8 @@ def test_continual_factorized_update_rejects_nonidentical_start_state():
             reference,
             [example([1, 11, 12])],
             [example([1, 5, 6])],
+            retention_eval_examples=[example([1, 8, 9])],
+            adaptation_eval_examples=[example([1, 14, 15])],
             adaptation_group_sha256=[digest("new-a")],
             retention_group_sha256=[digest("old-a")],
         )
@@ -196,6 +208,8 @@ def test_continual_factorized_update_rejects_alias_and_lineage_drift():
             reference,
             [example([1, 11, 12])],
             [example([1, 5, 6])],
+            retention_eval_examples=[example([1, 8, 9])],
+            adaptation_eval_examples=[example([1, 14, 15])],
             adaptation_group_sha256=[digest("new-a")],
             retention_group_sha256=[digest("old-a")],
         )
@@ -206,6 +220,8 @@ def test_continual_factorized_update_rejects_alias_and_lineage_drift():
             reference,
             [example([1, 11, 12])],
             [example([1, 5, 6])],
+            retention_eval_examples=[example([1, 8, 9])],
+            adaptation_eval_examples=[example([1, 14, 15])],
             adaptation_group_sha256=[],
             retention_group_sha256=[digest("old-a")],
         )
