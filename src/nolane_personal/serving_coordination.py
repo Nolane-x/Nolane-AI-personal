@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import threading
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -492,14 +493,31 @@ class ServingSession:
                 now=now,
             )
 
-    def model_for_request(self, *, now: str | None = None) -> Any:
+    @contextmanager
+    def request_model(self, *, now: str | None = None):
+        """Hold the local model generation stable for one in-flight request.
+
+        The process-local lock prevents poll_reload() from replacing the model
+        until the request exits. If the registry pointer changes after entry,
+        this request is allowed to drain on the generation that was valid at
+        admission, while every later request must pass a fresh fence.
+        """
         with self._lock:
             gate = self.gate(now=now)
             self.coordinator.verify_request_fence(
                 self.process_id,
                 gate,
             )
-            return self.model
+            yield self.model
+
+    def model_for_request(self, *, now: str | None = None) -> Any:
+        """Admission check helper.
+
+        Production request execution should prefer request_model() so the
+        process-local generation cannot be swapped while inference is in flight.
+        """
+        with self.request_model(now=now) as model:
+            return model
 
 
 def factorized_loader(
