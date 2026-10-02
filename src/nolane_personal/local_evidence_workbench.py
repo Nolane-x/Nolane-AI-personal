@@ -135,6 +135,8 @@ def workbench_status(root: str | Path) -> dict[str, Any]:
     approved_sha = None
     dataset_sha = None
     protocol_sha = None
+    quality_status = None
+    quality_court_sha = None
     if paths.intake_manifest.exists():
         if not paths.decisions.exists():
             raise ValueError("intake exists without review decisions")
@@ -148,6 +150,8 @@ def workbench_status(root: str | Path) -> dict[str, Any]:
         approved_sha = str(intake["approved_manifest_sha256"])
         dataset_sha = str(intake["dataset_sha256"])
         protocol_sha = str(intake["protocol_sha256"])
+        quality_status = str(intake["quality_status"])
+        quality_court_sha = str(intake["quality_court_sha256"])
 
     if intake_ready:
         phase = "INTAKE_READY"
@@ -177,6 +181,8 @@ def workbench_status(root: str | Path) -> dict[str, Any]:
         "approved_manifest_sha256": approved_sha,
         "dataset_sha256": dataset_sha,
         "protocol_sha256": protocol_sha,
+        "quality_status": quality_status,
+        "quality_court_sha256": quality_court_sha,
         "paths": {
             "queue_manifest": str(paths.queue_manifest.relative_to(paths.root)),
             "decisions": str(paths.decisions.relative_to(paths.root)),
@@ -251,6 +257,7 @@ def assess_workbench_readiness(
         "authority": "READINESS_ONLY_NO_TRAINING_AUTHORITY",
         "workbench_manifest_sha256": status["manifest_sha256"],
         "approved_evidence_manifest_sha256": approved_manifest["manifest_sha256"],
+        "quality_court_sha256": approved_manifest["quality_court_sha256"],
         "readiness": asdict(decision),
     }
     result["receipt_sha256"] = payload_digest(result)

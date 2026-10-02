@@ -31,10 +31,15 @@ def sha256(path: Path):
 
 def write_protocol(dataset: Path, protocol: Path):
     examples=load_jsonl(dataset)
+    groups=[
+        hashlib.sha256(f"readiness-source-group-{i}".encode("utf-8")).hexdigest()
+        for i in range(len(examples))
+    ]
     payload=build_personalization_protocol(
         examples,
         dataset_sha256=sha256(dataset),
         policy=PersonalizationSplitPolicy(),
+        source_group_sha256=groups,
     )
     protocol.write_text(json.dumps(payload,ensure_ascii=False),encoding="utf-8")
     return payload
@@ -112,6 +117,8 @@ def test_real_candidate_readiness_passes_only_with_auditable_inputs(tmp_path):
     assert decision.evidence["latent_valid"] is True
     assert decision.evidence["dataset_sha256"]==sha256(paths["dataset"])
     assert decision.evidence["protocol_sha256"]==paths["protocol_payload"]["protocol_sha256"]
+    assert decision.evidence["evidence_quality_status"]=="PASS"
+    assert decision.evidence["evidence_quality_court_sha256"]
 
 
 def test_readiness_blocks_protocol_with_only_one_test_example(tmp_path):
@@ -144,3 +151,21 @@ def test_readiness_blocks_dataset_protocol_drift(tmp_path):
     decision=assess(paths)
     assert decision.status=="REAL_CANDIDATE_INPUTS_BLOCKED"
     assert any(reason.startswith("personalization_protocol_invalid:") for reason in decision.reasons)
+
+
+def test_readiness_blocks_protocol_without_source_group_lineage(tmp_path):
+    paths=fixture(tmp_path,7)
+    examples=load_jsonl(paths["dataset"])
+    protocol=build_personalization_protocol(
+        examples,
+        dataset_sha256=sha256(paths["dataset"]),
+        policy=PersonalizationSplitPolicy(),
+    )
+    paths["protocol"].write_text(
+        json.dumps(protocol,ensure_ascii=False),
+        encoding="utf-8",
+    )
+    decision=assess(paths)
+    assert decision.status=="REAL_CANDIDATE_INPUTS_BLOCKED"
+    assert "evidence_quality:incomplete_source_group_lineage" in decision.reasons
+    assert "evidence_quality:non_grouped_split_strategy" in decision.reasons

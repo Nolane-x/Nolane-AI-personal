@@ -902,3 +902,39 @@ Engineering substrate: **LOCAL-EVIDENCE-WORKSPACE-READY / NO TRAINING AUTHORITY*
 - [ ] run L21 --execute and let held-out quality/resource evidence decide promotion
 
 L27 removes operational fragmentation from the real-data path. It does not fabricate evidence or infer consent, sensitivity, usefulness, representativeness or model quality.
+
+
+## L28 — Evidence Quality & Leakage Court
+
+Engineering substrate: **HELD-OUT-LEAKAGE-COURT-READY / NO MODEL PROMOTION AUTHORITY**.
+
+- [x] preserve per-example hashed source-group lineage from reviewed source IDs
+- [x] raw conversation/source IDs never copied into quality receipts
+- [x] grouped personalization split strategy
+- [x] one source group can belong to only one of train/dev/test
+- [x] deterministic grouped boundary search
+- [x] fewer than three distinct source groups fail closed
+- [x] complete source-group coverage required for real-candidate readiness
+- [x] exact normalized prompt cross-split leakage detection
+- [x] exact prompt+target cross-split leakage detection
+- [x] token-Jaccard + sequence-ratio near-duplicate cross-split detection
+- [x] minimum train/dev/test structural gates
+- [x] privacy-preserving evidence-quality receipt
+- [x] quality court self-digest
+- [x] standalone quality-court CLI
+- [x] L23 builds court before creating a complete pack
+- [x] L23 manifest binds quality receipt SHA + court SHA
+- [x] L23 verification recomputes quality court
+- [x] quality-receipt tamper detection
+- [x] L25 intake binds quality court lineage
+- [x] L27 workbench surfaces quality status + court SHA
+- [x] L21 readiness recomputes quality court from dataset + protocol
+- [x] direct dataset/protocol path cannot bypass source-group quality gate
+- [x] L21 pipeline receipt exposes quality status + court SHA
+- [x] legacy/no-group protocol remains usable only outside real-candidate authority
+- [ ] run L28 on a real user-reviewed workbench
+- [ ] inspect any near-duplicate/source-group blocks manually
+- [ ] finalize a real L25 pack with L28 PASS
+- [ ] execute L21 only after L28 PASS
+
+L28 protects held-out validity. It does not prove that the approved evidence is representative enough, that the model learned personality correctly, or that a candidate deserves promotion.

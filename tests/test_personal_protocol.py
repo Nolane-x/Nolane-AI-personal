@@ -1,4 +1,5 @@
 from copy import deepcopy
+import hashlib
 
 import pytest
 
@@ -41,3 +42,37 @@ def test_personalization_protocol_rejects_dataset_and_row_drift():
     tampered["splits"]["test"][0]["target"] = "changed"
     with pytest.raises(ValueError, match="protocol digest mismatch"):
         verify_personalization_protocol(tampered, dataset_sha256="dataset-a")
+
+
+def test_personalization_protocol_group_split_never_crosses_source_group():
+    examples=_examples(8)
+    groups=[
+        hashlib.sha256(name.encode("utf-8")).hexdigest()
+        for name in ("a","a","b","c","d","e","f","g")
+    ]
+    protocol=build_personalization_protocol(
+        examples,
+        dataset_sha256="dataset-grouped",
+        source_group_sha256=groups,
+    )
+    assert protocol["split_strategy"]=="source_group_chronological_v1"
+    split_groups={
+        split:{row["source_group_sha256"] for row in protocol["splits"][split]}
+        for split in ("train","dev","test")
+    }
+    assert not (split_groups["train"] & split_groups["dev"])
+    assert not (split_groups["train"] & split_groups["test"])
+    assert not (split_groups["dev"] & split_groups["test"])
+    assert protocol["counts"]["test"]>=1
+    verify_personalization_protocol(protocol,dataset_sha256="dataset-grouped")
+
+
+def test_personalization_protocol_rejects_too_few_source_groups():
+    examples=_examples(7)
+    one=hashlib.sha256(b"same-conversation").hexdigest()
+    with pytest.raises(ValueError,match="at least 3 distinct source groups"):
+        build_personalization_protocol(
+            examples,
+            dataset_sha256="dataset-grouped",
+            source_group_sha256=[one]*7,
+        )

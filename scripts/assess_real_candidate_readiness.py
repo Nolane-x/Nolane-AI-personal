@@ -46,6 +46,11 @@ def main() -> int:
         "approved_evidence_manifest_sha256":(
             approved_manifest.get("manifest_sha256") if approved_manifest else None
         ),
+        "approved_evidence_quality_court_sha256":(
+            approved_manifest.get("quality_court_sha256") if approved_manifest else None
+        ),
+        "evidence_quality_status":decision.evidence.get("evidence_quality_status"),
+        "evidence_quality_court_sha256":decision.evidence.get("evidence_quality_court_sha256"),
         "decision":asdict(decision),
     }
     rendered=json.dumps(result,indent=2,sort_keys=True)
