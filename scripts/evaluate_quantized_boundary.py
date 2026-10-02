@@ -6,12 +6,13 @@ import json
 from pathlib import Path
 
 from nolane_personal.factorized_artifact import load_factorized_model
+from nolane_personal.heldout_group_robustness import HeldoutGroupRobustnessPolicy,assess_group_robustness
 from nolane_personal.latent import LatentStore
 from nolane_personal.personal_dataset import encode_chat_example,load_jsonl
 from nolane_personal.personal_protocol import examples_for_split,load_protocol,verify_personalization_protocol
 from nolane_personal.qwen import SYSTEM_PROMPT
 from nolane_personal.quantized_artifact import load_quantized_model
-from nolane_personal.quantized_evaluation import QuantizedQualityEvidence,decide_quantized_quality
+from nolane_personal.quantized_evaluation import QuantizedQualityEvidence,QuantizedQualityThresholds,decide_quantized_quality
 
 
 def sha256_file(path):
@@ -44,7 +45,7 @@ def metrics(model,examples):
             out=model.forward(input_ids=x,labels=y,state=None)
             losses.append(float(out.loss.detach().cpu())*float(weight))
             preds.append(torch.argmax(out.logits,dim=-1).detach().cpu())
-    return sum(losses)/max(1,len(losses)),preds
+    return sum(losses)/max(1,len(losses)),preds,losses
 
 
 def main():
@@ -91,10 +92,10 @@ def main():
     t=encode(tok,test,latent.values,a.max_length)
     g=encode(tok,anchor,latent.values,a.max_length)
 
-    source_nll,source_pred=metrics(source,t)
-    quant_nll,quant_pred=metrics(candidate,t)
-    anchor_source,_=metrics(source,g)
-    anchor_quant,_=metrics(candidate,g)
+    source_nll,source_pred,source_values=metrics(source,t)
+    quant_nll,quant_pred,quant_values=metrics(candidate,t)
+    anchor_source,_,_=metrics(source,g)
+    anchor_quant,_,_=metrics(candidate,g)
     total=agree=0
     for left,right in zip(source_pred,quant_pred):
         total+=left.numel()
@@ -124,6 +125,15 @@ def main():
         runtime_requires_transformers=False,
     )
     decision=decide_quantized_quality(ev)
+    group_robustness=assess_group_robustness(
+        protocol,
+        split="test",
+        reference_values=source_values,
+        candidate_values=quant_values,
+        policy=HeldoutGroupRobustnessPolicy(
+            max_worst_group_regression=QuantizedQualityThresholds().max_nll_regression_vs_factorized,
+        ),
+    )
     result={
         "schema":"NOLANE-L19-QUANTIZED-QUALITY-EVAL-V1",
         "authority":"EVALUATION_ONLY_UNPROMOTED",
@@ -131,6 +141,7 @@ def main():
         "source_factorized_checkpoint_sha256":smeta["checkpoint_sha256"],
         "source_l16_checkpoint_sha256":smeta["source_l16_checkpoint_sha256"],
         "decision":decision,
+        "group_robustness":group_robustness,
     }
     rendered=json.dumps(result,indent=2,sort_keys=True)
     if a.output:
@@ -140,7 +151,10 @@ def main():
         path.parent.mkdir(parents=True,exist_ok=True)
         path.write_text(rendered+"\n",encoding="utf-8")
     print(rendered)
-    return 0 if decision["status"]=="QUANTIZED_FACTOR_QUALITY_PASS" else 2
+    return 0 if (
+        decision["status"]=="QUANTIZED_FACTOR_QUALITY_PASS"
+        and group_robustness["status"]=="PASS"
+    ) else 2
 
 
 if __name__=="__main__":
