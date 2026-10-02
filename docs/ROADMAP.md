@@ -1105,3 +1105,36 @@ Engineering substrate: **CRASH-RECOVERABLE-POINTER-REGISTRY-READY / NO AUTONOMOU
 
 L33 makes a model update crash-recoverable without rewriting history. It deliberately does not grant an autonomous updater production authority.
 
+## L34 — Serving Reload Convergence
+
+Engineering substrate: **SPLIT-BRAIN-SAFE-SERVING-BARRIER-READY / NO PROMOTION DECISION AUTHORITY**.
+
+- [x] process-local serving leases
+- [x] lease self-digest
+- [x] loaded generation/pointer/checkpoint binding
+- [x] hashed process identity in receipts
+- [x] heartbeat + lease expiration
+- [x] minimum-live-process policy
+- [x] reload plan bound to one process and one target pointer
+- [x] reload ACK rejects stale target after active changes
+- [x] wrong-checkpoint loader rejected
+- [x] split-brain detection across live leases
+- [x] old-generation process enters DRAIN_RELOAD_REQUIRED
+- [x] early new-generation process enters WAITING_FOR_PEERS
+- [x] SERVE granted only after full live-process convergence
+- [x] active pointer double-read during convergence
+- [x] active-change race fails closed
+- [x] process-local model swap lock
+- [x] model_for_request enforces serving gate
+- [x] real factorized checkpoint loader helper
+- [x] local serving coordination CLI
+- [x] CI multi-worker convergence court
+- [ ] run L34 with real factorized serving processes
+- [ ] test process kill/restart during real reload
+- [ ] test Windows/Linux filesystem + process timing differences
+- [ ] bind L32 evidence into explicit promotion authorization
+- [ ] add promotion policy that L33 must verify before begin/commit
+- [ ] expose production-ready reload metrics only after real multi-process court passes
+
+L34 prevents mixed live checkpoint generations from serving simultaneously when all serving requests obey the gate.
+
