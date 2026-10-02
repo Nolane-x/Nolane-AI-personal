@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.34.0
+## Current executable milestone: Living Runtime v0.35.0
 
 The runtime now contains two very different compute scales:
 
@@ -1127,6 +1127,28 @@ B reloads
 `ServingSession.model_for_request()` enforces this barrier directly; a model object is not returned while the process is drained, expired, or waiting for peers.
 
 See `docs/L34-SERVING-RELOAD-CONVERGENCE.md`.
+
+### L35 Evidence-Bound Promotion Authority
+
+L35 closes the authority gap between offline continual-learning evidence and the transactional checkpoint registry.
+
+A valid L31 candidate is no longer sufficient for the intended registry CLI. Promotion requires a short-lived authorization derived from the complete L32 multicycle evidence, the fixed initial-vs-final retention court, and an explicit local operator request that binds the exact production parent and final candidate.
+
+This also handles an important multicycle case correctly: production can remain on checkpoint 0 while experiments learn `0 -> 1 -> 2` offline. If the full chain passes and checkpoint 2 remains good on the fixed checkpoint-0 retention panel, L35 can authorize one atomic `0 -> 2` L33 transaction. Intermediate checkpoint 1 never needs production authority.
+
+The chain is recomputed from its cycle receipts; a standalone chain hash is not trusted. Authorization is rechecked at begin, verify and commit, expires by default after one hour, and cannot be replayed into a second transaction.
+
+```bash
+python scripts/authorize_continual_promotion.py request ... --approve
+python scripts/authorize_continual_promotion.py authorize ...
+python scripts/manage_checkpoint_registry.py begin \
+  --candidate runtime-data/final-l31-candidate \
+  --authorization runtime-data/l35/promotion-authorization.json
+```
+
+CI still uses synthetic evidence, so v0.35.0 provides the authority mechanism without claiming real-data production promotion has been earned.
+
+See `docs/L35-EVIDENCE-BOUND-PROMOTION-AUTHORITY.md`.
 
 ## Bootstrap Qwen
 
