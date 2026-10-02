@@ -938,3 +938,41 @@ Engineering substrate: **HELD-OUT-LEAKAGE-COURT-READY / NO MODEL PROMOTION AUTHO
 - [ ] execute L21 only after L28 PASS
 
 L28 protects held-out validity. It does not prove that the approved evidence is representative enough, that the model learned personality correctly, or that a candidate deserves promotion.
+
+
+## L29 — Held-out Group Robustness Court
+
+Engineering substrate: **WORST-GROUP-HELDOUT-COURT-READY / NO MODEL PROMOTION BY AVERAGE ONLY**.
+
+- [x] generic held-out source-group robustness module
+- [x] privacy-preserving local group aliases
+- [x] per-group reference mean
+- [x] per-group candidate mean
+- [x] per-group regression
+- [x] overall regression retained for context
+- [x] worst/best/mean group regression
+- [x] group-regression dispersion
+- [x] minimum two held-out source groups
+- [x] real-candidate readiness blocks one-group test evidence before training
+- [x] L15 per-example native/L14 NLL capture
+- [x] L15 worst-group threshold reuses existing L14 non-inferiority tolerance
+- [x] L17/L18 per-example factorized/L16 NLL capture
+- [x] L17/L18 worst-group threshold reuses existing L16 non-inferiority tolerance
+- [x] L19 per-example quantized/source-factorized NLL capture
+- [x] L19 worst-group threshold reuses existing factorized non-inferiority tolerance
+- [x] L15/L17/L19 quality evaluator exit status requires group PASS
+- [x] robustness receipt self-digest
+- [x] robustness receipt tamper court
+- [x] promotion quality status requires valid L29 PASS receipt
+- [x] promotion fails closed on missing group evidence
+- [x] promotion fails closed on blocked group evidence
+- [x] promotion fails closed on tampered group evidence
+- [x] promotion output carries robustness status + court SHA
+- [x] regression test where global average passes but one group fails
+- [x] receipts omit raw prompt/target and source-group hashes
+- [ ] run L29 on a real user-reviewed held-out set
+- [ ] inspect worst-group failures before any promotion
+- [ ] increase independent test-group coverage if readiness blocks
+- [ ] execute full L21 only when L28 + L29 evidence requirements are satisfied
+
+L29 is not cross-validation. It evaluates the frozen held-out source groups that the candidate has not trained on, and deliberately avoids pretending alternate already-seen groups are independent folds.
