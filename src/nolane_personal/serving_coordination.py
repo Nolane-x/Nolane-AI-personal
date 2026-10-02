@@ -37,6 +37,16 @@ def _parse_time(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _validate_sha256(value: Any, *, name: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{name} must be a sha256 hex string")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a sha256 hex string") from exc
+    return value
+
+
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     handle = tempfile.NamedTemporaryFile(
@@ -92,6 +102,49 @@ class ServingLeasePolicy:
             raise ValueError("lease_seconds must be positive")
         if self.min_live_processes < 1:
             raise ValueError("min_live_processes must be >=1")
+
+
+def verify_serving_convergence_receipt(
+    receipt: dict[str, Any],
+    *,
+    require_pass: bool = True,
+) -> dict[str, Any]:
+    _verify_digest(
+        receipt,
+        schema=CONVERGENCE_SCHEMA,
+        digest_field="convergence_sha256",
+        what="serving convergence receipt",
+    )
+    if receipt.get("authority") != AUTHORITY:
+        raise ValueError("serving convergence authority mismatch")
+    if receipt.get("status") not in {"PASS", "BLOCKED"}:
+        raise ValueError("serving convergence status invalid")
+    if not isinstance(receipt.get("reasons"), list):
+        raise ValueError("serving convergence reasons invalid")
+    policy = ServingLeasePolicy(**dict(receipt.get("policy", {})))
+    policy.validate()
+    if int(receipt.get("active_generation", -1)) < 0:
+        raise ValueError("serving convergence generation invalid")
+    _validate_sha256(
+        receipt.get("active_pointer_sha256"),
+        name="active_pointer_sha256",
+    )
+    _validate_sha256(
+        receipt.get("active_checkpoint_sha256"),
+        name="active_checkpoint_sha256",
+    )
+    _validate_sha256(
+        receipt.get("convergence_sha256"),
+        name="convergence_sha256",
+    )
+    _parse_time(str(receipt.get("assessed_at")))
+    if int(receipt.get("live_processes", -1)) < 0:
+        raise ValueError("serving convergence live_processes invalid")
+    if int(receipt.get("expired_processes", -1)) < 0:
+        raise ValueError("serving convergence expired_processes invalid")
+    if require_pass and receipt.get("status") != "PASS":
+        raise ValueError("serving convergence is not PASS")
+    return receipt
 
 
 class ServingCoordinator:
@@ -341,6 +394,7 @@ class ServingCoordinator:
                 "active_generation": active["generation"],
                 "active_pointer_sha256": active["pointer_sha256"],
                 "active_checkpoint_sha256": active["checkpoint_sha256"],
+                "assessed_at": current.isoformat(),
                 "live_processes": len(live),
                 "expired_processes": expired,
                 "processes": process_rows,
