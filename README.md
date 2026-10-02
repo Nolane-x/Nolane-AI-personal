@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.38.0
+## Current executable milestone: Living Runtime v0.38.1
 
 The runtime now contains two very different compute scales:
 
@@ -1217,6 +1217,8 @@ python scripts/train_continual_cortex_update.py \
 ```
 
 L38 artifacts remain explicitly unpromoted. The current L32/L35 production evidence chain understands L31 boundary-update cycles only; L38 will not masquerade as an L31 cycle to bypass that authority boundary.
+
+v0.38.1 separates the self-digested L38 training receipt from the independently digested dataset/protocol lineage and verifies the full saved run/artifact binding before persistence.
 
 See `docs/L38-RECURRENT-CORTEX-CONTINUAL-PLASTICITY.md`.
 
