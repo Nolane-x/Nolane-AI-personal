@@ -647,15 +647,23 @@ class CheckpointRegistry:
             if not events or events[0]["state"] != "PREPARED":
                 raise RuntimeError("transaction is not prepared")
             if any(
-                event["state"] in {"COMMITTED", "ABORTED", "RECOVERED_COMMITTED", "RECOVERED_ABORTED"}
+                event["state"] in {
+                    "COMMITTED",
+                    "ABORTED",
+                    "RECOVERED_COMMITTED",
+                    "RECOVERED_ABORTED",
+                }
                 for event in events
             ):
                 raise RuntimeError("transaction is already final")
             prepared = events[0]["details"]
             active = self.active_pointer()
             if active["pointer_sha256"] != prepared["parent_pointer_sha256"]:
-                raise RuntimeError("active pointer changed before transaction verification")
+                raise RuntimeError(
+                    "active pointer changed before transaction verification"
+                )
 
+            authorization = None
             auth_sha = prepared.get("promotion_authorization_sha256")
             if auth_sha is not None:
                 auth_path = (
@@ -664,7 +672,7 @@ class CheckpointRegistry:
                 )
                 if not auth_path.exists():
                     raise RuntimeError("promotion authorization file missing")
-                authorization = verify_promotion_authorization(
+                authorization = verify_any_promotion_authorization(
                     _read_json(auth_path),
                     now=now,
                 )
@@ -682,19 +690,40 @@ class CheckpointRegistry:
                     raise RuntimeError("promotion authorization candidate drift")
 
             staging = self._tx_dir(transaction_id) / "staging"
-            evidence = verify_l31_candidate_bundle(staging)
+            if prepared.get("candidate_run_schema") is not None:
+                evidence = verify_continual_candidate_bundle(staging)
+                if evidence["run_schema"] != prepared["candidate_run_schema"]:
+                    raise RuntimeError("staged candidate run schema drift")
+                if (
+                    evidence["run_receipt_sha256"]
+                    != prepared["candidate_run_receipt_sha256"]
+                ):
+                    raise RuntimeError("staged candidate run receipt drift")
+            else:
+                evidence = verify_l31_candidate_bundle(staging)
+                if (
+                    evidence["run_receipt_sha256"]
+                    != prepared["l31_run_receipt_sha256"]
+                ):
+                    raise RuntimeError("staged L31 receipt drift")
+
             if evidence["checkpoint_sha256"] != prepared["candidate_checkpoint_sha256"]:
                 raise RuntimeError("staged candidate checkpoint drift")
             if evidence["bundle_sha256"] != prepared["candidate_bundle_sha256"]:
                 raise RuntimeError("staged candidate bundle drift")
-            if evidence["run_receipt_sha256"] != prepared["l31_run_receipt_sha256"]:
-                raise RuntimeError("staged L31 receipt drift")
+            if authorization is not None:
+                _verify_authorized_candidate_state(
+                    authorization,
+                    evidence,
+                )
+
             return self._append_event(
                 transaction_id,
                 state="VERIFIED",
                 details={
                     "candidate_checkpoint_sha256": evidence["checkpoint_sha256"],
                     "candidate_bundle_sha256": evidence["bundle_sha256"],
+                    "candidate_run_schema": evidence["run_schema"],
                 },
             )
 
@@ -716,13 +745,14 @@ class CheckpointRegistry:
             if active["pointer_sha256"] != prepared["parent_pointer_sha256"]:
                 raise RuntimeError("active pointer changed before commit")
 
+            authorization = None
             auth_sha = prepared.get("promotion_authorization_sha256")
             if auth_sha is not None:
                 auth_path = (
                     self._tx_dir(transaction_id)
                     / "promotion-authorization.json"
                 )
-                authorization = verify_promotion_authorization(
+                authorization = verify_any_promotion_authorization(
                     _read_json(auth_path),
                     now=now,
                 )
@@ -740,9 +770,31 @@ class CheckpointRegistry:
                     raise RuntimeError("promotion authorization candidate drift")
 
             staging = self._tx_dir(transaction_id) / "staging"
-            evidence = verify_l31_candidate_bundle(staging)
+            if prepared.get("candidate_run_schema") is not None:
+                evidence = verify_continual_candidate_bundle(staging)
+                if evidence["run_schema"] != prepared["candidate_run_schema"]:
+                    raise RuntimeError("candidate run schema drift before commit")
+                if (
+                    evidence["run_receipt_sha256"]
+                    != prepared["candidate_run_receipt_sha256"]
+                ):
+                    raise RuntimeError(
+                        "candidate run receipt drift before commit"
+                    )
+            else:
+                evidence = verify_l31_candidate_bundle(staging)
+                if (
+                    evidence["run_receipt_sha256"]
+                    != prepared["l31_run_receipt_sha256"]
+                ):
+                    raise RuntimeError("L31 run receipt drift before commit")
             if evidence["bundle_sha256"] != prepared["candidate_bundle_sha256"]:
                 raise RuntimeError("candidate bundle drift before commit")
+            if authorization is not None:
+                _verify_authorized_candidate_state(
+                    authorization,
+                    evidence,
+                )
             self._install_bundle(staging, evidence["checkpoint_sha256"])
             if fault_hook is not None:
                 fault_hook(
@@ -1035,7 +1087,7 @@ class CheckpointRegistry:
             auth_path = tx_dir / "promotion-authorization.json"
             if not auth_path.exists():
                 raise ValueError("authorized transaction missing authorization")
-            authorization = verify_promotion_authorization(
+            authorization = verify_any_promotion_authorization(
                 _read_json(auth_path),
                 check_expiry=False,
             )
