@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .multicycle_continual import verify_l31_run_receipt
+from .promotion_authority import verify_promotion_authorization
 from .state import utc_now_iso
 from .store import canonical_json, payload_digest
 
@@ -368,6 +369,94 @@ class CheckpointRegistry:
         _atomic_write_json(path, event)
         return event
 
+    def _authorization_seen(self, authorization_sha256: str) -> bool:
+        for tx_dir in sorted(
+            p for p in self.transactions_dir.iterdir() if p.is_dir()
+        ):
+            events = self.transaction_events(tx_dir.name)
+            if not events:
+                continue
+            if (
+                events[0].get("details", {}).get(
+                    "promotion_authorization_sha256"
+                )
+                == authorization_sha256
+            ):
+                return True
+        return False
+
+    def begin_authorized_update(
+        self,
+        candidate_bundle: str | Path,
+        authorization: dict[str, Any],
+        *,
+        now: str | None = None,
+    ) -> str:
+        with self.lock():
+            verified_auth = verify_promotion_authorization(
+                authorization,
+                now=now,
+            )
+            auth_sha = str(verified_auth["authorization_sha256"])
+            if self._authorization_seen(auth_sha):
+                raise RuntimeError("promotion authorization has already been used")
+
+            parent = self.active_pointer()
+            if (
+                verified_auth["active_parent_checkpoint_sha256"]
+                != parent["checkpoint_sha256"]
+            ):
+                raise ValueError(
+                    "promotion authorization parent is not the active checkpoint"
+                )
+
+            source = Path(candidate_bundle)
+            evidence = verify_l31_candidate_bundle(source)
+            if (
+                verified_auth["candidate_checkpoint_sha256"]
+                != evidence["checkpoint_sha256"]
+            ):
+                raise ValueError(
+                    "promotion authorization candidate does not match bundle"
+                )
+
+            transaction_id = payload_digest(
+                {
+                    "parent_pointer_sha256": parent["pointer_sha256"],
+                    "candidate_checkpoint_sha256": evidence["checkpoint_sha256"],
+                    "candidate_bundle_sha256": evidence["bundle_sha256"],
+                    "l31_run_receipt_sha256": evidence["run_receipt_sha256"],
+                    "promotion_authorization_sha256": auth_sha,
+                }
+            )
+            tx_dir = self._tx_dir(transaction_id)
+            if tx_dir.exists():
+                raise RuntimeError("identical checkpoint transaction already exists")
+            staging = tx_dir / "staging"
+            staging.parent.mkdir(parents=True, exist_ok=False)
+            shutil.copytree(source, staging)
+            staged = verify_l31_candidate_bundle(staging)
+            if staged["bundle_sha256"] != evidence["bundle_sha256"]:
+                raise RuntimeError("candidate bundle changed while staging")
+            _atomic_write_json(
+                tx_dir / "promotion-authorization.json",
+                verified_auth,
+            )
+            self._append_event(
+                transaction_id,
+                state="PREPARED",
+                details={
+                    "parent_pointer_sha256": parent["pointer_sha256"],
+                    "parent_generation": parent["generation"],
+                    "parent_checkpoint_sha256": parent["checkpoint_sha256"],
+                    "candidate_checkpoint_sha256": evidence["checkpoint_sha256"],
+                    "candidate_bundle_sha256": evidence["bundle_sha256"],
+                    "l31_run_receipt_sha256": evidence["run_receipt_sha256"],
+                    "promotion_authorization_sha256": auth_sha,
+                },
+            )
+            return transaction_id
+
     def begin_l31_update(self, candidate_bundle: str | Path) -> str:
         with self.lock():
             parent = self.active_pointer()
@@ -411,7 +500,12 @@ class CheckpointRegistry:
             )
             return transaction_id
 
-    def verify_update(self, transaction_id: str) -> dict[str, Any]:
+    def verify_update(
+        self,
+        transaction_id: str,
+        *,
+        now: str | None = None,
+    ) -> dict[str, Any]:
         with self.lock():
             events = self.transaction_events(transaction_id)
             if not events or events[0]["state"] != "PREPARED":
@@ -425,6 +519,32 @@ class CheckpointRegistry:
             active = self.active_pointer()
             if active["pointer_sha256"] != prepared["parent_pointer_sha256"]:
                 raise RuntimeError("active pointer changed before transaction verification")
+
+            auth_sha = prepared.get("promotion_authorization_sha256")
+            if auth_sha is not None:
+                auth_path = (
+                    self._tx_dir(transaction_id)
+                    / "promotion-authorization.json"
+                )
+                if not auth_path.exists():
+                    raise RuntimeError("promotion authorization file missing")
+                authorization = verify_promotion_authorization(
+                    _read_json(auth_path),
+                    now=now,
+                )
+                if authorization["authorization_sha256"] != auth_sha:
+                    raise RuntimeError("promotion authorization digest drift")
+                if (
+                    authorization["active_parent_checkpoint_sha256"]
+                    != active["checkpoint_sha256"]
+                ):
+                    raise RuntimeError("promotion authorization parent drift")
+                if (
+                    authorization["candidate_checkpoint_sha256"]
+                    != prepared["candidate_checkpoint_sha256"]
+                ):
+                    raise RuntimeError("promotion authorization candidate drift")
+
             staging = self._tx_dir(transaction_id) / "staging"
             evidence = verify_l31_candidate_bundle(staging)
             if evidence["checkpoint_sha256"] != prepared["candidate_checkpoint_sha256"]:
@@ -442,7 +562,12 @@ class CheckpointRegistry:
                 },
             )
 
-    def commit_update(self, transaction_id: str) -> dict[str, Any]:
+    def commit_update(
+        self,
+        transaction_id: str,
+        *,
+        now: str | None = None,
+    ) -> dict[str, Any]:
         with self.lock():
             events = self.transaction_events(transaction_id)
             if not events:
@@ -453,6 +578,30 @@ class CheckpointRegistry:
             active = self.active_pointer()
             if active["pointer_sha256"] != prepared["parent_pointer_sha256"]:
                 raise RuntimeError("active pointer changed before commit")
+
+            auth_sha = prepared.get("promotion_authorization_sha256")
+            if auth_sha is not None:
+                auth_path = (
+                    self._tx_dir(transaction_id)
+                    / "promotion-authorization.json"
+                )
+                authorization = verify_promotion_authorization(
+                    _read_json(auth_path),
+                    now=now,
+                )
+                if authorization["authorization_sha256"] != auth_sha:
+                    raise RuntimeError("promotion authorization digest drift")
+                if (
+                    authorization["active_parent_checkpoint_sha256"]
+                    != active["checkpoint_sha256"]
+                ):
+                    raise RuntimeError("promotion authorization parent drift")
+                if (
+                    authorization["candidate_checkpoint_sha256"]
+                    != prepared["candidate_checkpoint_sha256"]
+                ):
+                    raise RuntimeError("promotion authorization candidate drift")
+
             staging = self._tx_dir(transaction_id) / "staging"
             evidence = verify_l31_candidate_bundle(staging)
             if evidence["bundle_sha256"] != prepared["candidate_bundle_sha256"]:
@@ -656,6 +805,29 @@ class CheckpointRegistry:
         if active != _verify_pointer(_read_json(snapshots[-1])):
             raise ValueError("active pointer is not latest history generation")
 
+        authorization_count = 0
+        for tx_dir in sorted(
+            p for p in self.transactions_dir.iterdir() if p.is_dir()
+        ):
+            events = self.transaction_events(tx_dir.name)
+            if not events:
+                continue
+            auth_sha = events[0].get("details", {}).get(
+                "promotion_authorization_sha256"
+            )
+            if auth_sha is None:
+                continue
+            auth_path = tx_dir / "promotion-authorization.json"
+            if not auth_path.exists():
+                raise ValueError("authorized transaction missing authorization")
+            authorization = verify_promotion_authorization(
+                _read_json(auth_path),
+                check_expiry=False,
+            )
+            if authorization["authorization_sha256"] != auth_sha:
+                raise ValueError("authorized transaction authorization mismatch")
+            authorization_count += 1
+
         rollback_count = 0
         for path in sorted(self.rollbacks_dir.glob("*.json")):
             receipt = verify_rollback_receipt(_read_json(path))
@@ -684,4 +856,5 @@ class CheckpointRegistry:
             "active_checkpoint_sha256": active["checkpoint_sha256"],
             "active_pointer_sha256": active["pointer_sha256"],
             "rollback_receipts": rollback_count,
+            "promotion_authorizations": authorization_count,
         }
