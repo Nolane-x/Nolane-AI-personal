@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.37.0
+## Current executable milestone: Living Runtime v0.38.0
 
 The runtime now contains two very different compute scales:
 
@@ -1191,6 +1191,34 @@ A dedicated GitHub Actions matrix executes the hard-kill court on **Ubuntu and W
 These are genuine process-kill/filesystem courts, but CI still uses synthetic checkpoint bundles rather than large real trained model files.
 
 See `docs/L37-CROSS-PLATFORM-HARD-KILL-COURT.md`.
+
+### L38 Recurrent Cortex Continual Plasticity
+
+L38 moves continual learning inside the Nolane-owned recurrent cognition. Unlike L31, which updates only the low-rank language boundary, L38 freezes the entire language boundary and trains only the `DeepRecurrentStateSpaceCortex`.
+
+The update still uses strict evidence separation:
+
+```text
+old train+dev -> rehearsal + frozen-reference distillation
+old test      -> held-out retention
+new train     -> recurrent-cortex adaptation
+new test      -> held-out adaptation
+```
+
+A small parameter anchor discourages unnecessary cortex drift, but the real decision remains the held-out L30 stability/plasticity court. The candidate boundary must have zero gradients and an identical digest after training; the recurrent cortex must receive finite gradients and actually change.
+
+```bash
+python scripts/train_continual_cortex_update.py \
+  --factorized runtime-data/l17-factorized-trained/factorized-nolane.pt \
+  --retention-dataset /private/old/personalization.jsonl \
+  --retention-protocol /private/old/personalization-protocol-v1.json \
+  --adaptation-dataset /private/new/personalization.jsonl \
+  --adaptation-protocol /private/new/personalization-protocol-v1.json
+```
+
+L38 artifacts remain explicitly unpromoted. The current L32/L35 production evidence chain understands L31 boundary-update cycles only; L38 will not masquerade as an L31 cycle to bypass that authority boundary.
+
+See `docs/L38-RECURRENT-CORTEX-CONTINUAL-PLASTICITY.md`.
 
 ## Bootstrap Qwen
 
