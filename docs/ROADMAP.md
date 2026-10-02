@@ -1289,3 +1289,38 @@ Engineering substrate: **INTERNAL-RECURRENT-PLASTICITY-READY / UNPROMOTED**.
 
 L38 makes the Nolane-owned recurrent cognition itself plastic. It remains unpromoted because the existing production evidence chain intentionally understands only L31 boundary-update cycles.
 
+## L39 — Unified Continual Model Ledger
+
+Engineering substrate: **MIXED-PLASTICITY-LONG-HORIZON-READY / NO PRODUCTION AUTHORITY**.
+
+- [x] explicit L31 boundary-update normalization
+- [x] explicit L38 recurrent-cortex-update normalization
+- [x] native L31 verifier reused without schema weakening
+- [x] L38 run receipt + lineage verifier
+- [x] L38 composite model-state digest reverified
+- [x] L38 L30 pre/post identity bound to composite state
+- [x] artifact SHA continuity across mixed update types
+- [x] boundary-state continuity across mixed update types
+- [x] recurrent-cortex-state continuity across mixed update types
+- [x] composite model-state continuity across mixed update types
+- [x] unique adaptation protocol required across all update types
+- [x] at least one recurrent-cortex cycle required by default
+- [x] real initial-vs-final fixed-panel evaluator permits both boundary and cortex plasticity
+- [x] endpoint evaluator requires same L16 ancestry
+- [x] endpoint evaluator requires stable boundary/cortex architecture configs
+- [x] endpoint evaluator requires stable recurrent-state carry policy
+- [x] L28-approved fixed held-out panel remains mandatory
+- [x] unified chain self-digest
+- [x] mixed L31 -> L38 CI court
+- [x] cortex discontinuity court
+- [x] model-state discontinuity court
+- [x] cross-update adaptation replay court
+- [x] L31-only rejection court for recurrent-plasticity evidence
+- [ ] execute real mixed L31/L38 multi-window learning chain
+- [ ] pass real initial-vs-final fixed panel after 5+ mixed cycles
+- [ ] extend promotion authorization to L39 evidence
+- [ ] bind recurrent-cortex plasticity into L33/L36 production ceremony
+- [ ] run real serving + hard-kill court after recurrent-cortex promotion
+
+L39 makes the continual-learning ledger understand the whole factorized Nolane model state. It does not grant L38 artifacts production authority.
+
