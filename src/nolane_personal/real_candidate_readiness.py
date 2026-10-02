@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .evidence_quality import assess_evidence_quality
 from .latent import LatentStore
 from .personal_dataset import load_jsonl
 from .personal_protocol import load_protocol, verify_personalization_protocol
@@ -30,6 +31,9 @@ class RealCandidateReadinessEvidence:
     train_examples: int
     dev_examples: int
     test_examples: int
+    evidence_quality_status: str | None
+    evidence_quality_court_sha256: str | None
+    evidence_quality_reasons: list[str]
     anchor_examples: int
     latent_present: bool
     latent_valid: bool
@@ -92,6 +96,9 @@ def assess_real_candidate_readiness(
     dataset_sha=None
     protocol_sha=None
     dataset_examples=train_examples=dev_examples=test_examples=0
+    evidence_quality_status=None
+    evidence_quality_court_sha256=None
+    evidence_quality_reasons: list[str]=[]
 
     if not dataset_path.exists():
         reasons.append("personalization_dataset_missing")
@@ -112,6 +119,15 @@ def assess_real_candidate_readiness(
             test_examples=int(counts.get("test",0))
             if int(counts.get("total",0))!=dataset_examples:
                 reasons.append("protocol_dataset_count_mismatch")
+            quality=assess_evidence_quality(examples,frozen)
+            evidence_quality_status=str(quality["status"])
+            evidence_quality_court_sha256=str(quality["court_sha256"])
+            evidence_quality_reasons=list(quality["reasons"])
+            if evidence_quality_status!="PASS":
+                reasons.extend(
+                    f"evidence_quality:{reason}"
+                    for reason in evidence_quality_reasons
+                )
         except Exception as exc:
             reasons.append(f"personalization_protocol_invalid:{type(exc).__name__}")
 
@@ -192,6 +208,9 @@ def assess_real_candidate_readiness(
         train_examples=train_examples,
         dev_examples=dev_examples,
         test_examples=test_examples,
+        evidence_quality_status=evidence_quality_status,
+        evidence_quality_court_sha256=evidence_quality_court_sha256,
+        evidence_quality_reasons=evidence_quality_reasons,
         anchor_examples=anchor_examples,
         latent_present=latent_present,
         latent_valid=latent_valid,
