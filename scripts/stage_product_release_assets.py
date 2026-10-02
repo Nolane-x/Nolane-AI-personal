@@ -6,6 +6,8 @@ import json
 import shutil
 from pathlib import Path
 
+from nolane_personal.promotion_ceremony import verify_promotion_ceremony_receipt
+
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -43,8 +45,7 @@ def main() -> int:
     parser.add_argument("--runtime-dir", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--model-sha256", required=True)
-    parser.add_argument("--tokenizer-dir", required=True)
-    parser.add_argument("--tokenizer-archive-sha256", default="")
+    parser.add_argument("--tokenizer-dir", required=True)\n    parser.add_argument("--ceremony", required=True)\n    parser.add_argument("--tokenizer-archive-sha256", default="")
     parser.add_argument(
         "--resources",
         default="apps/product-client/src-tauri/resources",
@@ -54,6 +55,7 @@ def main() -> int:
     runtime_source = Path(args.runtime_dir)
     model_source = Path(args.model)
     tokenizer_source = Path(args.tokenizer_dir)
+    ceremony_source = Path(args.ceremony)
     resources = Path(args.resources)
     runtime_dest = resources / "runtime"
     model_dest = resources / "model"
@@ -73,6 +75,17 @@ def main() -> int:
         raise SystemExit(
             "release model SHA-256 mismatch: "
             f"expected={expected_model} actual={actual_model}"
+        )
+
+    if not ceremony_source.is_file():
+        raise SystemExit(f"promotion ceremony missing: {ceremony_source}")
+    ceremony = json.loads(ceremony_source.read_text(encoding="utf-8"))
+    verify_promotion_ceremony_receipt(ceremony, require_complete=True)
+    if ceremony["candidate_checkpoint_sha256"] != actual_model:
+        raise SystemExit(
+            "promotion ceremony checkpoint mismatch: "
+            f"ceremony={ceremony['candidate_checkpoint_sha256']} "
+            f"model={actual_model}"
         )
 
     required_tokenizer = ("tokenizer_config.json", "tokenizer.json")
@@ -96,6 +109,8 @@ def main() -> int:
             runtime_dest / "nolane-product-runtime.exe"
         ),
         "model_checkpoint_sha256": actual_model,
+        "promotion_ceremony_sha256": ceremony["ceremony_sha256"],
+        "promotion_authorization_sha256": ceremony["authorization_sha256"],
         "tokenizer_config_sha256": sha256_file(
             tokenizer_dest / "tokenizer_config.json"
         ),
