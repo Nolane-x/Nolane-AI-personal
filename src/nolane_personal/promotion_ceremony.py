@@ -85,12 +85,15 @@ def verify_promotion_ceremony_receipt(
         "ceremony_sha256",
     ):
         _validate_sha256(receipt.get(key), name=key)
+    if not str(receipt.get("transaction_id", "")).strip():
+        raise ValueError("promotion ceremony transaction_id missing")
     if int(receipt.get("pointer_generation", -1)) < 0:
         raise ValueError("promotion ceremony generation invalid")
     for key in (
         "authorization_issued_at",
         "authorization_expires_at",
         "transaction_prepared_at",
+        "transaction_committed_at",
         "pointer_created_at",
         "serving_convergence_assessed_at",
         "ceremony_at",
