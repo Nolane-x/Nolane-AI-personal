@@ -19,5 +19,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e '.[dev]'
-      - run: python -m pytest -q tests/test_promotion_authority.py -k "l37"
+      - run: >-
+          python -m pytest -q
+          tests/test_promotion_authority.py
+          tests/test_unified_promotion_authority.py
+          -k "l37 or l41_hard_kill"
       - run: python -m compileall -q src scripts
