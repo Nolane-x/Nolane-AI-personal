@@ -47,3 +47,4 @@ jobs:
       - run: python scripts/audit_deep_recurrent_cortex.py
       - run: python scripts/audit_factorized_boundary.py
       - run: python scripts/audit_quantized_boundary.py
+      - run: python scripts/audit_packed_int4_boundary.py
