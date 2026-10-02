@@ -1037,3 +1037,35 @@ Engineering substrate: **REAL-SEQUENTIAL-UPDATE-COURT-READY / UNPROMOTED**.
 
 L31 makes continual learning a real neural update path rather than only a court definition. It remains unpromoted until real held-out old/new evidence passes.
 
+## L32 — Multi-Cycle Continual Learning Ledger
+
+Engineering substrate: **MULTICYCLE-CHAIN-AND-FIXED-PANEL-READY / NO PRODUCTION AUTHORITY**.
+
+- [x] L31 run receipts persist beside each candidate artifact
+- [x] exact parent artifact SHA -> next parent SHA continuity
+- [x] exact candidate boundary-after -> next boundary-before continuity
+- [x] every embedded L30 receipt must be self-digest valid and PASS
+- [x] every saved artifact must contain the exact claimed L31 training receipt
+- [x] saved boundary/cortex state digests must match L31 training evidence
+- [x] L31 lineage digest verified for every cycle
+- [x] fresh adaptation protocol required per cycle by default
+- [x] moving-window retention/adaptation statistics recorded across cycles
+- [x] fixed held-out retention panel compares final checkpoint directly to initial checkpoint
+- [x] fixed panel requires valid grouped personalization protocol
+- [x] fixed panel requires L28 structural quality PASS in the real evaluator
+- [x] fixed panel gates overall and worst-group cumulative regression
+- [x] initial/final checkpoints must share L16 ancestry
+- [x] recurrent cortex must remain identical across boundary-only update chain
+- [x] fixed-panel endpoints must exactly match multicycle chain endpoints
+- [x] self-digested multicycle chain receipt
+- [x] CLI for real checkpoint fixed-panel evaluation
+- [x] CLI for ordered multicycle verification
+- [x] CI courts for artifact discontinuity, neural-state discontinuity, replayed adaptation windows and fixed-panel failure
+- [ ] execute at least two real approved L31 update cycles
+- [ ] pass a real initial-vs-final fixed retention panel
+- [ ] extend real run to 5+ update windows
+- [ ] add transactional interruption recovery and atomic rollback
+- [ ] define production promotion authority only after repeated real multicycle PASS
+
+L32 prevents individually acceptable updates from being mistaken for lifelong learning when their checkpoint history is broken or their cumulative endpoint forgets the original held-out panel.
+
