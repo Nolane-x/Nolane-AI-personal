@@ -1,5 +1,8 @@
 import hashlib
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -39,6 +42,9 @@ from nolane_personal.transactional_registry import (
     CheckpointRegistry,
     sha256_file,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def digest(value: str) -> str:
@@ -660,3 +666,206 @@ def test_l36_registry_lookup_helpers_are_evidence_verified(tmp_path):
     assert registry.pointer_by_sha256(pointer["pointer_sha256"]) == pointer
     with pytest.raises(ValueError, match="unknown checkpoint pointer"):
         registry.pointer_by_sha256(digest("unknown-pointer"))
+
+
+
+def run_crash_probe(*args):
+    return subprocess.run(
+        [sys.executable, *args],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+
+def prepared_authorized_transaction(tmp_path, label):
+    ev = evidence(tmp_path)
+    auth = live_authorization(ev)
+    registry = CheckpointRegistry(tmp_path / f"{label}-registry")
+    parent_pointer = registry.initialize(ev["parent_bundle"])
+    tx = registry.begin_authorized_update(
+        ev["final_bundle"],
+        auth,
+        now=utc_now_iso(),
+    )
+    registry.verify_update(tx, now=utc_now_iso())
+    return ev, auth, registry, parent_pointer, tx
+
+
+def test_l37_hard_kill_after_pointer_snapshot_recovers_abort(tmp_path):
+    ev, _, registry, parent, tx = prepared_authorized_transaction(
+        tmp_path,
+        "snapshot-crash",
+    )
+    completed = run_crash_probe(
+        "scripts/crash_probe_checkpoint_commit.py",
+        "--registry",
+        str(registry.root),
+        "--transaction",
+        tx,
+        "--crash-at",
+        "POINTER_SNAPSHOT_WRITTEN",
+        "--exit-code",
+        "91",
+    )
+    assert completed.returncode == 91
+    assert registry.lock_path.exists()
+    assert registry.active_pointer() == parent
+    orphan = registry._pointer_snapshot_path(1)
+    assert orphan.exists()
+
+    recovered = registry.recover(break_stale_lock=True)
+    assert len(recovered) == 1
+    assert recovered[0]["state"] == "RECOVERED_ABORTED"
+    assert (
+        recovered[0]["details"]["orphan_pointer_snapshot_removed"]
+        is True
+    )
+    assert not orphan.exists()
+    assert registry.active_pointer() == parent
+    assert registry.verify_registry()["status"] == "PASS"
+
+
+def test_l37_hard_kill_after_active_swap_recovers_commit(tmp_path):
+    ev, _, registry, parent, tx = prepared_authorized_transaction(
+        tmp_path,
+        "swap-crash",
+    )
+    completed = run_crash_probe(
+        "scripts/crash_probe_checkpoint_commit.py",
+        "--registry",
+        str(registry.root),
+        "--transaction",
+        tx,
+        "--crash-at",
+        "ACTIVE_POINTER_SWAPPED",
+        "--exit-code",
+        "91",
+    )
+    assert completed.returncode == 91
+    assert registry.lock_path.exists()
+    active = registry.active_pointer()
+    assert active["checkpoint_sha256"] == ev["final_sha"]
+    assert active["pointer_sha256"] != parent["pointer_sha256"]
+
+    recovered = registry.recover(break_stale_lock=True)
+    assert len(recovered) == 1
+    assert recovered[0]["state"] == "RECOVERED_COMMITTED"
+    assert registry.active_pointer()["checkpoint_sha256"] == ev["final_sha"]
+    assert registry.verify_registry()["status"] == "PASS"
+
+
+def test_l37_hard_kill_after_commit_event_keeps_committed_authority(tmp_path):
+    ev, _, registry, _, tx = prepared_authorized_transaction(
+        tmp_path,
+        "committed-crash",
+    )
+    completed = run_crash_probe(
+        "scripts/crash_probe_checkpoint_commit.py",
+        "--registry",
+        str(registry.root),
+        "--transaction",
+        tx,
+        "--crash-at",
+        "COMMIT_EVENT_RECORDED",
+        "--exit-code",
+        "91",
+    )
+    assert completed.returncode == 91
+    assert registry.lock_path.exists()
+    assert registry.transaction_events(tx)[-1]["state"] == "COMMITTED"
+    assert registry.active_pointer()["checkpoint_sha256"] == ev["final_sha"]
+
+    assert registry.recover(break_stale_lock=True) == []
+    assert registry.verify_registry()["status"] == "PASS"
+
+
+def test_l37_hard_kill_before_reload_ack_keeps_old_lease_until_restart(
+    tmp_path,
+):
+    ev, _, registry, parent, tx = prepared_authorized_transaction(
+        tmp_path,
+        "reload-before-ack",
+    )
+    coordinator = ServingCoordinator(
+        registry,
+        policy=ServingLeasePolicy(
+            lease_seconds=30.0,
+            min_live_processes=1,
+        ),
+    )
+    worker = "reload-worker"
+    coordinator.register_loaded(
+        worker,
+        pointer=parent,
+        now=utc_now_iso(),
+    )
+
+    pointer = registry.commit_update(tx, now=utc_now_iso())
+    assert pointer["checkpoint_sha256"] == ev["final_sha"]
+
+    completed = run_crash_probe(
+        "scripts/crash_probe_serving_reload.py",
+        "--registry",
+        str(registry.root),
+        "--process-id",
+        worker,
+        "--crash-at",
+        "TARGET_VERIFIED_BEFORE_ACK",
+        "--exit-code",
+        "92",
+    )
+    assert completed.returncode == 92
+    lease = coordinator.load_lease(worker)
+    assert lease["loaded_pointer_sha256"] == parent["pointer_sha256"]
+    assert coordinator.serving_gate(worker)["status"] == "DRAIN_RELOAD_REQUIRED"
+
+    # A restarted process loads the currently active artifact before replacing
+    # its lease. No stale generation is allowed to regain request authority.
+    coordinator.register_loaded(
+        worker,
+        pointer=registry.active_pointer(),
+        now=utc_now_iso(),
+    )
+    assert coordinator.assess_convergence()["status"] == "PASS"
+    assert coordinator.serving_gate(worker)["status"] == "SERVE"
+
+
+def test_l37_hard_kill_after_reload_ack_persists_new_generation_lease(
+    tmp_path,
+):
+    ev, _, registry, parent, tx = prepared_authorized_transaction(
+        tmp_path,
+        "reload-after-ack",
+    )
+    coordinator = ServingCoordinator(
+        registry,
+        policy=ServingLeasePolicy(
+            lease_seconds=30.0,
+            min_live_processes=1,
+        ),
+    )
+    worker = "acked-worker"
+    coordinator.register_loaded(
+        worker,
+        pointer=parent,
+        now=utc_now_iso(),
+    )
+    pointer = registry.commit_update(tx, now=utc_now_iso())
+
+    completed = run_crash_probe(
+        "scripts/crash_probe_serving_reload.py",
+        "--registry",
+        str(registry.root),
+        "--process-id",
+        worker,
+        "--crash-at",
+        "LEASE_ACKED",
+        "--exit-code",
+        "92",
+    )
+    assert completed.returncode == 92
+    lease = coordinator.load_lease(worker)
+    assert lease["loaded_pointer_sha256"] == pointer["pointer_sha256"]
+    assert lease["loaded_checkpoint_sha256"] == ev["final_sha"]
+    assert coordinator.assess_convergence()["status"] == "PASS"
