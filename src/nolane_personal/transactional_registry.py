@@ -251,6 +251,39 @@ class CheckpointRegistry:
             raise ValueError("unknown checkpoint pointer generation")
         return _verify_pointer(_read_json(path))
 
+    def pointer_by_sha256(self, pointer_sha256: str) -> dict[str, Any]:
+        matches: list[dict[str, Any]] = []
+        for path in sorted(self.pointers_dir.glob("*.json")):
+            pointer = _verify_pointer(_read_json(path))
+            if pointer.get("pointer_sha256") == pointer_sha256:
+                matches.append(pointer)
+        if len(matches) != 1:
+            raise ValueError("checkpoint pointer sha is not uniquely present")
+        return matches[0]
+
+    def promotion_authorization_for_transaction(
+        self,
+        transaction_id: str,
+    ) -> dict[str, Any]:
+        events = self.transaction_events(transaction_id)
+        if not events:
+            raise ValueError("unknown checkpoint transaction")
+        expected = events[0].get("details", {}).get(
+            "promotion_authorization_sha256"
+        )
+        if expected is None:
+            raise ValueError("transaction has no promotion authorization")
+        path = self._tx_dir(transaction_id) / "promotion-authorization.json"
+        if not path.exists():
+            raise ValueError("promotion authorization file missing")
+        authorization = verify_promotion_authorization(
+            _read_json(path),
+            check_expiry=False,
+        )
+        if authorization["authorization_sha256"] != expected:
+            raise ValueError("promotion authorization transaction mismatch")
+        return authorization
+
     def artifact_path_for_pointer(
         self,
         pointer: dict[str, Any],
