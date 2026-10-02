@@ -11,6 +11,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "apps" / "product-client" / "web"
+EVIDENCE = ROOT / "artifacts" / "product-ui"
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -70,10 +71,16 @@ def run_desktop(browser, base_url):
     page.wait_for_selector(".message.assistant")
     assert page.locator(".message.user").last.inner_text() == "Chào Nolane"
     assert "runtime Nolane thật" in page.locator(".message.assistant").last.inner_text()
+    EVIDENCE.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(EVIDENCE / "desktop-chat.png"), full_page=True)
 
     page.locator("#profileButton").click()
     dialog = page.locator("#personalizationDialog")
     assert dialog.evaluate("(el) => el.open")
+    page.screenshot(
+        path=str(EVIDENCE / "desktop-personalization.png"),
+        full_page=True,
+    )
     page.locator("#preferredName").fill("Tài")
     page.locator("#memoryEnabled").uncheck()
     page.locator("#saveProfileButton").click()
@@ -118,8 +125,13 @@ def run_mobile(browser, base_url):
     assert box is not None
     assert box["width"] >= 388
 
+    page.screenshot(
+        path=str(EVIDENCE / "mobile-personalization.png"),
+        full_page=True,
+    )
     page.locator("#closeProfileButton").tap()
     assert not dialog.evaluate("(el) => el.open")
+    page.screenshot(path=str(EVIDENCE / "mobile-chat.png"), full_page=True)
 
     composer = page.locator("#messageInput")
     composer.tap()
