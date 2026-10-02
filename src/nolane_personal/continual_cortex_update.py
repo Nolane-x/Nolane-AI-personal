@@ -109,7 +109,111 @@ def verify_continual_cortex_update_receipt(
     if not isinstance(continual, dict):
         raise ValueError("recurrent-cortex L30 receipt missing")
     verify_continual_learning_digest(continual)
+    if (
+        continual.get("pre_update_checkpoint_sha256")
+        != receipt.get("candidate_model_state_sha256_before")
+    ):
+        raise ValueError("recurrent-cortex L30 pre-update state mismatch")
+    if (
+        continual.get("post_update_checkpoint_sha256")
+        != receipt.get("candidate_model_state_sha256_after")
+    ):
+        raise ValueError("recurrent-cortex L30 post-update state mismatch")
     return receipt
+
+
+def _validate_sha256(value: Any, *, name: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{name} must be a sha256 hex string")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a sha256 hex string") from exc
+    return value
+
+
+def verify_continual_cortex_run_receipt(
+    run: dict[str, Any],
+) -> dict[str, Any]:
+    if run.get("schema") != "NOLANE-L38-RECURRENT-CORTEX-UPDATE-RUN-V1":
+        raise ValueError("unsupported recurrent-cortex run schema")
+    if (
+        run.get("authority")
+        != "RECURRENT_CORTEX_UPDATE_EVIDENCE_ONLY_UNPROMOTED"
+    ):
+        raise ValueError("recurrent-cortex run authority mismatch")
+
+    parent = _validate_sha256(
+        run.get("parent_factorized_checkpoint_sha256"),
+        name="parent_factorized_checkpoint_sha256",
+    )
+    training = run.get("training")
+    lineage = run.get("lineage")
+    artifact = run.get("artifact")
+    if not isinstance(training, dict):
+        raise ValueError("recurrent-cortex training receipt missing")
+    if not isinstance(lineage, dict):
+        raise ValueError("recurrent-cortex lineage missing")
+    if not isinstance(artifact, dict):
+        raise ValueError("recurrent-cortex artifact manifest missing")
+
+    verify_continual_cortex_update_receipt(training)
+
+    if lineage.get("schema") != "NOLANE-L38-CORTEX-UPDATE-LINEAGE-V1":
+        raise ValueError("unsupported recurrent-cortex lineage schema")
+    supplied_lineage = lineage.get("lineage_sha256")
+    lineage_body = dict(lineage)
+    lineage_body.pop("lineage_sha256", None)
+    if payload_digest(lineage_body) != supplied_lineage:
+        raise ValueError("recurrent-cortex lineage digest mismatch")
+    for key in (
+        "parent_factorized_checkpoint_sha256",
+        "retention_dataset_sha256",
+        "retention_protocol_sha256",
+        "retention_quality_court_sha256",
+        "adaptation_dataset_sha256",
+        "adaptation_protocol_sha256",
+        "adaptation_quality_court_sha256",
+        "lineage_sha256",
+    ):
+        _validate_sha256(lineage.get(key), name=key)
+    if lineage["parent_factorized_checkpoint_sha256"] != parent:
+        raise ValueError("recurrent-cortex lineage parent mismatch")
+
+    if artifact.get("schema") != "NOLANE-L17-FACTORIZED-LANGUAGE-BOUNDARY-V1":
+        raise ValueError("recurrent-cortex output artifact schema mismatch")
+    if artifact.get("authority") != "FACTORIZED_CANDIDATE_UNPROMOTED":
+        raise ValueError("recurrent-cortex output artifact authority mismatch")
+    _validate_sha256(
+        artifact.get("checkpoint_sha256"),
+        name="artifact checkpoint_sha256",
+    )
+    boundary_after = _validate_sha256(
+        training.get("candidate_boundary_digest_after"),
+        name="candidate_boundary_digest_after",
+    )
+    cortex_after = _validate_sha256(
+        training.get("candidate_cortex_digest_after"),
+        name="candidate_cortex_digest_after",
+    )
+    if artifact.get("boundary_state_digest") != boundary_after:
+        raise ValueError("recurrent-cortex saved boundary digest mismatch")
+    if artifact.get("cortex_state_digest") != cortex_after:
+        raise ValueError("recurrent-cortex saved cortex digest mismatch")
+    if artifact.get("dataset_fingerprint") != lineage["lineage_sha256"]:
+        raise ValueError("recurrent-cortex artifact lineage fingerprint mismatch")
+    if artifact.get("training_receipt") != training:
+        raise ValueError("recurrent-cortex artifact training receipt mismatch")
+
+    artifact_state = payload_digest(
+        {
+            "boundary_state_digest": artifact["boundary_state_digest"],
+            "cortex_state_digest": artifact["cortex_state_digest"],
+        }
+    )
+    if artifact_state != training["candidate_model_state_sha256_after"]:
+        raise ValueError("recurrent-cortex artifact model-state digest mismatch")
+    return run
 
 
 def _model_state_digest(model) -> str:
