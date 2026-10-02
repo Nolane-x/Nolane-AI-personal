@@ -67,6 +67,7 @@ def _weight_inventory(model_dir: Path) -> list[dict[str, Any]]:
         {
             "filename": path.name,
             "bytes": int(path.stat().st_size),
+            "sha256": sha256_file(path),
         }
         for path in unique
     ]
