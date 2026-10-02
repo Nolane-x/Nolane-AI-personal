@@ -166,6 +166,19 @@ def _verify_event(event: dict[str, Any]) -> dict[str, Any]:
     return event
 
 
+def verify_rollback_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
+    if receipt.get("schema") != ROLLBACK_SCHEMA:
+        raise ValueError("unsupported checkpoint rollback schema")
+    supplied = receipt.get("rollback_sha256")
+    body = dict(receipt)
+    body.pop("rollback_sha256", None)
+    if payload_digest(body) != supplied:
+        raise ValueError("checkpoint rollback receipt digest mismatch")
+    if receipt.get("authority") != REGISTRY_AUTHORITY:
+        raise ValueError("checkpoint rollback authority mismatch")
+    return receipt
+
+
 class CheckpointRegistry:
     """Crash-recoverable immutable checkpoint registry.
 
@@ -343,6 +356,13 @@ class CheckpointRegistry:
             parent = self.active_pointer()
             source = Path(candidate_bundle)
             evidence = verify_l31_candidate_bundle(source)
+            if (
+                evidence["run_receipt"]["parent_factorized_checkpoint_sha256"]
+                != parent["checkpoint_sha256"]
+            ):
+                raise ValueError(
+                    "L31 candidate parent does not match active checkpoint"
+                )
             transaction_id = payload_digest(
                 {
                     "parent_pointer_sha256": parent["pointer_sha256"],
@@ -618,6 +638,26 @@ class CheckpointRegistry:
             raise ValueError("checkpoint pointer history is empty")
         if active != _verify_pointer(_read_json(snapshots[-1])):
             raise ValueError("active pointer is not latest history generation")
+
+        rollback_count = 0
+        for path in sorted(self.rollbacks_dir.glob("*.json")):
+            receipt = verify_rollback_receipt(_read_json(path))
+            pointer_path = self._pointer_snapshot_path(
+                int(receipt["new_generation"])
+            )
+            if not pointer_path.exists():
+                raise ValueError("rollback receipt points to missing generation")
+            pointer = _verify_pointer(_read_json(pointer_path))
+            if pointer.get("transition") != "ROLLBACK":
+                raise ValueError("rollback receipt generation is not rollback")
+            if pointer.get("pointer_sha256") != receipt.get("new_pointer_sha256"):
+                raise ValueError("rollback receipt pointer mismatch")
+            if (
+                int(pointer.get("rollback_target_generation"))
+                != int(receipt.get("target_generation"))
+            ):
+                raise ValueError("rollback target generation mismatch")
+            rollback_count += 1
         return {
             "schema": "NOLANE-L33-CHECKPOINT-REGISTRY-AUDIT-V1",
             "authority": REGISTRY_AUTHORITY,
@@ -626,4 +666,5 @@ class CheckpointRegistry:
             "active_generation": active["generation"],
             "active_checkpoint_sha256": active["checkpoint_sha256"],
             "active_pointer_sha256": active["pointer_sha256"],
+            "rollback_receipts": rollback_count,
         }
