@@ -310,3 +310,39 @@ def test_registry_audit_detects_active_pointer_tamper(tmp_path):
 
     with pytest.raises(ValueError, match="pointer digest mismatch"):
         registry.verify_registry()
+
+
+def test_begin_rejects_candidate_from_nonactive_parent(tmp_path):
+    parent, _, _ = initial_bundle(tmp_path, label="parent")
+    registry = CheckpointRegistry(tmp_path / "registry")
+    registry.initialize(parent)
+    candidate, _, _ = candidate_bundle(
+        tmp_path,
+        parent_sha=digest("different-parent"),
+        label="wrong-parent-candidate",
+    )
+
+    with pytest.raises(ValueError, match="parent does not match active checkpoint"):
+        registry.begin_l31_update(candidate)
+
+
+def test_registry_audit_detects_rollback_receipt_tamper(tmp_path):
+    parent, parent_sha, _ = initial_bundle(tmp_path)
+    registry = CheckpointRegistry(tmp_path / "registry")
+    registry.initialize(parent)
+    candidate, _, _ = candidate_bundle(
+        tmp_path,
+        parent_sha=parent_sha,
+    )
+    tx = registry.begin_l31_update(candidate)
+    registry.verify_update(tx)
+    registry.commit_update(tx)
+    receipt = registry.rollback_to_generation(0)
+
+    path = registry.rollbacks_dir / f"{int(receipt['new_generation']):012d}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["target_generation"] = 999
+    write_json(path, payload)
+
+    with pytest.raises(ValueError, match="rollback receipt digest mismatch"):
+        registry.verify_registry()
