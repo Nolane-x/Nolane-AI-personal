@@ -644,3 +644,53 @@ Engineering evidence: **REAL-PINNED-WEIGHT-COURT-PASS / NO QUALITY PROMOTION**.
 - [ ] compare target-device latency/RAM before any native int8-kernel work
 
 L20 deliberately upgrades **evidence realism**, not production authority. A real full-model forward plus real-weight factorization/int8 fidelity does not substitute for trained held-out language-quality evidence.
+
+
+## L21 — Real Candidate Evidence Pipeline
+
+Engineering substrate: **FULL-EVIDENCE-CHAIN-READY / NO FABRICATED PROMOTION**.
+
+- [x] privacy-preserving readiness receipt
+- [x] dataset SHA-256 verification
+- [x] frozen personalization protocol digest verification
+- [x] protocol dataset-count consistency check
+- [x] train split must be non-empty
+- [x] dev split must be non-empty
+- [x] held-out test split must contain at least 2 examples
+- [x] frozen general anchor must contain at least 4 examples
+- [x] persistent latent must verify its own digest and remain 32D
+- [x] pinned Qwen weights must exist locally
+- [x] local model revision marker must match `model.lock.json`
+- [x] L14 comparison candidate required explicitly
+- [x] clean workspace required to prevent evidence mixing
+- [x] check-only mode is default
+- [x] expensive execution requires explicit `--execute`
+- [x] L15 spec freeze stage
+- [x] L15 real native training stage
+- [x] L15 held-out quality court
+- [x] L15 resource court
+- [x] L15 promotion gate
+- [x] L16 standalone export
+- [x] L16 parity court
+- [x] L16 resource court
+- [x] L16 promotion gate
+- [x] L18 adaptive rank frontier uses train/dev only
+- [x] L18 selected candidate receives frozen held-out quality court
+- [x] L18 selected candidate receives resource court
+- [x] L18 promotion binds selected rank/checkpoint/source
+- [x] L19 quantized export from exact selected factorized source
+- [x] L19 held-out quantized quality court
+- [x] L19 target-device resource court
+- [x] L19 promotion binds quantized/factorized/L16 lineage
+- [x] each stage requires both zero exit code and expected artifact creation
+- [x] first failing stage stops all later stages
+- [x] stage receipt records artifact SHA-256 rather than prompt/target contents
+- [x] final success status only after all 17 stages pass
+- [ ] supply a sufficient user-approved local personalization dataset
+- [ ] freeze its real train/dev/test protocol
+- [ ] provide a matching real L14 comparator
+- [ ] execute L21 on the real local evidence workspace
+- [ ] inspect where the first empirical gate actually passes or blocks
+- [ ] only after a complete PASS consider normal-runtime promotion
+
+L21 does not make the model stronger by declaration. It makes the evidence chain reproducible and prevents later compression or runtime wins from masking an earlier quality failure.
