@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.30.0
+## Current executable milestone: Living Runtime v0.31.0
 
 The runtime now contains two very different compute scales:
 
@@ -1003,6 +1003,35 @@ python scripts/assess_continual_learning.py \
 The receipt exposes checkpoint digests, counts, local aliases and metrics, but never raw prompt/target text or source-group hashes. L30 is court infrastructure for real sequential updates; it is not yet evidence that indefinite lifelong learning has been achieved.
 
 See `docs/L30-LONG-HORIZON-CONTINUAL-LEARNING-COURT.md`.
+
+### L31 Factorized Continual Neural Update
+
+L31 turns the L30 stability/plasticity court into a real sequential neural-update path for the standalone factorized Nolane language boundary.
+
+One parent checkpoint is loaded twice: a frozen reference and an initially identical trainable candidate. Only the candidate low-rank boundary may receive gradients. The recurrent cortex and the entire reference remain immutable.
+
+The evidence path is deliberately split:
+
+```text
+old train+dev -> rehearsal during update
+old test      -> held-out retention court
+new train     -> adaptation update
+new test      -> held-out adaptation court
+```
+
+Both old and new protocols must independently pass L28 before training. After training, L30 decides whether the candidate learned the new held-out groups without unacceptable mean or worst-group forgetting on old held-out groups. A completed optimizer run can therefore still finish BLOCKED.
+
+```bash
+python scripts/train_continual_factorized_update.py \
+  --retention-dataset /private/old/personalization.jsonl \
+  --retention-protocol /private/old/personalization-protocol-v1.json \
+  --adaptation-dataset /private/new/personalization.jsonl \
+  --adaptation-protocol /private/new/personalization-protocol-v1.json
+```
+
+The saved artifact binds the parent checkpoint plus old/new dataset, protocol, L28 and L30 lineage. It remains unpromoted.
+
+See `docs/L31-FACTORIZED-CONTINUAL-NEURAL-UPDATE.md`.
 
 ## Bootstrap Qwen
 
