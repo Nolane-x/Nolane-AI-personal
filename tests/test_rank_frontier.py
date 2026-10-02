@@ -88,3 +88,38 @@ def test_rank_frontier_fails_closed_when_first_rank_is_not_compressed_enough():
 def test_rank_frontier_contract_rejects_non_descending_schedule():
     with pytest.raises(ValueError,match="strictly descending"):
         RankFrontierConfig(ranks=(8,8,4)).validate(hidden_size=16)
+
+
+from nolane_personal.rank_frontier_promotion import decide_rank_frontier_promotion
+
+
+def test_rank_frontier_promotion_requires_same_rank_checkpoint_and_source():
+    passed=decide_rank_frontier_promotion(
+        frontier_selected_rank=96,
+        frontier_checkpoint_sha256="selected",
+        frontier_source_l16_checkpoint_sha256="source",
+        quality_status="FACTORIZED_BOUNDARY_QUALITY_PASS",
+        quality_rank=96,
+        quality_checkpoint_sha256="selected",
+        quality_source_l16_checkpoint_sha256="source",
+        resource_status="FACTORIZED_BOUNDARY_RESOURCE_PASS",
+        resource_checkpoint_sha256="selected",
+        resource_source_l16_checkpoint_sha256="source",
+    )
+    assert passed.status=="ADAPTIVE_RANK_FRONTIER_PROMOTION_PASS"
+
+    blocked=decide_rank_frontier_promotion(
+        frontier_selected_rank=96,
+        frontier_checkpoint_sha256="selected",
+        frontier_source_l16_checkpoint_sha256="source",
+        quality_status="FACTORIZED_BOUNDARY_QUALITY_PASS",
+        quality_rank=128,
+        quality_checkpoint_sha256="other",
+        quality_source_l16_checkpoint_sha256="source",
+        resource_status="FACTORIZED_BOUNDARY_RESOURCE_PASS",
+        resource_checkpoint_sha256="selected",
+        resource_source_l16_checkpoint_sha256="other-source",
+    )
+    assert "selected_rank_quality_mismatch" in blocked.reasons
+    assert "checkpoint_identity_mismatch" in blocked.reasons
+    assert "source_l16_identity_mismatch" in blocked.reasons
