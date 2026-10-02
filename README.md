@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.38.0
+## Current executable milestone: Living Runtime v0.39.0
 
 The runtime now contains two very different compute scales:
 
@@ -1219,6 +1219,38 @@ python scripts/train_continual_cortex_update.py \
 L38 artifacts remain explicitly unpromoted. The current L32/L35 production evidence chain understands L31 boundary-update cycles only; L38 will not masquerade as an L31 cycle to bypass that authority boundary.
 
 See `docs/L38-RECURRENT-CORTEX-CONTINUAL-PLASTICITY.md`.
+
+### L39 Unified Continual Model Ledger
+
+L39 connects the two real continual-learning surfaces without pretending they are the same update type.
+
+```text
+L31 -> factorized language-boundary plasticity
+L38 -> recurrent-cortex plasticity
+```
+
+Every adjacent cycle must preserve exact artifact ancestry plus boundary, cortex and composite model-state continuity. The default ledger requires at least one real recurrent-cortex cycle, so an L31-only chain cannot claim L39 recurrent-plasticity evidence.
+
+A new endpoint evaluator compares the final mixed-plasticity checkpoint directly with the checkpoint before cycle 1 on one L28-approved held-out panel. Boundary and cortex are both allowed to change, but the endpoints must share L16 ancestry, architecture configuration and recurrent-state policy.
+
+```bash
+python scripts/evaluate_unified_long_horizon_retention.py \
+  --initial /path/to/checkpoint-0/factorized-nolane.pt \
+  --final /path/to/checkpoint-N/factorized-nolane.pt \
+  --dataset /private/fixed-panel/personalization.jsonl \
+  --protocol /private/fixed-panel/personalization-protocol-v1.json \
+  --output runtime-data/l39/long-horizon-retention.json
+
+python scripts/assess_unified_continual.py \
+  --cycle runtime-data/cycle-1/l31-run-receipt.json \
+  --cycle runtime-data/cycle-2/l38-run-receipt.json \
+  --long-horizon runtime-data/l39/long-horizon-retention.json \
+  --output runtime-data/l39/unified-chain.json
+```
+
+L39 remains unpromoted. L35 understands L32/L31 evidence only; a later authority layer must explicitly recompute and authorize the L39 mixed model-state chain.
+
+See `docs/L39-UNIFIED-CONTINUAL-MODEL-LEDGER.md`.
 
 ## Bootstrap Qwen
 
