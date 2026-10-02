@@ -152,3 +152,16 @@ def verify_group_robustness_receipt(
     if computed != receipt:
         raise ValueError("heldout group robustness receipt does not match evidence")
     return receipt
+
+
+def verify_group_robustness_digest(receipt: dict[str, Any]) -> dict[str, Any]:
+    if receipt.get("schema") != SCHEMA:
+        raise ValueError("unsupported heldout group robustness schema")
+    supplied = receipt.get("court_sha256")
+    body = dict(receipt)
+    body.pop("court_sha256", None)
+    if payload_digest(body) != supplied:
+        raise ValueError("heldout group robustness receipt digest mismatch")
+    if receipt.get("status") not in {"PASS", "BLOCKED"}:
+        raise ValueError("heldout group robustness status invalid")
+    return receipt
