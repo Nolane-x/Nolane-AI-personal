@@ -274,3 +274,37 @@ def test_convergence_blocks_if_active_pointer_changes_mid_assessment(
     receipt = coord.assess_convergence(now=now)
     assert receipt["status"] == "BLOCKED"
     assert "active_pointer_changed_during_convergence" in receipt["reasons"]
+
+
+def test_request_fence_rejects_pointer_change_after_gate_pass(tmp_path):
+    registry, coord = coordinator(tmp_path, min_live=1)
+    session = ServingSession(coord, process_id="worker", loader=loader)
+    now = "2026-10-02T00:00:00+00:00"
+    session.start(now=now)
+    gate = session.gate(now=now)
+    assert gate["status"] == "SERVE"
+
+    registry.activate(1)
+    with pytest.raises(RuntimeError, match="fence invalidated"):
+        coord.verify_request_fence("worker", gate)
+
+
+def test_model_for_request_closes_post_gate_pointer_race(
+    tmp_path,
+    monkeypatch,
+):
+    registry, coord = coordinator(tmp_path, min_live=1)
+    session = ServingSession(coord, process_id="worker", loader=loader)
+    now = "2026-10-02T00:00:00+00:00"
+    session.start(now=now)
+    original_gate = session.gate
+
+    def gate_then_flip(*, now=None):
+        gate = original_gate(now=now)
+        assert gate["status"] == "SERVE"
+        registry.activate(1)
+        return gate
+
+    monkeypatch.setattr(session, "gate", gate_then_flip)
+    with pytest.raises(RuntimeError, match="fence invalidated"):
+        session.model_for_request(now=now)
