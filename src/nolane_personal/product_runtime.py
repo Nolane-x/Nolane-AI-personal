@@ -37,7 +37,7 @@ class ProductRuntime:
         self.engine = LivingEngine(
             self.store,
             cortex=NullCortex(),
-            enable_rest=enable_rest,
+            enable_rest=self._rest_allowed and self.profile.memory_enabled,
             memory_enabled=self.profile.memory_enabled,
         )
         self.checkpoint = None if checkpoint is None else Path(checkpoint)
@@ -46,6 +46,7 @@ class ProductRuntime:
         )
         self.device = str(device)
         self._factory = cortex_factory
+        self._rest_allowed = bool(enable_rest)
         self._cortex: Cortex | None = None
         self._phase = "off"
         self._error: str | None = None
@@ -182,6 +183,9 @@ class ProductRuntime:
         with self._lock:
             self.profile = self.profile_store.update(dict(patch))
             self.engine.memory_enabled = self.profile.memory_enabled
+            self.engine.enable_rest = (
+                self._rest_allowed and self.profile.memory_enabled
+            )
             return self.profile.to_dict()
 
     def close(self) -> None:
