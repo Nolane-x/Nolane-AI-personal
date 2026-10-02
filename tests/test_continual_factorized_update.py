@@ -117,8 +117,14 @@ def test_continual_factorized_update_changes_only_candidate_boundary():
         reference,
         adaptation,
         retention,
-        retention_eval_examples=retention,
-        adaptation_eval_examples=adaptation,
+        retention_eval_examples=[
+            example([1, 17, 18, 19]),
+            example([1, 20, 21, 22]),
+        ],
+        adaptation_eval_examples=[
+            example([1, 23, 24, 25]),
+            example([1, 26, 27, 28]),
+        ],
         adaptation_group_sha256=new_groups,
         retention_group_sha256=old_groups,
         config=ContinualFactorizedUpdateConfig(
