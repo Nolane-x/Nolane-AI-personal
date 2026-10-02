@@ -1,5 +1,9 @@
 name: Product Client Court
 
+concurrency:
+  group: product-client-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     paths:
