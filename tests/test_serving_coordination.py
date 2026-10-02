@@ -228,3 +228,49 @@ def test_process_ids_are_not_exposed_in_convergence_receipt(tmp_path):
     receipt = coord.assess_convergence(now=now)
     assert secret_id not in str(receipt)
     assert receipt["privacy"]["contains_raw_process_id"] is False
+
+
+def test_request_model_is_blocked_until_cluster_converges(tmp_path):
+    registry, coord = coordinator(tmp_path)
+    p1 = ServingSession(coord, process_id="worker-1", loader=loader)
+    p2 = ServingSession(coord, process_id="worker-2", loader=loader)
+    now = "2026-10-02T00:00:00+00:00"
+    p1.start(now=now)
+    p2.start(now=now)
+    assert p1.model_for_request(now=now)["generation"] == 0
+
+    registry.activate(1)
+    with pytest.raises(RuntimeError, match="DRAIN_RELOAD_REQUIRED"):
+        p1.model_for_request(now=now)
+
+    p1.poll_reload(now=now)
+    with pytest.raises(RuntimeError, match="WAITING_FOR_PEERS"):
+        p1.model_for_request(now=now)
+
+    p2.poll_reload(now=now)
+    assert p1.model_for_request(now=now)["generation"] == 1
+    assert p2.model_for_request(now=now)["generation"] == 1
+
+
+def test_convergence_blocks_if_active_pointer_changes_mid_assessment(
+    tmp_path,
+    monkeypatch,
+):
+    registry, coord = coordinator(tmp_path, min_live=1)
+    session = ServingSession(coord, process_id="worker", loader=loader)
+    now = "2026-10-02T00:00:00+00:00"
+    session.start(now=now)
+
+    original = registry.active_pointer
+    calls = {"count": 0}
+
+    def flipping_active():
+        calls["count"] += 1
+        if calls["count"] == 2:
+            registry.activate(1)
+        return original()
+
+    monkeypatch.setattr(registry, "active_pointer", flipping_active)
+    receipt = coord.assess_convergence(now=now)
+    assert receipt["status"] == "BLOCKED"
+    assert "active_pointer_changed_during_convergence" in receipt["reasons"]
