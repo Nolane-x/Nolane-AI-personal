@@ -101,6 +101,10 @@ def main() -> int:
     copy_tree(runtime_source, runtime_dest)
     clear_directory(model_dest)
     shutil.copy2(model_source, model_dest / "factorized-nolane.pt")
+    shutil.copy2(
+        ceremony_source,
+        model_dest / "promotion-ceremony.json",
+    )
     copy_tree(tokenizer_source, tokenizer_dest)
 
     manifest = {
