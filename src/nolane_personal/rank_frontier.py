@@ -16,6 +16,7 @@ class RankFrontierConfig:
     max_dev_nll_regression_per_step: float = 0.02
     max_dev_nll_regression_vs_l16: float = 0.05
     min_greedy_token_agreement: float = 0.93
+    max_boundary_parameter_ratio: float = 0.60
     distill_epochs: int = 3
     learning_rate: float = 2e-3
     distill_weight: float = 1.0
@@ -37,6 +38,8 @@ class RankFrontierConfig:
             raise ValueError("max_dev_nll_regression_vs_l16 must be >=0")
         if not 0.0 <= self.min_greedy_token_agreement <= 1.0:
             raise ValueError("min_greedy_token_agreement must be in [0,1]")
+        if not 0.0 < self.max_boundary_parameter_ratio < 1.0:
+            raise ValueError("max_boundary_parameter_ratio must be in (0,1)")
         if self.distill_epochs < 1:
             raise ValueError("distill_epochs must be >=1")
 
@@ -187,7 +190,9 @@ def search_rank_frontier(
         cortex_unchanged = cortex_digest == source_cortex_digest
 
         reason = None
-        if not cortex_unchanged:
+        if float(factor_receipt["parameter_ratio"]) > config.max_boundary_parameter_ratio:
+            reason = "boundary_compression_gate_failed"
+        elif not cortex_unchanged:
             reason = "cortex_digest_drift"
         elif regression_base > config.max_dev_nll_regression_vs_l16:
             reason = "l16_dev_regression_gate_failed"
