@@ -182,3 +182,125 @@ def test_non_empty_output_directory_is_never_overwritten(tmp_path):
 def test_policy_requires_l21_ready_minimum():
     with pytest.raises(ValueError,match="min_approved_examples must be >=7"):
         ApprovedEvidencePolicy(min_approved_examples=6).validate()
+
+
+def test_evidence_pack_drives_l21_check_only_without_private_receipt_leak(tmp_path):
+    import subprocess
+    import sys
+
+    root=Path(__file__).resolve().parents[1]
+    source=tmp_path/"source.jsonl"
+    write_source(source,approved_rows(8))
+    result=build_approved_evidence_pack(source,tmp_path/"pack")
+
+    anchor=tmp_path/"anchor.jsonl"
+    anchor.write_text("".join(
+        json.dumps({
+            "prompt":f"anchor-{i}",
+            "target":f"answer-{i}",
+            "language":"vi" if i%2==0 else "en",
+        },ensure_ascii=False)+"\n"
+        for i in range(4)
+    ),encoding="utf-8")
+
+    latent=tmp_path/"latent.json"
+    LatentStore(latent).initialize(
+        identity_id="approved-pack-pipeline-test",
+        checkpoint_sha256="core",
+        latent_dim=32,
+        protocol_sha256=None,
+    )
+
+    revision="pinned-revision"
+    model=tmp_path/"model"
+    model.mkdir()
+    (model/"config.json").write_text("{}",encoding="utf-8")
+    (model/"model.safetensors").write_bytes(b"x")
+    (model/".nolane-model-revision").write_text(revision,encoding="utf-8")
+    lock=tmp_path/"model.lock.json"
+    lock.write_text(json.dumps({"upstream":{"revision":revision}}),encoding="utf-8")
+    l14=tmp_path/"l14.pt"
+    l14.write_bytes(b"candidate")
+    workspace=tmp_path/"workspace"
+
+    completed=subprocess.run(
+        [
+            sys.executable,
+            str(root/"scripts/run_real_candidate_pipeline.py"),
+            "--evidence-pack",str(result.manifest_path),
+            "--anchor",str(anchor),
+            "--latent",str(latent),
+            "--model-lock",str(lock),
+            "--model",str(model),
+            "--l14-anchor",str(l14),
+            "--workspace",str(workspace),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode==0,completed.stderr
+    receipt_path=workspace/"pipeline-receipt.json"
+    receipt=json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"]=="REAL_CANDIDATE_READY_NOT_EXECUTED"
+    assert receipt["approved_evidence_manifest_sha256"]==result.manifest["manifest_sha256"]
+    assert receipt["approved_evidence_authority"]=="USER_APPROVED_LOCAL_EVIDENCE_UNPROMOTED"
+    assert receipt["dataset_sha256"]==result.manifest["dataset_sha256"]
+    assert receipt["protocol_sha256"]==result.manifest["protocol_sha256"]
+    rendered=receipt_path.read_text(encoding="utf-8")
+    assert "PRIVATE-PROMPT" not in rendered
+    assert "PRIVATE-TARGET" not in rendered
+    assert "raw-conversation-id" not in rendered
+
+
+def test_readiness_cli_accepts_verified_evidence_pack(tmp_path):
+    import subprocess
+    import sys
+
+    root=Path(__file__).resolve().parents[1]
+    source=tmp_path/"source.jsonl"
+    write_source(source,approved_rows(7))
+    result=build_approved_evidence_pack(source,tmp_path/"pack")
+
+    anchor=tmp_path/"anchor.jsonl"
+    anchor.write_text("".join(
+        json.dumps({"prompt":f"a{i}","target":f"b{i}","language":"vi"})+"\n"
+        for i in range(4)
+    ),encoding="utf-8")
+    latent=tmp_path/"latent.json"
+    LatentStore(latent).initialize(
+        identity_id="readiness-pack-test",
+        checkpoint_sha256="core",
+        latent_dim=32,
+        protocol_sha256=None,
+    )
+    revision="pinned"
+    model=tmp_path/"model"
+    model.mkdir()
+    (model/"config.json").write_text("{}",encoding="utf-8")
+    (model/"model.safetensors").write_bytes(b"x")
+    (model/".nolane-model-revision").write_text(revision,encoding="utf-8")
+    lock=tmp_path/"lock.json"
+    lock.write_text(json.dumps({"upstream":{"revision":revision}}),encoding="utf-8")
+    l14=tmp_path/"l14.pt"
+    l14.write_bytes(b"x")
+
+    completed=subprocess.run(
+        [
+            sys.executable,
+            str(root/"scripts/assess_real_candidate_readiness.py"),
+            "--evidence-pack",str(result.manifest_path),
+            "--anchor",str(anchor),
+            "--latent",str(latent),
+            "--model-lock",str(lock),
+            "--model",str(model),
+            "--l14-anchor",str(l14),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode==0,completed.stderr
+    payload=json.loads(completed.stdout)
+    assert payload["decision"]["status"]=="REAL_CANDIDATE_INPUTS_READY"
+    assert payload["approved_evidence_manifest_sha256"]==result.manifest["manifest_sha256"]
