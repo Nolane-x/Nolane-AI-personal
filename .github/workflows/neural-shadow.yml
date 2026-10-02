@@ -39,6 +39,8 @@ jobs:
           tests/test_rank_frontier.py
           tests/test_quantized_boundary.py
           tests/test_quantized_evaluation.py
+          tests/test_packed_int4_boundary.py
+          tests/test_precision_frontier.py
       - run: python scripts/audit_living_core.py
       - run: python scripts/audit_state_space_cortex.py
       - run: python scripts/audit_multiscale_cortex.py
