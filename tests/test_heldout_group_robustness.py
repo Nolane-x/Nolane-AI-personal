@@ -6,6 +6,7 @@ import pytest
 from nolane_personal.heldout_group_robustness import (
     HeldoutGroupRobustnessPolicy,
     assess_group_robustness,
+    effective_quality_status,
     verify_group_robustness_receipt,
 )
 from nolane_personal.personal_dataset import PersonalizationExample
@@ -131,3 +132,33 @@ def test_group_robustness_digest_tamper_is_detected():
     receipt["summary"]["worst_group_regression"]=9.0
     with pytest.raises(ValueError,match="digest mismatch"):
         verify_group_robustness_digest(receipt)
+
+
+def test_effective_quality_status_requires_valid_passing_group_court():
+    frozen=protocol()
+    rows=frozen["splits"]["test"]
+    receipt=assess_group_robustness(
+        frozen,
+        split="test",
+        reference_values=[1.0]*len(rows),
+        candidate_values=[1.0]*len(rows),
+    )
+    evaluation={
+        "decision":{"status":"GLOBAL_QUALITY_PASS"},
+        "group_robustness":receipt,
+    }
+    assert effective_quality_status(evaluation)=="GLOBAL_QUALITY_PASS"
+
+    blocked=dict(evaluation)
+    blocked["group_robustness"]=dict(receipt)
+    blocked["group_robustness"]["status"]="BLOCKED"
+    assert effective_quality_status(blocked)==""
+
+    missing={"decision":{"status":"GLOBAL_QUALITY_PASS"}}
+    assert effective_quality_status(missing)==""
+
+    tampered=dict(evaluation)
+    tampered["group_robustness"]=dict(receipt)
+    tampered["group_robustness"]["summary"]=dict(receipt["summary"])
+    tampered["group_robustness"]["summary"]["worst_group_regression"]=1.0
+    assert effective_quality_status(tampered)==""
