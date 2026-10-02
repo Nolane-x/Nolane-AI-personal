@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.29.0
+## Current executable milestone: Living Runtime v0.30.0
 
 The runtime now contains two very different compute scales:
 
@@ -987,6 +987,22 @@ Real-candidate readiness also requires at least two independent held-out source 
 Promotion scripts require a valid, self-digested L29 PASS receipt; missing, blocked, or tampered group evidence fails closed.
 
 See `docs/L29-HELDOUT-GROUP-ROBUSTNESS-COURT.md`.
+
+### L30 Long-Horizon Continual-Learning Court
+
+L30 adds a sequential stability/plasticity court for future continual updates. It compares one checkpoint before an approved update with the checkpoint after that update on two frozen, disjoint evidence sets: old retention groups and newly introduced adaptation groups.
+
+A candidate update cannot pass merely because the average improves. The court gates mean and worst-group forgetting on old evidence, mean adaptation gain on new evidence, and worst-group regression on new evidence. Same-checkpoint evidence, old/new source overlap, non-finite metrics and tampered receipts fail closed.
+
+```bash
+python scripts/assess_continual_learning.py \
+  --evidence runtime-data/l30/continual-evidence.json \
+  --output runtime-data/l30/continual-learning-receipt.json
+```
+
+The receipt exposes checkpoint digests, counts, local aliases and metrics, but never raw prompt/target text or source-group hashes. L30 is court infrastructure for real sequential updates; it is not yet evidence that indefinite lifelong learning has been achieved.
+
+See `docs/L30-LONG-HORIZON-CONTINUAL-LEARNING-COURT.md`.
 
 ## Bootstrap Qwen
 

@@ -976,3 +976,32 @@ Engineering substrate: **WORST-GROUP-HELDOUT-COURT-READY / NO MODEL PROMOTION BY
 - [ ] execute full L21 only when L28 + L29 evidence requirements are satisfied
 
 L29 is not cross-validation. It evaluates the frozen held-out source groups that the candidate has not trained on, and deliberately avoids pretending alternate already-seen groups are independent folds.
+
+## L30 — Long-Horizon Continual-Learning Court
+
+Engineering substrate: **STABILITY-PLASTICITY-COURT-READY / NO CONTINUAL PROMOTION AUTHORITY**.
+
+- [x] explicit pre-update and post-update checkpoint lineage
+- [x] frozen retention evidence for previously learned behavior
+- [x] frozen adaptation evidence for newly introduced behavior
+- [x] retention/adaptation source groups must be disjoint
+- [x] minimum independent source-group counts
+- [x] mean retention-regression gate
+- [x] worst-group retention-forgetting gate
+- [x] mean adaptation-gain gate
+- [x] worst-group adaptation-regression gate
+- [x] privacy-preserving local group aliases only
+- [x] source-group hashes excluded from receipts
+- [x] self-digested court receipt
+- [x] tamper detection
+- [x] fail-closed promotion-status helper
+- [x] standalone local CLI
+- [x] CI courts for hidden forgetting and hidden adaptation failure
+- [ ] train a real sequential candidate update from approved new evidence
+- [ ] freeze real old/new source-group evidence across multiple time windows
+- [ ] pass L30 with real checkpoints
+- [ ] repeat over multiple update cycles to measure long-horizon forgetting
+- [ ] bind any future continual-learning production updater to valid L30 receipts
+
+L30 proves stability/plasticity for one measured sequential checkpoint update. It does not yet prove indefinite lifelong learning.
+\n
