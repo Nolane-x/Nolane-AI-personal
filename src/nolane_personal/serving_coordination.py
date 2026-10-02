@@ -326,6 +326,10 @@ class ServingCoordinator:
                 }
             )
 
+        final_active = self.registry.active_pointer()
+        if final_active["pointer_sha256"] != active["pointer_sha256"]:
+            reasons.append("active_pointer_changed_during_convergence")
+
         receipt = _seal(
             {
                 "schema": CONVERGENCE_SCHEMA,
@@ -359,13 +363,15 @@ class ServingCoordinator:
         expired = current > heartbeat + timedelta(
             seconds=float(lease["lease_seconds"])
         )
-        active = self.registry.active_pointer()
         convergence = self.assess_convergence(now=now)
+        active = self.registry.active_pointer()
 
         if expired:
             status = "LEASE_EXPIRED"
         elif lease["loaded_pointer_sha256"] != active["pointer_sha256"]:
             status = "DRAIN_RELOAD_REQUIRED"
+        elif convergence["active_pointer_sha256"] != active["pointer_sha256"]:
+            status = "WAITING_FOR_PEERS"
         elif convergence["status"] != "PASS":
             status = "WAITING_FOR_PEERS"
         else:
@@ -460,6 +466,15 @@ class ServingSession:
                 self.process_id,
                 now=now,
             )
+
+    def model_for_request(self, *, now: str | None = None) -> Any:
+        with self._lock:
+            gate = self.gate(now=now)
+            if gate["status"] != "SERVE":
+                raise RuntimeError(
+                    f"serving gate blocked request: {gate['status']}"
+                )
+            return self.model
 
 
 def factorized_loader(
