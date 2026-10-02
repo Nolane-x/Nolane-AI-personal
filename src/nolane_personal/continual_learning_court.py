@@ -8,7 +8,7 @@ from typing import Any
 from .store import payload_digest
 
 
-SCHEMA = "NOLANE-L30-LONG-HORIZON-CONTINUAL-LEARNING-V1"
+SCHEMA = "NOLANE-L30-LONG-HORIZON-CONTINUAL-LEARNING-V1"\nFLOAT_EPSILON = 1e-12
 
 
 @dataclass(slots=True)
@@ -192,13 +192,13 @@ def assess_continual_learning(
         else 0.0
     )
 
-    if retention_worst > policy.max_worst_retention_regression:
+    if retention_worst > policy.max_worst_retention_regression + FLOAT_EPSILON:
         reasons.append("worst_retention_forgetting_failed")
-    if retention_mean > policy.max_mean_retention_regression:
+    if retention_mean > policy.max_mean_retention_regression + FLOAT_EPSILON:
         reasons.append("mean_retention_forgetting_failed")
-    if adaptation_mean_gain < policy.min_mean_adaptation_gain:
+    if adaptation_mean_gain < policy.min_mean_adaptation_gain - FLOAT_EPSILON:
         reasons.append("adaptation_gain_failed")
-    if adaptation_worst_regression > policy.max_worst_adaptation_regression:
+    if adaptation_worst_regression > policy.max_worst_adaptation_regression + FLOAT_EPSILON:
         reasons.append("worst_adaptation_group_failed")
 
     retention_before = (
