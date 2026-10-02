@@ -167,7 +167,7 @@ def workbench_status(root: str | Path) -> dict[str, Any]:
             "manifest_contains_candidate_ids": False,
             "local_only_recommended": True,
         },
-        "source_export_sha256": str(queue_manifest["source_export_sha256"]),
+        "source_sha256": str(queue_manifest["source_sha256"]),
         "queue_manifest_sha256": str(queue_manifest["manifest_sha256"]),
         "queue_sha256": str(queue_manifest["queue_sha256"]),
         "decisions_sha256": decisions_sha,
