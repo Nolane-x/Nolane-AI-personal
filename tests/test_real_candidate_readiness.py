@@ -112,6 +112,7 @@ def test_real_candidate_readiness_passes_only_with_auditable_inputs(tmp_path):
     assert decision.evidence["train_examples"]>=1
     assert decision.evidence["dev_examples"]>=1
     assert decision.evidence["test_examples"]>=2
+    assert decision.evidence["test_source_groups"]>=2
     assert decision.evidence["anchor_examples"]==4
     assert decision.evidence["model_revision_matches"] is True
     assert decision.evidence["latent_valid"] is True
@@ -169,3 +170,28 @@ def test_readiness_blocks_protocol_without_source_group_lineage(tmp_path):
     assert decision.status=="REAL_CANDIDATE_INPUTS_BLOCKED"
     assert "evidence_quality:incomplete_source_group_lineage" in decision.reasons
     assert "evidence_quality:non_grouped_split_strategy" in decision.reasons
+
+
+def test_readiness_blocks_only_one_independent_test_source_group(tmp_path):
+    paths=fixture(tmp_path,7)
+    examples=load_jsonl(paths["dataset"])
+    groups=[
+        hashlib.sha256(name.encode("utf-8")).hexdigest()
+        for name in ("a","b","c","d","e","f","f")
+    ]
+    protocol=build_personalization_protocol(
+        examples,
+        dataset_sha256=sha256(paths["dataset"]),
+        policy=PersonalizationSplitPolicy(),
+        source_group_sha256=groups,
+    )
+    paths["protocol"].write_text(
+        json.dumps(protocol,ensure_ascii=False),
+        encoding="utf-8",
+    )
+    decision=assess(paths)
+    assert decision.evidence["test_examples"]==2
+    assert decision.evidence["test_source_groups"]==1
+    assert decision.evidence["evidence_quality_status"]=="PASS"
+    assert decision.status=="REAL_CANDIDATE_INPUTS_BLOCKED"
+    assert "insufficient_test_source_groups" in decision.reasons
