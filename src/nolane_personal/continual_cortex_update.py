@@ -6,6 +6,7 @@ from typing import Any
 from .continual_learning_court import (
     ContinualLearningPolicy,
     assess_continual_learning,
+    verify_continual_learning_digest,
 )
 from .store import payload_digest
 from .surgery import module_parameter_digest
@@ -75,7 +76,40 @@ class ContinualCortexUpdateReceipt:
     continual_learning: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        data["update_sha256"] = payload_digest(data)
+        return data
+
+
+def verify_continual_cortex_update_receipt(
+    receipt: dict[str, Any],
+) -> dict[str, Any]:
+    if receipt.get("schema") != "NOLANE-L38-RECURRENT-CORTEX-CONTINUAL-UPDATE-V1":
+        raise ValueError("unsupported recurrent-cortex update schema")
+    if receipt.get("authority") != "RECURRENT_CORTEX_UPDATE_CANDIDATE_ONLY":
+        raise ValueError("recurrent-cortex update authority mismatch")
+    supplied = receipt.get("update_sha256")
+    body = dict(receipt)
+    body.pop("update_sha256", None)
+    if payload_digest(body) != supplied:
+        raise ValueError("recurrent-cortex update receipt digest mismatch")
+    if not receipt.get("candidate_cortex_changed"):
+        raise ValueError("recurrent-cortex candidate did not change")
+    if not receipt.get("candidate_boundary_unchanged"):
+        raise ValueError("recurrent-cortex update changed language boundary")
+    if not receipt.get("reference_boundary_unchanged"):
+        raise ValueError("recurrent-cortex update changed reference boundary")
+    if not receipt.get("reference_cortex_unchanged"):
+        raise ValueError("recurrent-cortex update changed reference cortex")
+    if int(receipt.get("candidate_boundary_gradients_seen", -1)) != 0:
+        raise ValueError("recurrent-cortex update leaked gradients to boundary")
+    if int(receipt.get("candidate_cortex_gradients_seen", 0)) <= 0:
+        raise ValueError("recurrent-cortex update has no cortex gradients")
+    continual = receipt.get("continual_learning")
+    if not isinstance(continual, dict):
+        raise ValueError("recurrent-cortex L30 receipt missing")
+    verify_continual_learning_digest(continual)
+    return receipt
 
 
 def _model_state_digest(model) -> str:
