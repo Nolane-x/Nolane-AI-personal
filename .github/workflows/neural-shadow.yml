@@ -37,6 +37,8 @@ jobs:
           tests/test_standalone_weights.py
           tests/test_factorized_boundary.py
           tests/test_rank_frontier.py
+          tests/test_quantized_boundary.py
+          tests/test_quantized_evaluation.py
       - run: python scripts/audit_living_core.py
       - run: python scripts/audit_state_space_cortex.py
       - run: python scripts/audit_multiscale_cortex.py
