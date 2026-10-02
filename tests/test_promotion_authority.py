@@ -526,6 +526,9 @@ def test_l36_complete_ceremony_binds_l35_l33_and_l34(tmp_path):
     assert audit["status"] == "PASS"
     assert audit["ceremonies"] == 1
     assert audit["generations"] == [pointer["generation"]]
+    registry_audit = registry.verify_registry()
+    assert registry_audit["status"] == "PASS"
+    assert registry_audit["promotion_ceremonies"] == 1
 
 
 def test_l36_blocked_convergence_never_persists_authority(tmp_path):
