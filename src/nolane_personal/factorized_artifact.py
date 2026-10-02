@@ -72,7 +72,11 @@ def export_factorized_from_l16(l16_checkpoint,output_dir,*,latent,rank:int=128,d
         boundary,cortex,latent,carry_recurrent_state=source.carry_recurrent_state
     ).to(device).eval()
     manifest=save_factorized_artifact(
-        output_dir,model,receipt,source_meta=meta,expected_dataset_fingerprint if False else None
+        output_dir,
+        model,
+        receipt,
+        source_meta=meta,
+        dataset_fingerprint=expected_dataset_fingerprint or meta.get("dataset_fingerprint"),
     )
     return model,manifest,receipt
 
