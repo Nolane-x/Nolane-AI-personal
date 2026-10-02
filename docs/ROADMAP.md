@@ -608,3 +608,39 @@ Engineering substrate: **INT8-BOUNDARY-COURT-READY / UNPROMOTED**.
 - [ ] evaluate tokenizer/vocabulary migration only after real rank + quantization evidence
 
 L19 is a real storage-format change, not a parameter-count relabel. It intentionally does not claim native int8 compute acceleration: the reference path dequantizes bounded chunks before floating-point matrix multiplication.
+
+
+## L20 — Real Qwen3-0.6B Weight Court
+
+Engineering evidence: **REAL-PINNED-WEIGHT-COURT-PASS / NO QUALITY PROMOTION**.
+
+- [x] dedicated heavy GitHub Actions workflow separate from ordinary CI
+- [x] exact pinned Hugging Face revision download and verification
+- [x] full real Qwen3-0.6B model load
+- [x] full-model forward with finite logits
+- [x] actual model parameter-count court
+- [x] stale model-lock metadata fails closed
+- [x] corrected real parameter count: 596,049,920
+- [x] measured real decoder depth: 28
+- [x] measured real hidden size: 1,024
+- [x] measured real vocabulary: 151,936
+- [x] measured tied input/output embeddings
+- [x] deterministic 512-row sample from learned vocabulary weights
+- [x] rank-128 L17 factorization code executed on real learned weights
+- [x] L19 row-wise int8 code executed on real learned factorized weights
+- [x] sampled factor quantization error ~1.13%
+- [x] sampled factorized-vs-int8 probe-logit error ~1.11%
+- [x] full-shape dense boundary parameters: 155,583,488
+- [x] full-shape rank-128 factorized parameters: 19,579,904 (~12.58%)
+- [x] full-shape int8+scale footprint: 20,191,232 bytes
+- [x] int8 footprint ~25.78% of FP32-factorized storage
+- [x] int8 footprint ~51.56% of BF16/FP16-factorized storage
+- [x] successful authority run 36977448315
+- [x] evidence artifact 11214325349 with SHA-256 digest
+- [ ] produce a trained real L16 standalone candidate from approved evidence
+- [ ] run the real L18 rank frontier using train/dev only
+- [ ] run frozen held-out personal + Vietnamese/English quality on the selected real rank
+- [ ] quantize that selected real artifact and pass L19 held-out quality/resource courts
+- [ ] compare target-device latency/RAM before any native int8-kernel work
+
+L20 deliberately upgrades **evidence realism**, not production authority. A real full-model forward plus real-weight factorization/int8 fidelity does not substitute for trained held-out language-quality evidence.

@@ -7,7 +7,7 @@
     "architecture": "Qwen3ForCausalLM",
     "model_type": "qwen3",
     "license": "Apache-2.0",
-    "parameters_bf16": 751632384
+    "parameters_bf16": 596049920
   },
   "local": {
     "path": "models/Qwen3-0.6B",

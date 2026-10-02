@@ -1,0 +1,46 @@
+name: Real Qwen3-0.6B Weight Court
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/l20-real-qwen06-weight-court
+    paths:
+      - ".github/workflows/real-qwen06-weight-court.yml"
+      - "scripts/run_real_qwen06_weight_court.py"
+      - "src/nolane_personal/real_qwen06_court.py"
+      - "model.lock.json"
+
+jobs:
+  real-qwen06:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HF_HOME: /tmp/hf
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e . --no-deps
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install "transformers>=4.51,<5" "safetensors>=0.4" "huggingface_hub>=0.35,<2"
+      - name: Download exact pinned Qwen3-0.6B
+        run: python scripts/download_model.py
+      - name: Run real Qwen3-0.6B mechanical weight court
+        run: >-
+          python scripts/run_real_qwen06_weight_court.py
+          --model models/Qwen3-0.6B
+          --sample-rows 512
+          --rank 128
+          --output runtime-data/l20-real-qwen06-court.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l20-real-qwen06-weight-court
+          path: runtime-data/l20-real-qwen06-court.json
+          if-no-files-found: warn
+          retention-days: 14
