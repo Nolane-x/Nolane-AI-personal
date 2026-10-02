@@ -1069,3 +1069,39 @@ Engineering substrate: **MULTICYCLE-CHAIN-AND-FIXED-PANEL-READY / NO PRODUCTION 
 
 L32 prevents individually acceptable updates from being mistaken for lifelong learning when their checkpoint history is broken or their cumulative endpoint forgets the original held-out panel.
 
+## L33 — Transactional Checkpoint Recovery
+
+Engineering substrate: **CRASH-RECOVERABLE-POINTER-REGISTRY-READY / NO AUTONOMOUS PROD AUTHORITY**.
+
+- [x] immutable checkpoint artifact store
+- [x] self-digested active checkpoint pointer
+- [x] immutable pointer history by generation
+- [x] atomic pointer replacement
+- [x] temporary-file flush + fsync before authority swap
+- [x] directory fsync where supported
+- [x] exclusive registry writer lock
+- [x] stale lock requires explicit recovery action
+- [x] L31 candidate receipt fully reverified before staging
+- [x] candidate parent checkpoint must equal currently active checkpoint
+- [x] complete candidate bundle digest bound into transaction ID
+- [x] staged candidate reverified after copy
+- [x] immutable PREPARED and VERIFIED transaction events
+- [x] active parent rechecked before commit
+- [x] crash before pointer swap recovers as aborted
+- [x] crash after pointer swap recovers as committed
+- [x] ambiguous recovery records RECOVERY_CONFLICT instead of guessing
+- [x] rollback creates a new forward pointer generation
+- [x] rollback receipts are self-digested and audited
+- [x] registry audit covers pointer ancestry and artifact digests
+- [x] active-pointer tamper court
+- [x] rollback-receipt tamper court
+- [x] local registry management CLI
+- [ ] execute L33 around real L31 candidate artifacts
+- [ ] simulate hard process kill during real artifact copy/commit on Windows and Linux
+- [ ] add serving-process checkpoint reload handshake
+- [ ] prevent split-brain when multiple serving processes observe pointer changes
+- [ ] define real L32 evidence -> promotion authorization policy
+- [ ] promote only after transactional reload/rollback court passes on real checkpoints
+
+L33 makes a model update crash-recoverable without rewriting history. It deliberately does not grant an autonomous updater production authority.
+
