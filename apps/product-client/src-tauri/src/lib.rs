@@ -168,6 +168,7 @@ fn spawn_windows_runtime(
     let model_dir = resource_dir.join("resources").join("model");
     let model_checkpoint = model_dir.join("factorized-nolane.pt");
     let tokenizer_dir = resource_dir.join("resources").join("tokenizer");
+    let ceremony_path = model_dir.join("promotion-ceremony.json");
 
     if !runtime_exe.is_file() {
         return Err(format!(
@@ -185,6 +186,12 @@ fn spawn_windows_runtime(
         return Err(format!(
             "Release tokenizer is missing: {}",
             tokenizer_dir.display()
+        ));
+    }
+    if !ceremony_path.is_file() {
+        return Err(format!(
+            "Release promotion ceremony is missing: {}",
+            ceremony_path.display()
         ));
     }
 
@@ -209,6 +216,8 @@ fn spawn_windows_runtime(
         .arg(&model_dir)
         .arg("--tokenizer")
         .arg(&tokenizer_dir)
+        .arg("--ceremony")
+        .arg(&ceremony_path)
         .arg("--device")
         .arg("auto")
         .arg("--auth-token")
