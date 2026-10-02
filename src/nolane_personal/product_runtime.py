@@ -37,6 +37,7 @@ class ProductRuntime:
             self.data_dir / "personalization.json"
         )
         self.profile = self.profile_store.load()
+        self._rest_allowed = bool(enable_rest)
         self.store = LivingStore(self.data_dir / "living.db")
         self.engine = LivingEngine(
             self.store,
@@ -86,7 +87,6 @@ class ProductRuntime:
                     "release checkpoint does not match COMPLETE ceremony"
                 )
         self._factory = cortex_factory
-        self._rest_allowed = bool(enable_rest)
         self._cortex: Cortex | None = None
         self._phase = "off"
         self._error: str | None = None
