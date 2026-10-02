@@ -8,6 +8,7 @@ torch = pytest.importorskip("torch")
 from nolane_personal.continual_cortex_update import (
     ContinualCortexUpdateConfig,
     train_continual_cortex_update,
+    verify_continual_cortex_update_receipt,
 )
 from nolane_personal.continual_learning_court import ContinualLearningPolicy
 from nolane_personal.deep_recurrent_cortex import (
@@ -266,3 +267,15 @@ def test_cortex_anchor_weight_validation():
         ContinualCortexUpdateConfig(
             cortex_anchor_weight=-0.1,
         ).validate()
+
+
+
+def test_cortex_update_receipt_self_digest_detects_tamper():
+    candidate, reference = cloned_pair()
+    receipt = train(candidate, reference).to_dict()
+    assert verify_continual_cortex_update_receipt(receipt) == receipt
+
+    tampered = dict(receipt)
+    tampered["optimizer_steps"] = 999
+    with pytest.raises(ValueError, match="receipt digest mismatch"):
+        verify_continual_cortex_update_receipt(tampered)
