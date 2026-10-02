@@ -45,7 +45,11 @@ def assert_min_target(locator, minimum=44):
 
 
 def run_desktop(browser, base_url):
-    context = browser.new_context(viewport={"width": 1280, "height": 820}, locale="vi-VN")\n    page = context.new_page()
+    context = browser.new_context(
+        viewport={"width": 1280, "height": 820},
+        locale="vi-VN",
+    )
+    page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
 
     power = page.locator("#powerButton")
