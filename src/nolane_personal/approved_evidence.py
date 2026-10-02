@@ -85,11 +85,27 @@ def _source_id_digest(value: Any) -> str | None:
     return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
 
 
+def _source_group_digest(value: Any) -> str | None:
+    """Hash the conversation/source group without exposing its raw identifier.
+
+    L24 source IDs use "<conversation>:pair:<index>". Grouping by the prefix
+    lets later courts detect train/dev/test leakage from the same conversation.
+    For other sources the whole source ID is treated as the group.
+    """
+    if value is None:
+        return None
+    rendered = str(value).strip()
+    if not rendered:
+        return None
+    group = rendered.rsplit(":pair:", 1)[0] if ":pair:" in rendered else rendered
+    return hashlib.sha256(group.encode("utf-8")).hexdigest()
+
+
 def _load_approved_rows(
     source: str | Path,
     *,
     policy: ApprovedEvidencePolicy,
-) -> tuple[list[dict[str, Any]], ApprovedEvidenceStats, list[str]]:
+) -> tuple[list[dict[str, Any]], ApprovedEvidenceStats, list[str], list[str | None]]:
     policy.validate()
     path = Path(source)
     if not path.exists():
@@ -103,6 +119,7 @@ def _load_approved_rows(
     seen_pairs: set[str] = set()
     language_counts: dict[str, int] = {}
     source_digests: list[str] = []
+    source_group_digests: list[str | None] = []
 
     with path.open("r", encoding="utf-8") as fh:
         for lineno, line in enumerate(fh, start=1):
@@ -150,9 +167,11 @@ def _load_approved_rows(
                 continue
             seen_pairs.add(pair_sha)
             language_counts[language] = language_counts.get(language, 0) + 1
-            source_id_sha = _source_id_digest(payload.get("source_id"))
+            source_id = payload.get("source_id")
+            source_id_sha = _source_id_digest(source_id)
             if source_id_sha is not None:
                 source_digests.append(source_id_sha)
+            source_group_digests.append(_source_group_digest(source_id))
 
             rows.append({
                 "prompt": prompt,
@@ -179,7 +198,7 @@ def _load_approved_rows(
         dev_examples=0,
         test_examples=0,
     )
-    return rows, stats, sorted(source_digests)
+    return rows, stats, sorted(source_digests), source_group_digests
 
 
 def build_approved_evidence_pack(
@@ -194,7 +213,9 @@ def build_approved_evidence_pack(
     if split_policy.min_examples < 7:
         raise ValueError("split policy min_examples must be >=7 for L21 readiness")
 
-    rows, stats, source_id_sha256 = _load_approved_rows(source, policy=policy)
+    rows, stats, source_id_sha256, example_source_group_sha256 = _load_approved_rows(
+        source, policy=policy
+    )
     output = Path(output_dir)
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(
@@ -240,6 +261,10 @@ def build_approved_evidence_pack(
         },
         "source_sha256": sha256_file(source),
         "source_id_sha256": source_id_sha256,
+        "example_source_group_sha256": example_source_group_sha256,
+        "source_group_coverage": sum(
+            1 for value in example_source_group_sha256 if value is not None
+        ),
         "dataset_sha256": dataset_sha256,
         "protocol_sha256": str(protocol["protocol_sha256"]),
         "dataset_filename": dataset_path.name,
@@ -288,6 +313,15 @@ def verify_approved_evidence_pack(
     examples = load_jsonl(dataset)
     if len(examples) != int(manifest["stats"]["output_examples"]):
         raise ValueError("approved evidence example count mismatch")
+    groups = manifest.get("example_source_group_sha256")
+    if not isinstance(groups, list) or len(groups) != len(examples):
+        raise ValueError("approved evidence source-group lineage mismatch")
+    if any(value is not None and not isinstance(value, str) for value in groups):
+        raise ValueError("approved evidence source-group digest invalid")
+    if int(manifest.get("source_group_coverage", -1)) != sum(
+        1 for value in groups if value is not None
+    ):
+        raise ValueError("approved evidence source-group coverage mismatch")
     return manifest
 
 
