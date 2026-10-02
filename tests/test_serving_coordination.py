@@ -308,3 +308,24 @@ def test_model_for_request_closes_post_gate_pointer_race(
     monkeypatch.setattr(session, "gate", gate_then_flip)
     with pytest.raises(RuntimeError, match="fence invalidated"):
         session.model_for_request(now=now)
+
+
+def test_request_context_allows_drain_but_blocks_next_request(tmp_path):
+    registry, coord = coordinator(tmp_path, min_live=1)
+    session = ServingSession(coord, process_id="worker", loader=loader)
+    now = "2026-10-02T00:00:00+00:00"
+    session.start(now=now)
+
+    with session.request_model(now=now) as model:
+        assert model["generation"] == 0
+        registry.activate(1)
+        # The already-admitted request may finish on generation 0.
+        assert model["generation"] == 0
+
+    with pytest.raises(RuntimeError, match="DRAIN_RELOAD_REQUIRED"):
+        with session.request_model(now=now):
+            pass
+
+    assert session.poll_reload(now=now) is True
+    with session.request_model(now=now) as model:
+        assert model["generation"] == 1
