@@ -237,6 +237,7 @@ def verify_promotion_authorization(
     *,
     now: str | None = None,
     require_authorized: bool = True,
+    check_expiry: bool = True,
 ) -> dict[str, Any]:
     if authorization.get("schema") != AUTH_SCHEMA:
         raise ValueError("unsupported promotion authorization schema")
@@ -261,9 +262,10 @@ def verify_promotion_authorization(
     expires = _parse_time(str(authorization.get("expires_at")))
     if expires <= issued:
         raise ValueError("promotion authorization expiry invalid")
-    current = _parse_time(now or utc_now_iso())
-    if current > expires:
-        raise ValueError("promotion authorization expired")
+    if check_expiry:
+        current = _parse_time(now or utc_now_iso())
+        if current > expires:
+            raise ValueError("promotion authorization expired")
     if require_authorized and authorization.get("status") != "AUTHORIZED":
         raise ValueError("promotion authorization is not AUTHORIZED")
     return authorization
