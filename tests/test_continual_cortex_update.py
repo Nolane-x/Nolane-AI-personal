@@ -8,6 +8,7 @@ torch = pytest.importorskip("torch")
 from nolane_personal.continual_cortex_update import (
     ContinualCortexUpdateConfig,
     train_continual_cortex_update,
+    verify_continual_cortex_run_receipt,
     verify_continual_cortex_update_receipt,
 )
 from nolane_personal.continual_learning_court import ContinualLearningPolicy
@@ -21,6 +22,7 @@ from nolane_personal.standalone_model import (
     StandaloneNolaneConfig,
     StandaloneNolaneLM,
 )
+from nolane_personal.store import payload_digest
 from nolane_personal.surgery import module_parameter_digest
 
 
@@ -279,3 +281,60 @@ def test_cortex_update_receipt_self_digest_detects_tamper():
     tampered["optimizer_steps"] = 999
     with pytest.raises(ValueError, match="receipt digest mismatch"):
         verify_continual_cortex_update_receipt(tampered)
+
+
+
+def test_cortex_run_receipt_roundtrip_binds_lineage_and_artifact():
+    candidate, reference = cloned_pair()
+    training = train(candidate, reference).to_dict()
+    parent = digest("parent-factorized")
+    lineage = {
+        "schema": "NOLANE-L38-CORTEX-UPDATE-LINEAGE-V1",
+        "parent_factorized_checkpoint_sha256": parent,
+        "retention_dataset_sha256": digest("retention-dataset"),
+        "retention_protocol_sha256": digest("retention-protocol"),
+        "retention_quality_court_sha256": digest("retention-quality"),
+        "adaptation_dataset_sha256": digest("adaptation-dataset"),
+        "adaptation_protocol_sha256": digest("adaptation-protocol"),
+        "adaptation_quality_court_sha256": digest("adaptation-quality"),
+    }
+    lineage["lineage_sha256"] = payload_digest(lineage)
+    artifact = {
+        "schema": "NOLANE-L17-FACTORIZED-LANGUAGE-BOUNDARY-V1",
+        "authority": "FACTORIZED_CANDIDATE_UNPROMOTED",
+        "checkpoint_sha256": digest("l38-artifact"),
+        "boundary_state_digest": training[
+            "candidate_boundary_digest_after"
+        ],
+        "cortex_state_digest": training[
+            "candidate_cortex_digest_after"
+        ],
+        "dataset_fingerprint": lineage["lineage_sha256"],
+        "training_receipt": training,
+    }
+    run = {
+        "schema": "NOLANE-L38-RECURRENT-CORTEX-UPDATE-RUN-V1",
+        "authority": "RECURRENT_CORTEX_UPDATE_EVIDENCE_ONLY_UNPROMOTED",
+        "parent_factorized_checkpoint_sha256": parent,
+        "training": training,
+        "lineage": lineage,
+        "artifact": artifact,
+    }
+    assert verify_continual_cortex_run_receipt(run) == run
+
+    tampered = dict(run)
+    tampered["lineage"] = dict(lineage)
+    tampered["lineage"]["adaptation_protocol_sha256"] = digest("tampered")
+    with pytest.raises(ValueError, match="lineage digest mismatch"):
+        verify_continual_cortex_run_receipt(tampered)
+
+
+def test_cortex_training_digest_excludes_run_level_lineage():
+    candidate, reference = cloned_pair()
+    training = train(candidate, reference).to_dict()
+    verify_continual_cortex_update_receipt(training)
+
+    with_lineage = dict(training)
+    with_lineage["lineage"] = {"unexpected": True}
+    with pytest.raises(ValueError, match="receipt digest mismatch"):
+        verify_continual_cortex_update_receipt(with_lineage)
