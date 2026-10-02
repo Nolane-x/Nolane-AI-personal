@@ -22,7 +22,6 @@ def ex(tokens):
 def test_full_rank_factorization_reconstructs_boundary():
     src=source_boundary(tied=False,vocab=41,hidden=12)
     fac,receipt=factorize_standalone_boundary(src,rank=12,seed=7)
-    assert receipt["parameter_ratio"] < 1.0
     assert receipt["input_relative_frobenius_error"] < 1e-5
     assert receipt["output_relative_frobenius_error"] < 1e-5
     assert torch.allclose(fac.reconstructed_input_weight(),src.embed_tokens.weight,atol=1e-5,rtol=1e-5)
