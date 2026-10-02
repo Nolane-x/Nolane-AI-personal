@@ -178,6 +178,11 @@ jobs:
         shell: pwsh
         run: npm install --global @tauri-apps/cli@2.12.0
 
+      - name: Generate product icons
+        working-directory: apps/product-client
+        shell: pwsh
+        run: tauri icon icon-source.svg
+
       - name: Build one-click NSIS installer
         working-directory: apps/product-client
         shell: pwsh
