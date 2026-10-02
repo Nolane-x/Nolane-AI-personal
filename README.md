@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.36.0
+## Current executable milestone: Living Runtime v0.37.0
 
 The runtime now contains two very different compute scales:
 
@@ -1179,6 +1179,18 @@ python scripts/finalize_promotion_ceremony.py \
 This implements the release ceremony mechanism; it does not claim that synthetic CI evidence is sufficient for autonomous real-world self-promotion.
 
 See `docs/L36-FINAL-PROMOTION-CEREMONY.md`.
+
+### L37 Cross-Platform Hard-Kill Court
+
+L37 replaces same-process exception simulation with **real child-process death**. Test children call `os._exit()` at exact L33 commit and L34 reload durability boundaries, so Python cleanup does not run and stale locks/disk state must be recovered by a new process.
+
+This court discovered and closes a real crash window: if generation N+1 pointer history was written but the process died before `active.json` moved from N, recovery could previously leave an orphan N+1 snapshot. L37 removes that snapshot only when its transaction, candidate checkpoint and parent pointer exactly match the interrupted transaction; otherwise recovery records a conflict.
+
+A dedicated GitHub Actions matrix executes the hard-kill court on **Ubuntu and Windows**. It also proves reload death before ACK leaves an old drain-required lease, while death after ACK preserves the new-generation lease.
+
+These are genuine process-kill/filesystem courts, but CI still uses synthetic checkpoint bundles rather than large real trained model files.
+
+See `docs/L37-CROSS-PLATFORM-HARD-KILL-COURT.md`.
 
 ## Bootstrap Qwen
 
