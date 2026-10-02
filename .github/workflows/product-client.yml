@@ -56,13 +56,16 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Tauri CLI
+        run: npm install --global @tauri-apps/cli@2.12.0
       - name: Build Windows app executable
         working-directory: apps/product-client
         shell: pwsh
-        run: |
-          cargo install tauri-cli --version "^2.12" --locked
-          cargo tauri build --no-bundle
+        run: tauri build --no-bundle
 
   android:
     name: Android APK court
@@ -75,6 +78,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
@@ -84,13 +90,14 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "ndk;$NDK_VERSION"
           echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+      - name: Install pinned Tauri CLI
+        run: npm install --global @tauri-apps/cli@2.12.0
       - name: Build Android APK
         working-directory: apps/product-client
         shell: bash
         run: |
-          cargo install tauri-cli --version "^2.12" --locked
-          cargo tauri android init --ci --skip-targets-install
-          cargo tauri android build --apk --target aarch64
+          tauri android init --ci --skip-targets-install
+          tauri android build --apk --target aarch64
       - name: Verify APK exists
         shell: bash
         run: |
