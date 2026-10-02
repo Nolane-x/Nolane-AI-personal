@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from .multicycle_continual import verify_l31_run_receipt
-from .promotion_authority import verify_promotion_authorization
+from .promotion_authority_dispatch import (
+    authorization_kind,
+    verify_any_promotion_authorization,
+)
+from .unified_continual import (
+    model_state_sha256,
+    verify_l38_run_receipt,
+)
 from .state import utc_now_iso
 from .store import canonical_json, payload_digest
 
@@ -122,7 +129,58 @@ def verify_l31_candidate_bundle(path: str | Path) -> dict[str, Any]:
         raise ValueError("L31 receipt artifact manifest mismatch")
     evidence["run_receipt"] = run
     evidence["run_receipt_sha256"] = sha256_file(receipt_path)
+    evidence["run_schema"] = run["schema"]
+    evidence["run_receipt_name"] = receipt_path.name
     return evidence
+
+
+def verify_l38_candidate_bundle(path: str | Path) -> dict[str, Any]:
+    bundle = Path(path)
+    evidence = _verify_factorized_bundle(bundle)
+    receipt_path = bundle / "l38-run-receipt.json"
+    if not receipt_path.is_file():
+        raise ValueError("L38 run receipt missing from candidate bundle")
+    run = _read_json(receipt_path)
+    verify_l38_run_receipt(run)
+    if run["artifact"]["checkpoint_sha256"] != evidence["checkpoint_sha256"]:
+        raise ValueError("L38 receipt candidate checkpoint mismatch")
+    if run["artifact"] != evidence["manifest"]:
+        raise ValueError("L38 receipt artifact manifest mismatch")
+    evidence["run_receipt"] = run
+    evidence["run_receipt_sha256"] = sha256_file(receipt_path)
+    evidence["run_schema"] = run["schema"]
+    evidence["run_receipt_name"] = receipt_path.name
+    return evidence
+
+
+def verify_continual_candidate_bundle(path: str | Path) -> dict[str, Any]:
+    bundle = Path(path)
+    has_l31 = (bundle / "l31-run-receipt.json").is_file()
+    has_l38 = (bundle / "l38-run-receipt.json").is_file()
+    if has_l31 and has_l38:
+        raise ValueError("candidate bundle has ambiguous L31/L38 receipts")
+    if has_l31:
+        return verify_l31_candidate_bundle(bundle)
+    if has_l38:
+        return verify_l38_candidate_bundle(bundle)
+    raise ValueError("candidate bundle has no supported continual run receipt")
+
+
+def _verify_authorized_candidate_state(
+    authorization: dict[str, Any],
+    evidence: dict[str, Any],
+) -> None:
+    if authorization_kind(authorization) != "L40_UNIFIED_MODEL_CHAIN":
+        return
+    manifest = evidence["manifest"]
+    state_sha = model_state_sha256(
+        boundary_state_digest=manifest["boundary_state_digest"],
+        cortex_state_digest=manifest["cortex_state_digest"],
+    )
+    if state_sha != authorization["final_model_state_sha256"]:
+        raise ValueError(
+            "unified promotion authorization final model-state mismatch"
+        )
 
 
 def _seal_pointer(body: dict[str, Any]) -> dict[str, Any]:
@@ -287,13 +345,10 @@ class CheckpointRegistry:
         auth_sha = prepared.get("promotion_authorization_sha256")
         if auth_sha is None:
             raise ValueError("transaction is not promotion-authorized")
-        auth_path = (
-            self._tx_dir(transaction_id)
-            / "promotion-authorization.json"
-        )
+        auth_path = self._tx_dir(transaction_id) / "promotion-authorization.json"
         if not auth_path.exists():
             raise ValueError("promotion authorization file missing")
-        authorization = verify_promotion_authorization(
+        authorization = verify_any_promotion_authorization(
             _read_json(auth_path),
             require_authorized=True,
             check_expiry=False,
@@ -443,7 +498,7 @@ class CheckpointRegistry:
         now: str | None = None,
     ) -> str:
         with self.lock():
-            verified_auth = verify_promotion_authorization(
+            verified_auth = verify_any_promotion_authorization(
                 authorization,
                 now=now,
             )
@@ -461,7 +516,26 @@ class CheckpointRegistry:
                 )
 
             source = Path(candidate_bundle)
-            evidence = verify_l31_candidate_bundle(source)
+            if authorization_kind(verified_auth) == "L35_BOUNDARY_CHAIN":
+                evidence = verify_l31_candidate_bundle(source)
+            else:
+                evidence = verify_continual_candidate_bundle(source)
+                parent_path = self.artifact_path_for_pointer(parent)
+                parent_evidence = _verify_factorized_bundle(parent_path)
+                parent_state = model_state_sha256(
+                    boundary_state_digest=parent_evidence["manifest"][
+                        "boundary_state_digest"
+                    ],
+                    cortex_state_digest=parent_evidence["manifest"][
+                        "cortex_state_digest"
+                    ],
+                )
+                if parent_state != verified_auth["initial_model_state_sha256"]:
+                    raise ValueError(
+                        "unified promotion authorization initial model-state mismatch"
+                    )
+                _verify_authorized_candidate_state(verified_auth, evidence)
+
             if (
                 verified_auth["candidate_checkpoint_sha256"]
                 != evidence["checkpoint_sha256"]
@@ -475,8 +549,12 @@ class CheckpointRegistry:
                     "parent_pointer_sha256": parent["pointer_sha256"],
                     "candidate_checkpoint_sha256": evidence["checkpoint_sha256"],
                     "candidate_bundle_sha256": evidence["bundle_sha256"],
-                    "l31_run_receipt_sha256": evidence["run_receipt_sha256"],
+                    "candidate_run_schema": evidence["run_schema"],
+                    "candidate_run_receipt_sha256": evidence[
+                        "run_receipt_sha256"
+                    ],
                     "promotion_authorization_sha256": auth_sha,
+                    "promotion_authorization_schema": verified_auth["schema"],
                 }
             )
             tx_dir = self._tx_dir(transaction_id)
@@ -485,7 +563,11 @@ class CheckpointRegistry:
             staging = tx_dir / "staging"
             staging.parent.mkdir(parents=True, exist_ok=False)
             shutil.copytree(source, staging)
-            staged = verify_l31_candidate_bundle(staging)
+            if authorization_kind(verified_auth) == "L35_BOUNDARY_CHAIN":
+                staged = verify_l31_candidate_bundle(staging)
+            else:
+                staged = verify_continual_candidate_bundle(staging)
+                _verify_authorized_candidate_state(verified_auth, staged)
             if staged["bundle_sha256"] != evidence["bundle_sha256"]:
                 raise RuntimeError("candidate bundle changed while staging")
             _atomic_write_json(
@@ -501,8 +583,12 @@ class CheckpointRegistry:
                     "parent_checkpoint_sha256": parent["checkpoint_sha256"],
                     "candidate_checkpoint_sha256": evidence["checkpoint_sha256"],
                     "candidate_bundle_sha256": evidence["bundle_sha256"],
-                    "l31_run_receipt_sha256": evidence["run_receipt_sha256"],
+                    "candidate_run_schema": evidence["run_schema"],
+                    "candidate_run_receipt_sha256": evidence[
+                        "run_receipt_sha256"
+                    ],
                     "promotion_authorization_sha256": auth_sha,
+                    "promotion_authorization_schema": verified_auth["schema"],
                 },
             )
             return transaction_id
