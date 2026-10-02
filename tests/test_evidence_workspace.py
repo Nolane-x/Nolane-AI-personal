@@ -24,6 +24,7 @@ def write_jsonl(path: Path, rows):
 
 
 def make_ready_inputs(tmp_path: Path):
+    tmp_path.mkdir(parents=True,exist_ok=True)
     source=tmp_path/"approved-source.jsonl"
     write_jsonl(source,[
         {
@@ -89,9 +90,9 @@ def test_workspace_binds_ready_inputs_without_copying_private_text(tmp_path):
     assert spec["binding"]["evidence_manifest_sha256"]==pack.manifest["manifest_sha256"]
     assert spec["binding"]["requested_model_revision"]=="pinned-revision"
     assert spec["binding"]["resolved_model_revision"]=="pinned-revision"
-    assert spec["binding"]["model_weight_files"]==[
-        {"filename":"model.safetensors","bytes":len(b"fake-model-weights")}
-    ]
+    assert spec["binding"]["model_weight_files"][0]["filename"]=="model.safetensors"
+    assert spec["binding"]["model_weight_files"][0]["bytes"]==len(b"fake-model-weights")
+    assert len(spec["binding"]["model_weight_files"][0]["sha256"])==64
     rendered=result["spec_path"].read_text(encoding="utf-8")
     assert "PRIVATE-WORKSPACE-PROMPT" not in rendered
     assert "PRIVATE-WORKSPACE-TARGET" not in rendered
@@ -156,7 +157,10 @@ def test_workspace_detects_model_weight_inventory_change(tmp_path):
         l14_anchor=l14,
         output_dir=tmp_path/"workspace",
     )
-    (model/"model.safetensors").write_bytes(b"changed-length-model-weights")
+    original=(model/"model.safetensors").read_bytes()
+    replacement=b"X"*len(original)
+    assert len(replacement)==len(original)
+    (model/"model.safetensors").write_bytes(replacement)
     with pytest.raises(ValueError,match="model weight inventory mismatch"):
         verify_evidence_workspace(result["spec_path"])
 
