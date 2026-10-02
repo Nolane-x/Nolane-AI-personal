@@ -289,3 +289,14 @@ def verify_approved_evidence_pack(
     if len(examples) != int(manifest["stats"]["output_examples"]):
         raise ValueError("approved evidence example count mismatch")
     return manifest
+
+
+def resolve_approved_evidence_pack(
+    manifest_path: str | Path,
+) -> tuple[dict[str, Any], Path, Path]:
+    path = Path(manifest_path)
+    manifest = verify_approved_evidence_pack(path)
+    root = path.parent
+    dataset = root / str(manifest["dataset_filename"])
+    protocol = root / str(manifest["protocol_filename"])
+    return manifest, dataset, protocol
