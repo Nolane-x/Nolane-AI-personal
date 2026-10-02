@@ -86,7 +86,10 @@ def run_desktop(browser, base_url):
         full_page=True,
     )
     page.locator("#preferredName").fill("Tài")
-    page.locator("#memoryEnabled").uncheck()
+    memory = page.locator("#memoryEnabled")
+    assert memory.is_checked()
+    page.locator(".toggle-row").click()
+    assert not memory.is_checked()
     page.locator("#saveProfileButton").click()
     page.wait_for_function(
         "() => !document.querySelector('#personalizationDialog').open"
@@ -111,6 +114,7 @@ def run_mobile(browser, base_url):
         is_mobile=True,
         has_touch=True,
         device_scale_factor=2,
+        locale="vi-VN",
     )
     page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
