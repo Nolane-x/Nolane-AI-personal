@@ -897,6 +897,29 @@ class CheckpointRegistry:
             ):
                 raise ValueError("rollback target generation mismatch")
             rollback_count += 1
+        ceremony_count = 0
+        ceremonies_dir = self.root / "ceremonies"
+        if ceremonies_dir.exists():
+            from .promotion_ceremony import (
+                verify_promotion_ceremony_against_registry,
+            )
+
+            for path in sorted(ceremonies_dir.glob("*.json")):
+                receipt = _read_json(path)
+                verify_promotion_ceremony_against_registry(
+                    self,
+                    receipt,
+                    require_complete=True,
+                )
+                expected_name = (
+                    f"{int(receipt['pointer_generation']):012d}.json"
+                )
+                if path.name != expected_name:
+                    raise ValueError(
+                        "promotion ceremony filename mismatch"
+                    )
+                ceremony_count += 1
+
         return {
             "schema": "NOLANE-L33-CHECKPOINT-REGISTRY-AUDIT-V1",
             "authority": REGISTRY_AUTHORITY,
@@ -907,4 +930,5 @@ class CheckpointRegistry:
             "active_pointer_sha256": active["pointer_sha256"],
             "rollback_receipts": rollback_count,
             "promotion_authorizations": authorization_count,
+            "promotion_ceremonies": ceremony_count,
         }
