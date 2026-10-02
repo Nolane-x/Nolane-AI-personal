@@ -17,6 +17,7 @@ on:
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
       - ".github/workflows/product-client.yml"
+      - ".github/workflows/product-windows-release.yml"
   pull_request:
     paths:
       - "apps/product-client/**"
@@ -29,6 +30,7 @@ on:
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
       - ".github/workflows/product-client.yml"
+      - ".github/workflows/product-windows-release.yml"
 
 jobs:
   runtime:
