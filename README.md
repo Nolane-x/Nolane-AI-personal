@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.35.0
+## Current executable milestone: Living Runtime v0.36.0
 
 The runtime now contains two very different compute scales:
 
@@ -1151,6 +1151,34 @@ python scripts/manage_checkpoint_registry.py begin \
 CI still uses synthetic evidence, so v0.35.0 provides the authority mechanism without claiming real-data production promotion has been earned.
 
 See `docs/L35-EVIDENCE-BOUND-PROMOTION-AUTHORITY.md`.
+
+### L36 Final Promotion Ceremony
+
+L36 closes the evidence and serving chain for one checkpoint promotion:
+
+```text
+L32 multicycle evidence
+  -> L35 explicit short-lived authorization
+  -> L33 atomic committed UPDATE
+  -> L34 serving convergence
+  -> L36 immutable COMPLETE ceremony
+```
+
+A pointer swap alone is not a completed release. The ceremony re-verifies the stored authorization, committed transaction, checkpoint pointer, serving convergence receipt and their chronology. It also requires the promoted pointer to still be active at finalization.
+
+Only a `COMPLETE` ceremony is persisted under `<registry>/ceremonies/<generation>.json`. A BLOCKED attempt remains diagnostic and does not become final authority evidence. Persisted receipts remain historically verifiable after later rollback, and registry audit detects ceremony tampering.
+
+```bash
+python scripts/finalize_promotion_ceremony.py \
+  --registry runtime-data/continual-checkpoint-registry \
+  finalize \
+  --transaction <transaction-id> \
+  --convergence runtime-data/serving-convergence.json
+```
+
+This implements the release ceremony mechanism; it does not claim that synthetic CI evidence is sufficient for autonomous real-world self-promotion.
+
+See `docs/L36-FINAL-PROMOTION-CEREMONY.md`.
 
 ## Bootstrap Qwen
 
