@@ -331,10 +331,9 @@ def test_authorization_tamper_and_expiry_fail_closed(tmp_path):
 
 def test_chain_is_recomputed_not_trusted_by_digest_alone(tmp_path):
     ev = evidence(tmp_path)
-    changed_cycles = list(ev["cycles"])
-    changed_cycles[1] = dict(changed_cycles[1])
-    changed_cycles[1]["training"] = dict(changed_cycles[1]["training"])
-    changed_cycles[1]["training"]["candidate_boundary_gradients_seen"] = 999
+    # Each cycle remains individually valid, but their order no longer matches
+    # the supplied L32 chain evidence.
+    changed_cycles = [ev["cycles"][1], ev["cycles"][0]]
 
     with pytest.raises(ValueError):
         decide_promotion_authorization(
