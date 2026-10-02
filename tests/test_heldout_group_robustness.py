@@ -50,7 +50,7 @@ def test_group_robustness_passes_when_every_heldout_group_is_noninferior():
     assert receipt["groups"]>=2
     assert receipt["summary"]["worst_group_regression"]<=0.02
     rendered=json.dumps(receipt,sort_keys=True)
-    for raw in ("prompt","target",digest("f"),digest("g")):
+    for raw in ("prompt 6","target 6","prompt 7","target 7",digest("f"),digest("g")):
         assert raw not in rendered
     verify_group_robustness_receipt(
         receipt,
@@ -112,3 +112,22 @@ def test_group_robustness_rejects_metric_length_drift():
             reference_values=[1.0],
             candidate_values=[1.0],
         )
+
+
+def test_group_robustness_digest_tamper_is_detected():
+    from nolane_personal.heldout_group_robustness import verify_group_robustness_digest
+
+    frozen=protocol()
+    rows=frozen["splits"]["test"]
+    ref=[1.0]*len(rows)
+    cand=[1.0]*len(rows)
+    receipt=assess_group_robustness(
+        frozen,
+        split="test",
+        reference_values=ref,
+        candidate_values=cand,
+    )
+    verify_group_robustness_digest(receipt)
+    receipt["summary"]["worst_group_regression"]=9.0
+    with pytest.raises(ValueError,match="digest mismatch"):
+        verify_group_robustness_digest(receipt)
