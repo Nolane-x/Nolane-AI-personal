@@ -8,7 +8,8 @@ from typing import Any
 from .store import payload_digest
 
 
-SCHEMA = "NOLANE-L30-LONG-HORIZON-CONTINUAL-LEARNING-V1"\nFLOAT_EPSILON = 1e-12
+SCHEMA = "NOLANE-L30-LONG-HORIZON-CONTINUAL-LEARNING-V1"
+FLOAT_EPSILON = 1e-12
 
 
 @dataclass(slots=True)
