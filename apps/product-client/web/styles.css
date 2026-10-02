@@ -514,7 +514,7 @@ summary:focus-visible {
 .composer {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   align-items: end;
   gap: 8px;
   width: min(100%, var(--max-chat));
@@ -566,8 +566,8 @@ summary:focus-visible {
 .send-button {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 15px;
   background: var(--orange);
@@ -656,9 +656,9 @@ summary:focus-visible {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: transparent;
@@ -825,7 +825,7 @@ summary:focus-visible {
 .primary-button,
 .secondary-button,
 .text-button {
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 13px;
   cursor: pointer;
   font-weight: 720;
