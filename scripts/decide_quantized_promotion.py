@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from nolane_personal.quantized_promotion import decide_quantized_promotion
-from nolane_personal.heldout_group_robustness import verify_group_robustness_digest
+from nolane_personal.heldout_group_robustness import effective_quality_status
 
 
 def main():
@@ -18,14 +18,9 @@ def main():
     q=json.loads(Path(a.quality).read_text(encoding="utf-8"))
     r=json.loads(Path(a.resources).read_text(encoding="utf-8"))
     group=q.get("group_robustness")
-    try:
-        verify_group_robustness_digest(group if isinstance(group,dict) else {})
-        group_pass=group.get("status")=="PASS"
-    except ValueError:
-        group_pass=False
-    effective_quality_status=q.get("decision",{}).get("status","") if group_pass else ""
+    effective_status=effective_quality_status(q)
     d=decide_quantized_promotion(
-        quality_status=effective_quality_status,
+        quality_status=effective_status,
         quality_checkpoint_sha256=q.get("quantized_checkpoint_sha256"),
         quality_source_factorized_checkpoint_sha256=q.get("source_factorized_checkpoint_sha256"),
         quality_source_l16_checkpoint_sha256=q.get("source_l16_checkpoint_sha256"),
