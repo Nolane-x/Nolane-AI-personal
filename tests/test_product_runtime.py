@@ -1,3 +1,4 @@
+import hashlib
 import json
 import threading
 from http.client import HTTPConnection
@@ -8,6 +9,39 @@ from nolane_personal.cortex import CortexReply
 from nolane_personal.product_profile import ProductProfileStore
 from nolane_personal.product_runtime import ProductRuntime
 from nolane_personal.product_server import ProductHTTPServer
+from nolane_personal.promotion_ceremony import (
+    AUTHORITY as CEREMONY_AUTHORITY,
+    SCHEMA as CEREMONY_SCHEMA,
+)
+from nolane_personal.store import payload_digest
+
+
+
+
+def release_ceremony(checkpoint_sha256):
+    body = {
+        "schema": CEREMONY_SCHEMA,
+        "authority": CEREMONY_AUTHORITY,
+        "status": "COMPLETE",
+        "reasons": [],
+        "authorization_sha256": "1" * 64,
+        "multicycle_chain_sha256": "2" * 64,
+        "long_horizon_retention_court_sha256": "3" * 64,
+        "candidate_checkpoint_sha256": checkpoint_sha256,
+        "pointer_sha256": "4" * 64,
+        "serving_convergence_sha256": "5" * 64,
+        "transaction_id": "tx-product-runtime",
+        "pointer_generation": 1,
+        "authorization_issued_at": "2026-10-02T12:00:00+00:00",
+        "authorization_expires_at": "2026-10-02T13:00:00+00:00",
+        "transaction_prepared_at": "2026-10-02T12:00:00+00:00",
+        "transaction_committed_at": "2026-10-02T12:01:00+00:00",
+        "pointer_created_at": "2026-10-02T12:01:00+00:00",
+        "serving_convergence_assessed_at": "2026-10-02T12:02:00+00:00",
+        "ceremony_at": "2026-10-02T12:03:00+00:00",
+    }
+    body["ceremony_sha256"] = payload_digest(body)
+    return body
 
 
 class FakeCortex:
@@ -179,3 +213,38 @@ def test_conversation_history_is_separate_from_memory_policy(tmp_path):
         assert history[1]["role"] == "assistant"
     finally:
         runtime.close()
+
+
+
+def test_product_runtime_reverifies_release_ceremony_before_startup(tmp_path):
+    checkpoint = tmp_path / "factorized-nolane.pt"
+    checkpoint.write_bytes(b"release-checkpoint")
+    actual_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    ceremony_path = tmp_path / "promotion-ceremony.json"
+    ceremony_path.write_text(
+        json.dumps(release_ceremony(actual_sha)),
+        encoding="utf-8",
+    )
+
+    runtime = ProductRuntime(
+        tmp_path / "data-ok",
+        checkpoint=checkpoint,
+        release_ceremony=ceremony_path,
+        cortex_factory=fake_factory,
+    )
+    runtime.close()
+
+    ceremony_path.write_text(
+        json.dumps(release_ceremony("f" * 64)),
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        ValueError,
+        match="does not match COMPLETE ceremony",
+    ):
+        ProductRuntime(
+            tmp_path / "data-bad",
+            checkpoint=checkpoint,
+            release_ceremony=ceremony_path,
+            cortex_factory=fake_factory,
+        )
