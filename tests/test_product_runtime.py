@@ -61,10 +61,14 @@ def test_memory_toggle_changes_actual_living_memory_behavior(tmp_path):
     try:
         runtime.power_on()
         runtime.update_profile({"memory_enabled": False})
+        assert runtime.engine.memory_enabled is False
+        assert runtime.engine.enable_rest is False
         runtime.send_message("do not memorize this")
         assert runtime.store.memories() == []
 
         runtime.update_profile({"memory_enabled": True})
+        assert runtime.engine.memory_enabled is True
+        assert runtime.engine.enable_rest is True
         runtime.send_message("remember this")
         memories = runtime.store.memories()
         assert len(memories) == 1
