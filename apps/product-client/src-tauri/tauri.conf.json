@@ -37,7 +37,8 @@
       "webviewInstallMode": {
         "type": "offlineInstaller",
         "silent": true
-      }
+      },
+      "bundleVCRuntime": true
     }
   }
 }
