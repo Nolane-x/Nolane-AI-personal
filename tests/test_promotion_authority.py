@@ -22,6 +22,18 @@ from nolane_personal.promotion_authority import (
     decide_promotion_authorization,
     verify_promotion_authorization,
 )
+from nolane_personal.promotion_ceremony import (
+    audit_promotion_ceremonies,
+    finalize_promotion_ceremony,
+    load_promotion_ceremony,
+    verify_promotion_ceremony_against_registry,
+    verify_promotion_ceremony_receipt,
+)
+from nolane_personal.serving_coordination import (
+    ServingCoordinator,
+    ServingLeasePolicy,
+)
+from nolane_personal.state import utc_now_iso
 from nolane_personal.store import payload_digest
 from nolane_personal.transactional_registry import (
     CheckpointRegistry,
@@ -431,3 +443,215 @@ def test_registry_audit_detects_authorization_file_tamper(tmp_path):
     write_json(path, payload)
     with pytest.raises(ValueError, match="authorization digest mismatch"):
         registry.verify_registry()
+
+
+
+def live_authorization(ev, *, ttl=3600):
+    return decide_promotion_authorization(
+        cycles=ev["cycles"],
+        long_horizon_retention=ev["horizon"],
+        multicycle_chain=ev["chain"],
+        operator_request=request(ev),
+        policy=PromotionAuthorizationPolicy(
+            min_cycles=2,
+            authorization_ttl_seconds=ttl,
+        ),
+        now=utc_now_iso(),
+    )
+
+
+def committed_release(tmp_path):
+    ev = evidence(tmp_path)
+    auth = live_authorization(ev)
+    assert auth["status"] == "AUTHORIZED"
+    registry = CheckpointRegistry(tmp_path / "ceremony-registry")
+    registry.initialize(ev["parent_bundle"])
+    tx = registry.begin_authorized_update(
+        ev["final_bundle"],
+        auth,
+        now=utc_now_iso(),
+    )
+    registry.verify_update(tx, now=utc_now_iso())
+    pointer = registry.commit_update(tx, now=utc_now_iso())
+    coordinator = ServingCoordinator(
+        registry,
+        root=tmp_path / "ceremony-serving",
+        policy=ServingLeasePolicy(
+            lease_seconds=30.0,
+            min_live_processes=1,
+        ),
+    )
+    coordinator.register_loaded(
+        "worker-1",
+        pointer=pointer,
+        now=utc_now_iso(),
+    )
+    convergence = coordinator.assess_convergence(now=utc_now_iso())
+    assert convergence["status"] == "PASS"
+    return ev, auth, registry, tx, pointer, coordinator, convergence
+
+
+def test_l36_complete_ceremony_binds_l35_l33_and_l34(tmp_path):
+    ev, auth, registry, tx, pointer, _, convergence = committed_release(
+        tmp_path
+    )
+    receipt = finalize_promotion_ceremony(
+        registry,
+        transaction_id=tx,
+        convergence_receipt=convergence,
+        now=utc_now_iso(),
+    )
+    assert receipt["status"] == "COMPLETE"
+    assert receipt["authorization_sha256"] == auth["authorization_sha256"]
+    assert receipt["multicycle_chain_sha256"] == ev["chain"]["chain_sha256"]
+    assert (
+        receipt["long_horizon_retention_court_sha256"]
+        == ev["horizon"]["court_sha256"]
+    )
+    assert receipt["pointer_sha256"] == pointer["pointer_sha256"]
+    assert receipt["candidate_checkpoint_sha256"] == ev["final_sha"]
+    assert (
+        receipt["serving_convergence_sha256"]
+        == convergence["convergence_sha256"]
+    )
+    verify_promotion_ceremony_receipt(receipt)
+    verify_promotion_ceremony_against_registry(registry, receipt)
+
+    stored = load_promotion_ceremony(
+        registry,
+        pointer["generation"],
+    )
+    assert stored == receipt
+    audit = audit_promotion_ceremonies(registry)
+    assert audit["status"] == "PASS"
+    assert audit["ceremonies"] == 1
+    assert audit["generations"] == [pointer["generation"]]
+
+
+def test_l36_blocked_convergence_never_persists_authority(tmp_path):
+    ev = evidence(tmp_path)
+    auth = live_authorization(ev)
+    registry = CheckpointRegistry(tmp_path / "blocked-registry")
+    registry.initialize(ev["parent_bundle"])
+    tx = registry.begin_authorized_update(
+        ev["final_bundle"],
+        auth,
+        now=utc_now_iso(),
+    )
+    registry.verify_update(tx, now=utc_now_iso())
+    registry.commit_update(tx, now=utc_now_iso())
+    coordinator = ServingCoordinator(
+        registry,
+        root=tmp_path / "blocked-serving",
+        policy=ServingLeasePolicy(
+            lease_seconds=30.0,
+            min_live_processes=1,
+        ),
+    )
+    blocked = coordinator.assess_convergence(now=utc_now_iso())
+    assert blocked["status"] == "BLOCKED"
+
+    receipt = finalize_promotion_ceremony(
+        registry,
+        transaction_id=tx,
+        convergence_receipt=blocked,
+        now=utc_now_iso(),
+    )
+    assert receipt["status"] == "BLOCKED"
+    assert "serving_convergence_not_pass" in receipt["reasons"]
+    with pytest.raises(ValueError, match="not COMPLETE"):
+        verify_promotion_ceremony_receipt(receipt)
+    assert audit_promotion_ceremonies(registry)["ceremonies"] == 0
+
+
+def test_l36_active_pointer_move_blocks_finalization_but_history_remains_verifiable(
+    tmp_path,
+):
+    _, _, registry, tx, pointer, _, convergence = committed_release(
+        tmp_path
+    )
+    complete = finalize_promotion_ceremony(
+        registry,
+        transaction_id=tx,
+        convergence_receipt=convergence,
+        now=utc_now_iso(),
+    )
+    assert complete["status"] == "COMPLETE"
+
+    registry.rollback_to_generation(0)
+    assert (
+        verify_promotion_ceremony_against_registry(
+            registry,
+            complete,
+        )
+        == complete
+    )
+
+    blocked = finalize_promotion_ceremony(
+        registry,
+        transaction_id=tx,
+        convergence_receipt=convergence,
+        now=utc_now_iso(),
+        persist=False,
+    )
+    assert blocked["status"] == "BLOCKED"
+    assert "active_pointer_moved_before_ceremony" in blocked["reasons"]
+    assert load_promotion_ceremony(
+        registry,
+        pointer["generation"],
+    ) == complete
+
+
+def test_l36_convergence_before_pointer_swap_is_blocked(tmp_path):
+    _, _, registry, tx, _, _, convergence = committed_release(tmp_path)
+    bad = dict(convergence)
+    bad["assessed_at"] = "2000-01-01T00:00:00+00:00"
+    bad.pop("convergence_sha256", None)
+    bad["convergence_sha256"] = payload_digest(bad)
+
+    receipt = finalize_promotion_ceremony(
+        registry,
+        transaction_id=tx,
+        convergence_receipt=bad,
+        now=utc_now_iso(),
+        persist=False,
+    )
+    assert receipt["status"] == "BLOCKED"
+    assert "serving_convergence_predates_pointer_swap" in receipt["reasons"]
+
+
+def test_l36_persisted_receipt_tamper_is_detected(tmp_path):
+    _, _, registry, tx, pointer, _, convergence = committed_release(
+        tmp_path
+    )
+    receipt = finalize_promotion_ceremony(
+        registry,
+        transaction_id=tx,
+        convergence_receipt=convergence,
+        now=utc_now_iso(),
+    )
+    path = registry.root / "ceremonies" / (
+        f"{int(pointer['generation']):012d}.json"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["candidate_checkpoint_sha256"] = digest("tampered-candidate")
+    write_json(path, payload)
+
+    with pytest.raises(ValueError, match="digest mismatch"):
+        load_promotion_ceremony(
+            registry,
+            pointer["generation"],
+        )
+    with pytest.raises(ValueError, match="digest mismatch"):
+        audit_promotion_ceremonies(registry)
+
+
+def test_l36_registry_lookup_helpers_are_evidence_verified(tmp_path):
+    _, auth, registry, tx, pointer, _, _ = committed_release(tmp_path)
+    assert (
+        registry.promotion_authorization_for_transaction(tx)
+        == auth
+    )
+    assert registry.pointer_by_sha256(pointer["pointer_sha256"]) == pointer
+    with pytest.raises(ValueError, match="unknown checkpoint pointer"):
+        registry.pointer_by_sha256(digest("unknown-pointer"))
