@@ -165,3 +165,19 @@ def verify_group_robustness_digest(receipt: dict[str, Any]) -> dict[str, Any]:
     if receipt.get("status") not in {"PASS", "BLOCKED"}:
         raise ValueError("heldout group robustness status invalid")
     return receipt
+
+
+def effective_quality_status(evaluation: dict[str, Any]) -> str:
+    group = evaluation.get("group_robustness")
+    if not isinstance(group, dict):
+        return ""
+    try:
+        verify_group_robustness_digest(group)
+    except ValueError:
+        return ""
+    if group.get("status") != "PASS":
+        return ""
+    decision = evaluation.get("decision")
+    if not isinstance(decision, dict):
+        return ""
+    return str(decision.get("status", ""))
