@@ -5,7 +5,7 @@ torch=pytest.importorskip("torch")
 from nolane_personal.deep_recurrent_cortex import DeepRecurrentCortexConfig, DeepRecurrentStateSpaceCortex
 from nolane_personal.factorized_boundary import factorize_standalone_boundary
 from nolane_personal.quantized_artifact import load_quantized_model, save_quantized_artifact
-from nolane_personal.quantized_boundary import dequantize_rows, quantize_factorized_boundary, quantize_rows
+from nolane_personal.quantized_boundary import QuantizedBoundaryConfig, analytical_factorized_storage_bytes, analytical_quantized_storage_bytes, dequantize_rows, quantize_factorized_boundary, quantize_rows
 from nolane_personal.standalone_model import StandaloneBoundaryModule, StandaloneNolaneConfig, StandaloneNolaneLM
 from nolane_personal.surgery import module_parameter_digest
 
@@ -146,3 +146,17 @@ def test_quantized_artifact_roundtrip_and_cortex_digest(tmp_path):
         b=loaded.forward(input_ids=ids)
     assert torch.equal(a.logits,b.logits)
     assert torch.equal(a.state,b.state)
+
+
+def test_analytical_realistic_int8_storage_ratio():
+    cfg=QuantizedBoundaryConfig(
+        vocab_size=151936,
+        hidden_size=1024,
+        rank=128,
+        tie_word_embeddings=True,
+    )
+    q=analytical_quantized_storage_bytes(cfg)
+    f32=analytical_factorized_storage_bytes(cfg,source_element_size=4)
+    bf16=analytical_factorized_storage_bytes(cfg,source_element_size=2)
+    assert q/f32 < 0.30
+    assert q/bf16 < 0.60
