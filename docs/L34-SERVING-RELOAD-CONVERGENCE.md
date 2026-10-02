@@ -176,3 +176,13 @@ This does not claim that an already-running inference can be retroactively
 moved to a new checkpoint. The guarantee is that no **new** request is admitted
 using stale authority after the transition is observed.
 
+## L36 evidence timestamp
+
+L36 requires every convergence receipt to carry a self-digested `assessed_at`
+timestamp. The public `verify_serving_convergence_receipt()` verifier checks
+schema, digest, authority, policy, pointer/checkpoint SHA values, timestamp and
+PASS/BLOCKED status.
+
+This lets the final promotion ceremony prove that serving convergence was
+measured only after the committed checkpoint pointer existed.
+
