@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from .multicycle_continual import verify_l31_run_receipt
 from .promotion_authority import verify_promotion_authorization
@@ -617,6 +617,7 @@ class CheckpointRegistry:
         transaction_id: str,
         *,
         now: str | None = None,
+        fault_hook: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> dict[str, Any]:
         with self.lock():
             events = self.transaction_events(transaction_id)
@@ -657,6 +658,16 @@ class CheckpointRegistry:
             if evidence["bundle_sha256"] != prepared["candidate_bundle_sha256"]:
                 raise RuntimeError("candidate bundle drift before commit")
             self._install_bundle(staging, evidence["checkpoint_sha256"])
+            if fault_hook is not None:
+                fault_hook(
+                    "ARTIFACT_INSTALLED",
+                    {
+                        "transaction_id": transaction_id,
+                        "candidate_checkpoint_sha256": evidence[
+                            "checkpoint_sha256"
+                        ],
+                    },
+                )
 
             pointer = _seal_pointer(
                 {
@@ -675,7 +686,25 @@ class CheckpointRegistry:
                 }
             )
             self._write_pointer_snapshot(pointer)
+            if fault_hook is not None:
+                fault_hook(
+                    "POINTER_SNAPSHOT_WRITTEN",
+                    {
+                        "transaction_id": transaction_id,
+                        "pointer_sha256": pointer["pointer_sha256"],
+                        "generation": pointer["generation"],
+                    },
+                )
             _atomic_write_json(self.active_path, pointer)
+            if fault_hook is not None:
+                fault_hook(
+                    "ACTIVE_POINTER_SWAPPED",
+                    {
+                        "transaction_id": transaction_id,
+                        "pointer_sha256": pointer["pointer_sha256"],
+                        "generation": pointer["generation"],
+                    },
+                )
             self._append_event(
                 transaction_id,
                 state="POINTER_SWAPPED",
@@ -684,6 +713,14 @@ class CheckpointRegistry:
                     "generation": pointer["generation"],
                 },
             )
+            if fault_hook is not None:
+                fault_hook(
+                    "POINTER_EVENT_RECORDED",
+                    {
+                        "transaction_id": transaction_id,
+                        "pointer_sha256": pointer["pointer_sha256"],
+                    },
+                )
             self._append_event(
                 transaction_id,
                 state="COMMITTED",
@@ -692,6 +729,14 @@ class CheckpointRegistry:
                     "candidate_checkpoint_sha256": evidence["checkpoint_sha256"],
                 },
             )
+            if fault_hook is not None:
+                fault_hook(
+                    "COMMIT_EVENT_RECORDED",
+                    {
+                        "transaction_id": transaction_id,
+                        "pointer_sha256": pointer["pointer_sha256"],
+                    },
+                )
             return pointer
 
     def abort_update(self, transaction_id: str, *, reason: str) -> dict[str, Any]:
@@ -752,6 +797,39 @@ class CheckpointRegistry:
                         )
                     )
                 elif active.get("pointer_sha256") == parent_pointer:
+                    orphan_removed = False
+                    next_generation = int(
+                        prepared.get("parent_generation", active["generation"])
+                    ) + 1
+                    orphan_path = self._pointer_snapshot_path(next_generation)
+                    if orphan_path.exists():
+                        orphan = _verify_pointer(_read_json(orphan_path))
+                        expected_orphan = (
+                            orphan.get("transaction_id") == transaction_id
+                            and orphan.get("checkpoint_sha256") == candidate_sha
+                            and orphan.get("previous_pointer_sha256")
+                            == parent_pointer
+                        )
+                        if not expected_orphan:
+                            recovered.append(
+                                self._append_event(
+                                    transaction_id,
+                                    state="RECOVERY_CONFLICT",
+                                    details={
+                                        "reason": "unexpected_orphan_pointer_snapshot",
+                                        "orphan_pointer_sha256": orphan[
+                                            "pointer_sha256"
+                                        ],
+                                        "active_pointer_sha256": active[
+                                            "pointer_sha256"
+                                        ],
+                                    },
+                                )
+                            )
+                            continue
+                        orphan_path.unlink()
+                        _fsync_dir(self.pointers_dir)
+                        orphan_removed = True
                     staging = tx_dir / "staging"
                     if staging.exists():
                         shutil.rmtree(staging)
@@ -761,6 +839,7 @@ class CheckpointRegistry:
                             state="RECOVERED_ABORTED",
                             details={
                                 "reason": "active_pointer_never_swapped",
+                                "orphan_pointer_snapshot_removed": orphan_removed,
                             },
                         )
                     )
