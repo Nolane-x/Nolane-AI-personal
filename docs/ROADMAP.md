@@ -1324,3 +1324,36 @@ Engineering substrate: **MIXED-PLASTICITY-LONG-HORIZON-READY / NO PRODUCTION AUT
 
 L39 makes the continual-learning ledger understand the whole factorized Nolane model state. It does not grant L38 artifacts production authority.
 
+## L40 — Unified Promotion Authority
+
+Engineering substrate: **MIXED-PLASTICITY-AUTHORIZATION-READY / TRANSACTION-INTEGRATION-PENDING**.
+
+- [x] separate promotion schema for L39 mixed model-state evidence
+- [x] explicit operator approval request
+- [x] one-time nonce hashed; raw nonce never persisted
+- [x] explicit production-parent checkpoint binding
+- [x] explicit final-candidate checkpoint binding
+- [x] L39 chain SHA binding
+- [x] fixed long-horizon court SHA binding
+- [x] recompute L39 from ordered raw L31/L38 cycle receipts
+- [x] refuse chain policy that allowed adaptation replay
+- [x] minimum total cycle policy
+- [x] minimum recurrent-cortex cycle policy
+- [x] initial/final composite model-state SHA bound into authorization
+- [x] short-lived authorization TTL
+- [x] authorization self-digest
+- [x] operator deny court
+- [x] candidate mismatch court
+- [x] raw-cycle evidence drift court
+- [x] cortex-evidence floor court
+- [x] authorization expiry court
+- [x] authorization tamper court
+- [x] local authorization CLI
+- [ ] teach L33 transaction registry to consume L40 authorization
+- [ ] verify final candidate bundle according to native L31/L38 schema
+- [ ] extend L36 ceremony to record unified authorization schema
+- [ ] rerun Linux/Windows hard-kill court on unified promotion path
+- [ ] execute real mixed-plasticity production ceremony
+
+L40 can authorize L39 evidence but deliberately cannot yet change the active checkpoint. Transaction and ceremony integration remain fail-closed.
+
