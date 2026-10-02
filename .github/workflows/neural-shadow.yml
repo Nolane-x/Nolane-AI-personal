@@ -36,6 +36,7 @@ jobs:
           tests/test_native_boundary.py
           tests/test_standalone_weights.py
           tests/test_factorized_boundary.py
+          tests/test_continual_factorized_update.py
           tests/test_rank_frontier.py
           tests/test_quantized_boundary.py
           tests/test_quantized_evaluation.py
