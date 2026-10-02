@@ -45,7 +45,9 @@ def main() -> int:
     parser.add_argument("--runtime-dir", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--model-sha256", required=True)
-    parser.add_argument("--tokenizer-dir", required=True)\n    parser.add_argument("--ceremony", required=True)\n    parser.add_argument("--tokenizer-archive-sha256", default="")
+    parser.add_argument("--tokenizer-dir", required=True)
+    parser.add_argument("--ceremony", required=True)
+    parser.add_argument("--tokenizer-archive-sha256", default="")
     parser.add_argument(
         "--resources",
         default="apps/product-client/src-tauri/resources",
