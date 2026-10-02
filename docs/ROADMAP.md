@@ -518,4 +518,49 @@ Engineering substrate: **STANDALONE-OWNERSHIP-COURT-READY / UNPROMOTED**.
 - [ ] remove remaining provenance dependence on inherited Qwen language-boundary matrices
 
 L16 owns every inference tensor inside the standalone artifact. It inherits the language boundary matrices from Qwen and therefore is runtime-independent, not provenance-independent.
-\n## L17 — Factorized Language Boundary\n\nEngineering substrate: **LOW-RANK-BOUNDARY-COURT-READY / UNPROMOTED**.\n\n- [x] low-rank token embedding: vocab x rank + rank x hidden\n- [x] low-rank output projection with separate untied factors when required\n- [x] tied input/output boundary reuses the exact same factors\n- [x] exact/full-rank SVD numerical reconstruction court\n- [x] randomized low-rank decomposition path for large production matrices\n- [x] factorization receipt with reconstruction error and parameter ratio\n- [x] default rank 128\n- [x] representative 151,936 x 1,024 tied-boundary analytical ratio ~12.6%\n- [x] boundary-only distillation against L16 teacher logits\n- [x] deep recurrent cortex frozen during boundary distillation\n- [x] cortex zero-gradient + exact digest-preservation court\n- [x] standalone PyTorch runtime with no Qwen model object\n- [x] no Transformers model dependency in the factorized core runtime\n- [x] held-out L16 vs L17 NLL/non-inferiority court\n- [x] frozen Vietnamese/English general-regression anchor\n- [x] greedy-token agreement gate\n- [x] prompt full-scan == incremental scan court\n- [x] checkpoint compression resource court\n- [x] latency/resource court against L16\n- [x] promotion binds exact L17 checkpoint to exact source L16 checkpoint\n- [ ] export rank-128 factors from a promoted real L16 checkpoint\n- [ ] distill on sufficient approved VI/EN + personal history\n- [ ] pass real held-out L16/L17 quality court\n- [ ] pass real CPU/GPU checkpoint-size and latency court\n- [ ] map the quality frontier across ranks 64/96/128/192/256\n- [ ] evaluate a native Vietnamese/English-focused tokenizer only after the rank frontier is measured\n- [ ] reduce provenance dependence further without sacrificing language competence\n\nL17 substantially reduces the inherited language-boundary footprint while preserving L16 runtime ownership. It still inherits vocabulary/token semantics and remains unpromoted until real evidence passes.\n
+\n## L17 — Factorized Language Boundary
+
+Engineering substrate: **LOW-RANK-BOUNDARY-COURT-READY / UNPROMOTED**.
+
+- [x] low-rank token embedding and output projection
+- [x] tied input/output factor reuse
+- [x] exact/full-rank numerical reconstruction court
+- [x] randomized low-rank decomposition for large matrices
+- [x] boundary-only L16 teacher distillation
+- [x] cortex zero-gradient + exact digest preservation
+- [x] standalone PyTorch runtime with no Qwen model object
+- [x] held-out L16/L17 quality, general-anchor and resource courts
+- [x] exact source-L16/checkpoint promotion lineage
+- [ ] export/train/evaluate on a promoted real L16 checkpoint
+- [ ] pass real held-out quality and CPU/GPU resource courts
+
+L17 establishes the low-rank boundary mechanism but does not assert a universally correct rank.
+
+## L18 — Adaptive Rank Frontier
+
+Engineering substrate: **RANK-SELECTION-COURT-READY / UNPROMOTED**.
+
+- [x] strictly descending configurable rank schedule
+- [x] default search order 256 -> 192 -> 128 -> 96 -> 64
+- [x] every rank independently initialized from the same dense L16 source
+- [x] per-rank SVD/randomized factorization
+- [x] per-rank boundary-only teacher distillation
+- [x] real parameter-compression gate at every accepted rank
+- [x] dev NLL regression gate versus L16
+- [x] incremental dev-regression gate versus previous accepted rank
+- [x] greedy-token agreement gate
+- [x] first rejected smaller rank stops the frontier
+- [x] smallest accepted rank becomes selected candidate
+- [x] source cortex digest must remain identical through all candidates
+- [x] immutable frontier receipt binds attempted/accepted/selected ranks
+- [x] receipt binds exact source L16 checkpoint and selected checkpoint
+- [x] frozen test split excluded from rank selection
+- [x] selected candidate reuses L17 held-out quality/resource courts
+- [x] promotion requires quality evidence rank == frontier-selected rank
+- [x] promotion binds frontier/quality/resource to identical selected checkpoint and source L16
+- [ ] run the full frontier on a promoted real L16 checkpoint
+- [ ] identify the smallest real rank passing dev gates
+- [ ] pass held-out quality/resource courts on that selected rank
+- [ ] only then evaluate tokenizer/vocabulary migration
+
+L18 turns low-rank compression from a fixed hyperparameter into an evidence-driven model-selection process. It does not yet claim that rank 64, 96, 128, or any other rank is the production optimum.
