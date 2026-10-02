@@ -190,6 +190,9 @@ def finalize_local_evidence_intake(
         "approved_manifest_sha256": str(approved_manifest["manifest_sha256"]),
         "dataset_sha256": str(approved_manifest["dataset_sha256"]),
         "protocol_sha256": str(approved_manifest["protocol_sha256"]),
+        "quality_status": str(approved_manifest["quality_status"]),
+        "quality_court_sha256": str(approved_manifest["quality_court_sha256"]),
+        "quality_receipt_sha256": str(approved_manifest["quality_receipt_sha256"]),
         "reviewed_manifest_relpath": str(
             reviewed["manifest_path"].relative_to(output)
         ),
@@ -242,6 +245,9 @@ def verify_local_evidence_intake(
         "approved_manifest_sha256": approved_manifest["manifest_sha256"],
         "dataset_sha256": approved_manifest["dataset_sha256"],
         "protocol_sha256": approved_manifest["protocol_sha256"],
+        "quality_status": approved_manifest["quality_status"],
+        "quality_court_sha256": approved_manifest["quality_court_sha256"],
+        "quality_receipt_sha256": approved_manifest["quality_receipt_sha256"],
     }
     for key, expected in bindings.items():
         if str(manifest.get(key)) != str(expected):
