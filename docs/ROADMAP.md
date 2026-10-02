@@ -1098,9 +1098,9 @@ Engineering substrate: **CRASH-RECOVERABLE-POINTER-REGISTRY-READY / NO AUTONOMOU
 - [x] local registry management CLI
 - [ ] execute L33 around real L31 candidate artifacts
 - [ ] simulate hard process kill during real artifact copy/commit on Windows and Linux
-- [ ] add serving-process checkpoint reload handshake
-- [ ] prevent split-brain when multiple serving processes observe pointer changes
-- [ ] define real L32 evidence -> promotion authorization policy
+- [x] add serving-process checkpoint reload handshake
+- [x] prevent split-brain when multiple serving processes observe pointer changes
+- [x] define real L32 evidence -> promotion authorization policy
 - [ ] promote only after transactional reload/rollback court passes on real checkpoints
 
 L33 makes a model update crash-recoverable without rewriting history. It deliberately does not grant an autonomous updater production authority.
@@ -1136,8 +1136,8 @@ Engineering substrate: **SPLIT-BRAIN-SAFE-SERVING-BARRIER-READY / NO PROMOTION D
 - [ ] run L34 with real factorized serving processes
 - [ ] test process kill/restart during real reload
 - [ ] test Windows/Linux filesystem + process timing differences
-- [ ] bind L32 evidence into explicit promotion authorization
-- [ ] add promotion policy that L33 must verify before begin/commit
+- [x] bind L32 evidence into explicit promotion authorization
+- [x] add promotion policy that L33 must verify before begin/commit
 - [ ] expose production-ready reload metrics only after real multi-process court passes
 
 L34 prevents mixed live checkpoint generations from serving simultaneously when all serving requests obey the gate.
@@ -1172,9 +1172,48 @@ Engineering substrate: **EXPLICIT-EVIDENCE-PROMOTION-AUTHORITY-READY / REAL-DATA
 - [ ] run L35 on approved real multicycle evidence
 - [ ] execute authorized transaction with a real final factorized artifact
 - [ ] complete real L34 multi-process convergence after that transaction
-- [ ] build final promotion ceremony receipt spanning L35 -> L33 -> L34
+- [x] build final promotion ceremony receipt spanning L35 -> L33 -> L34
 - [ ] run hard-kill tests during authorized commit/reload on Windows and Linux
 - [ ] only then consider enabling autonomous promotion policy
 
 L35 decides whether a proven offline learning chain may request an atomic checkpoint transition. Synthetic CI proves mechanics, not real production fitness.
+
+## L36 — Final Promotion Ceremony
+
+Engineering substrate: **END-TO-END-RELEASE-CEREMONY-READY / REAL PRODUCTION EVIDENCE STILL REQUIRED**.
+
+- [x] L34 convergence receipts carry self-digested assessed_at timestamp
+- [x] public convergence receipt verifier
+- [x] registry pointer lookup by verified pointer SHA
+- [x] registry promotion-authorization lookup bound to PREPARED transaction
+- [x] require exactly one COMMITTED or RECOVERED_COMMITTED terminal event
+- [x] committed pointer transaction binding
+- [x] committed pointer must be UPDATE transition
+- [x] authorized candidate must equal committed checkpoint
+- [x] L35 authorization SHA bound into ceremony
+- [x] L32 multicycle chain SHA bound into ceremony
+- [x] long-horizon retention court SHA bound into ceremony
+- [x] L34 serving convergence SHA bound into ceremony
+- [x] pointer generation/checkpoint/SHA must match convergence
+- [x] authorization -> prepare -> pointer -> commit -> convergence -> ceremony timeline court
+- [x] pointer swap must occur before authorization expiry
+- [x] active pointer must still equal promoted pointer at finalization
+- [x] COMPLETE and BLOCKED ceremony states
+- [x] only COMPLETE ceremonies persist as final authority evidence
+- [x] immutable per-generation ceremony file
+- [x] historical ceremony remains verifiable after later rollback
+- [x] ceremony self-digest and privacy boundary
+- [x] registry audit covers persisted ceremony receipts
+- [x] dedicated ceremony audit
+- [x] local finalization/verify/audit CLI
+- [x] end-to-end synthetic L32 -> L35 -> L33 -> L34 -> L36 court
+- [x] courts for blocked convergence, pointer move, bad chronology and tamper
+- [ ] execute L36 on approved real multicycle evidence
+- [ ] execute real authorized L33 checkpoint swap
+- [ ] converge real multi-process serving workers on that checkpoint
+- [ ] run hard-kill commit/reload tests on Windows and Linux
+- [ ] repeat real promotion then rollback and verify historical ceremony
+- [ ] define policy for autonomous promotion only after repeated real COMPLETE ceremonies
+
+L36 closes the release-evidence chain mechanically. Synthetic CI proves the ceremony protocol, not that any learned candidate has earned real production authority.
 
