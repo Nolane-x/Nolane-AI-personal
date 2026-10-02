@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 from nolane_personal.transactional_registry import CheckpointRegistry
 
@@ -23,6 +24,7 @@ def main() -> int:
 
     begin = sub.add_parser("begin")
     begin.add_argument("--candidate", required=True)
+    begin.add_argument("--authorization", required=True)
 
     verify = sub.add_parser("verify")
     verify.add_argument("--transaction", required=True)
@@ -49,7 +51,17 @@ def main() -> int:
     if args.command == "init":
         emit(registry.initialize(args.bundle))
     elif args.command == "begin":
-        emit({"transaction_id": registry.begin_l31_update(args.candidate)})
+        authorization = json.loads(
+            Path(args.authorization).read_text(encoding="utf-8")
+        )
+        emit(
+            {
+                "transaction_id": registry.begin_authorized_update(
+                    args.candidate,
+                    authorization,
+                )
+            }
+        )
     elif args.command == "verify":
         emit(registry.verify_update(args.transaction))
     elif args.command == "commit":

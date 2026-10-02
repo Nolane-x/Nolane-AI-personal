@@ -1138,3 +1138,39 @@ Engineering substrate: **SPLIT-BRAIN-SAFE-SERVING-BARRIER-READY / NO PROMOTION D
 
 L34 prevents mixed live checkpoint generations from serving simultaneously when all serving requests obey the gate.
 
+## L35 — Evidence-Bound Promotion Authority
+
+Engineering substrate: **EXPLICIT-EVIDENCE-PROMOTION-AUTHORITY-READY / REAL-DATA PROMOTION UNPROVEN**.
+
+- [x] operator promotion request is explicit and self-digested
+- [x] raw operator nonce is never persisted
+- [x] request binds active parent checkpoint
+- [x] request binds exact final candidate checkpoint
+- [x] request binds exact L32 multicycle chain
+- [x] request binds exact fixed long-horizon court
+- [x] full L32 chain is recomputed from ordered L31 cycle receipts
+- [x] fixed-panel receipt is reverified
+- [x] adaptation-protocol reuse is forbidden for promotion
+- [x] minimum multicycle evidence policy
+- [x] authorization TTL
+- [x] authorization self-digest
+- [x] authorization checked at begin
+- [x] authorization checked at transaction verify
+- [x] authorization checked immediately before commit
+- [x] expiration between verify/commit blocks pointer swap
+- [x] one authorization cannot begin two transactions
+- [x] authorization file is included in registry audit
+- [x] offline multicycle final artifact may jump from chain start -> chain end
+- [x] direct L33 immediate-parent path still rejects that un-authorized jump
+- [x] operational registry CLI begin requires authorization
+- [x] local request + authorization CLI
+- [x] courts for denial, mismatch, tamper, expiry, replay and evidence recomputation
+- [ ] run L35 on approved real multicycle evidence
+- [ ] execute authorized transaction with a real final factorized artifact
+- [ ] complete real L34 multi-process convergence after that transaction
+- [ ] build final promotion ceremony receipt spanning L35 -> L33 -> L34
+- [ ] run hard-kill tests during authorized commit/reload on Windows and Linux
+- [ ] only then consider enabling autonomous promotion policy
+
+L35 decides whether a proven offline learning chain may request an atomic checkpoint transition. Synthetic CI proves mechanics, not real production fitness.
+
