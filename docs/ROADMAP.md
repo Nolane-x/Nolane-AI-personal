@@ -694,3 +694,35 @@ Engineering substrate: **FULL-EVIDENCE-CHAIN-READY / NO FABRICATED PROMOTION**.
 - [ ] only after a complete PASS consider normal-runtime promotion
 
 L21 does not make the model stronger by declaration. It makes the evidence chain reproducible and prevents later compression or runtime wins from masking an earlier quality failure.
+
+
+## L22 — End-to-End Evidence Harness
+
+Engineering substrate: **FULL-CHAIN-ORCHESTRATION-COURT-READY / SYNTHETIC-NON-AUTHORITY**.
+
+- [x] canonical 17-stage evidence-chain contract in shared source module
+- [x] stable contract SHA-256
+- [x] real L21 pipeline imports the shared contract
+- [x] stage-order enforcement before subprocess execution
+- [x] extra-stage rejection after stage 17
+- [x] zero exit code required for every stage
+- [x] every declared output file must exist
+- [x] every declared output file must receive SHA-256 coverage
+- [x] final PASS requires exact observed order == frozen contract
+- [x] final PASS requires all 17 stage indices to be contiguous
+- [x] synthetic external subprocess stage runner
+- [x] full 17-stage success fixture in ordinary CI
+- [x] injected first-failure fixture
+- [x] later stages provably do not execute after first failure
+- [x] synthetic private prompt sentinel excluded from receipt
+- [x] synthetic private target sentinel excluded from receipt
+- [x] fixture authority permanently marked NEVER_PROMOTABLE
+- [x] L21 readiness receipt binds the same stage-contract SHA-256
+- [x] explicit CI contract audit on Python 3.10 and 3.12
+- [ ] supply real user-approved personalization data
+- [ ] supply matching real L14 comparator
+- [ ] run the real L21 17-stage chain
+- [ ] inspect the first empirical quality/resource blocker, if any
+- [ ] only promote after real evidence completes the exact same contract
+
+L22 proves orchestration correctness, not model quality. Synthetic fixture artifacts cannot satisfy any production promotion court.
