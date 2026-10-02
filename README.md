@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.32.0
+## Current executable milestone: Living Runtime v0.33.0
 
 The runtime now contains two very different compute scales:
 
@@ -1059,6 +1059,46 @@ python scripts/assess_multicycle_continual.py \
 This remains evidence-only and unpromoted. Production authority still requires real multi-cycle runs plus transactional update/rollback safety.
 
 See `docs/L32-MULTICYCLE-CONTINUAL-LEARNING-LEDGER.md`.
+
+### L33 Transactional Checkpoint Recovery
+
+L33 protects the actual checkpoint switch after L31/L32 evidence exists.
+
+Continual candidates are no longer meant to replace a serving file in place. A local registry stores checkpoint bundles immutably and gives serving authority to one small self-digested `active.json` pointer. Candidate L31 evidence is reverified, its parent must equal the currently active checkpoint, and the bundle is staged before any authority change.
+
+The pointer swap is atomic. If the process dies before the swap, recovery leaves the parent active and records the transaction aborted. If it dies after the swap but before commit bookkeeping finishes, recovery recognizes that the durable active pointer already references the candidate and records the transaction recovered-committed.
+
+Rollback is also forward-only:
+
+```text
+generation 0 -> model A
+generation 1 -> model B
+generation 2 -> model A  (audited rollback)
+```
+
+Old pointer history is never rewritten.
+
+```bash
+python scripts/manage_checkpoint_registry.py \
+  --registry runtime-data/continual-checkpoint-registry \
+  init --bundle /path/to/initial-bundle
+
+python scripts/manage_checkpoint_registry.py \
+  --registry runtime-data/continual-checkpoint-registry \
+  begin --candidate runtime-data/l31-cycle-next
+
+python scripts/manage_checkpoint_registry.py \
+  --registry runtime-data/continual-checkpoint-registry \
+  verify --transaction <transaction-id>
+
+python scripts/manage_checkpoint_registry.py \
+  --registry runtime-data/continual-checkpoint-registry \
+  commit --transaction <transaction-id>
+```
+
+The registry remains an experimental transactional authority substrate, not permission for autonomous production updates.
+
+See `docs/L33-TRANSACTIONAL-CHECKPOINT-RECOVERY.md`.
 
 ## Bootstrap Qwen
 
