@@ -1,5 +1,8 @@
 import hashlib
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -37,6 +40,9 @@ from nolane_personal.unified_promotion_authority import (
     decide_unified_promotion_authorization,
     verify_unified_promotion_authorization,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def digest(value: str) -> str:
@@ -568,3 +574,82 @@ def test_l41_l38_staging_receipt_tamper_fails_before_commit(tmp_path):
     with pytest.raises(ValueError):
         registry.verify_update(tx, now=utc_now_iso())
     assert registry.active_pointer()["checkpoint_sha256"] == ev["parent_sha"]
+
+
+
+def run_l41_crash_probe(*args):
+    return subprocess.run(
+        [sys.executable, *args],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+
+def prepared_l41_transaction(tmp_path, label):
+    ev = integration_evidence(tmp_path)
+    registry = CheckpointRegistry(tmp_path / f"{label}-registry")
+    parent = registry.initialize(ev["parent_bundle"])
+    tx = registry.begin_authorized_update(
+        ev["final_bundle"],
+        ev["authorization"],
+        now=utc_now_iso(),
+    )
+    registry.verify_update(tx, now=utc_now_iso())
+    return ev, registry, parent, tx
+
+
+def test_l41_hard_kill_l40_after_pointer_snapshot_recovers_abort(tmp_path):
+    ev, registry, parent, tx = prepared_l41_transaction(
+        tmp_path,
+        "l40-snapshot-crash",
+    )
+    completed = run_l41_crash_probe(
+        "scripts/crash_probe_checkpoint_commit.py",
+        "--registry",
+        str(registry.root),
+        "--transaction",
+        tx,
+        "--crash-at",
+        "POINTER_SNAPSHOT_WRITTEN",
+        "--exit-code",
+        "93",
+    )
+    assert completed.returncode == 93
+    assert registry.lock_path.exists()
+    assert registry.active_pointer() == parent
+
+    recovered = registry.recover(break_stale_lock=True)
+    assert len(recovered) == 1
+    assert recovered[0]["state"] == "RECOVERED_ABORTED"
+    assert registry.active_pointer()["checkpoint_sha256"] == ev["parent_sha"]
+    assert registry.verify_registry()["status"] == "PASS"
+
+
+def test_l41_hard_kill_l40_after_active_swap_recovers_commit(tmp_path):
+    ev, registry, parent, tx = prepared_l41_transaction(
+        tmp_path,
+        "l40-active-swap-crash",
+    )
+    completed = run_l41_crash_probe(
+        "scripts/crash_probe_checkpoint_commit.py",
+        "--registry",
+        str(registry.root),
+        "--transaction",
+        tx,
+        "--crash-at",
+        "ACTIVE_POINTER_SWAPPED",
+        "--exit-code",
+        "93",
+    )
+    assert completed.returncode == 93
+    assert registry.lock_path.exists()
+    active = registry.active_pointer()
+    assert active["checkpoint_sha256"] == ev["final_sha"]
+    assert active["pointer_sha256"] != parent["pointer_sha256"]
+
+    recovered = registry.recover(break_stale_lock=True)
+    assert len(recovered) == 1
+    assert recovered[0]["state"] == "RECOVERED_COMMITTED"
+    assert registry.active_pointer()["checkpoint_sha256"] == ev["final_sha"]
+    assert registry.verify_registry()["status"] == "PASS"
