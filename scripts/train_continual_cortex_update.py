@@ -8,6 +8,7 @@ from pathlib import Path
 from nolane_personal.continual_cortex_update import (
     ContinualCortexUpdateConfig,
     train_continual_cortex_update,
+    verify_continual_cortex_run_receipt,
     verify_continual_cortex_update_receipt,
 )
 from nolane_personal.evidence_quality import assess_evidence_quality
@@ -276,7 +277,6 @@ def main() -> int:
 
     training_receipt = receipt.to_dict()
     verify_continual_cortex_update_receipt(training_receipt)
-    training_receipt["lineage"] = lineage
 
     source_meta = {
         "checkpoint_sha256": (
@@ -300,8 +300,10 @@ def main() -> int:
             reference_meta["checkpoint_sha256"]
         ),
         "training": training_receipt,
+        "lineage": lineage,
         "artifact": manifest,
     }
+    verify_continual_cortex_run_receipt(result)
     rendered = json.dumps(
         result,
         ensure_ascii=False,

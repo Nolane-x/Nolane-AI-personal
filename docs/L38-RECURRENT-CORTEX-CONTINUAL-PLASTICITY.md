@@ -198,3 +198,28 @@ It does not yet prove that this produces better long-horizon companionship.
 That needs real multi-window data and a mixed-cycle long-horizon court showing
 that recurrent plasticity improves adaptation without destabilizing identity,
 memory, language quality or previous behavior.
+
+## v0.38.1 serialized-evidence hardening
+
+The initial v0.38.0 runner verified the self-digested training receipt and then
+attached dataset/protocol lineage to that same dictionary before persistence.
+That made the persisted training body differ from the body that had been
+digested.
+
+v0.38.1 separates the two immutable evidence scopes:
+
+- `training`: self-digested neural/L30 evidence only;
+- `lineage`: separately self-digested dataset/protocol provenance at run level.
+
+The complete L38 run now has its own verifier that binds:
+
+- parent factorized checkpoint;
+- training receipt integrity;
+- L30 before/after model-state identity;
+- lineage digest and parent;
+- saved artifact checkpoint/dataset fingerprint;
+- saved boundary and cortex state digests;
+- exact persisted training receipt.
+
+The runner verifies this complete structure before writing its run receipt.
+
