@@ -490,3 +490,31 @@ Engineering substrate: **DECODER-FREE-COURT-READY / UNPROMOTED**.
 - [ ] export a standalone Nolane checkpoint with no Qwen weights required at inference
 
 L15 removes the Transformer decoder from inference. It still retains frozen Qwen input/output boundary weights and therefore is decoder-free, not fully Qwen-free.
+
+
+## L16 — Standalone Nolane Weights
+
+Engineering substrate: **STANDALONE-OWNERSHIP-COURT-READY / UNPROMOTED**.
+
+- [x] export Qwen-derived embedding/final-norm/output weights into Nolane-owned artifact
+- [x] preserve tied and untied output-weight semantics
+- [x] preserve boundary FP32/FP16/BF16 dtype
+- [x] export exact L15 deep-recurrent cortex state
+- [x] standalone loader takes no Qwen model object or model path
+- [x] core standalone model imports no Transformers model implementation
+- [x] standalone forward/generation run from owned tensors + PyTorch
+- [x] artifact contains no Qwen decoder-layer, attention or MLP tensors
+- [x] tight L15 -> L16 logit/state parity court
+- [x] greedy generation parity court
+- [x] source mutation isolation court
+- [x] standalone survives deletion of source Qwen object
+- [x] boundary and cortex digest roundtrip
+- [x] quality/resource promotion binds standalone checkpoint to exact source L15 checkpoint
+- [ ] export from a promoted real Qwen3-0.6B/L15 candidate
+- [ ] pass full real held-out L15/L16 parity court
+- [ ] pass real CPU/GPU standalone resource court
+- [ ] factorize/distill inherited token embedding/output projection
+- [ ] evaluate Vietnamese/English-focused native tokenizer without quality regression
+- [ ] remove remaining provenance dependence on inherited Qwen language-boundary matrices
+
+L16 owns every inference tensor inside the standalone artifact. It inherits the language boundary matrices from Qwen and therefore is runtime-independent, not provenance-independent.
