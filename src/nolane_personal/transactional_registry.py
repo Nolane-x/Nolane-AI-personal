@@ -244,6 +244,23 @@ class CheckpointRegistry:
     def _pointer_snapshot_path(self, generation: int) -> Path:
         return self.pointers_dir / f"{int(generation):012d}.json"
 
+    def pointer_for_generation(self, generation: int) -> dict[str, Any]:
+        path = self._pointer_snapshot_path(int(generation))
+        if not path.exists():
+            raise ValueError("unknown checkpoint pointer generation")
+        return _verify_pointer(_read_json(path))
+
+    def artifact_path_for_pointer(
+        self,
+        pointer: dict[str, Any],
+    ) -> Path:
+        verified = _verify_pointer(pointer)
+        path = self.root / str(verified["artifact_relpath"])
+        evidence = _verify_factorized_bundle(path)
+        if evidence["checkpoint_sha256"] != verified["checkpoint_sha256"]:
+            raise ValueError("checkpoint pointer artifact digest mismatch")
+        return path
+
     def _write_pointer_snapshot(self, pointer: dict[str, Any]) -> None:
         path = self._pointer_snapshot_path(int(pointer["generation"]))
         if path.exists():
