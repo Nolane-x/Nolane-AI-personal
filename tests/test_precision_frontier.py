@@ -84,3 +84,22 @@ def test_precision_frontier_blocks_without_valid_int8_fallback():
     )
     assert d.status=="PRECISION_FRONTIER_BLOCKED"
     assert d.selected_precision is None
+
+
+def test_precision_frontier_keeps_int8_on_mismatched_int4_evidence_lineage():
+    d=decide_precision_frontier(
+        int8_quality_status="QUANTIZED_FACTOR_QUALITY_PASS",
+        int8_resource_status="QUANTIZED_FACTOR_RESOURCE_PASS",
+        int8_checkpoint_sha256="i8",
+        int8_source_factorized_checkpoint_sha256="f",
+        int4_quality_status="PACKED_INT4_QUALITY_PASS",
+        int4_resource_status="PACKED_INT4_RESOURCE_PASS",
+        int4_checkpoint_sha256="i4",
+        int4_source_factorized_checkpoint_sha256="f",
+        int4_quality_reference_int8_checkpoint_sha256="other-i8",
+        int4_resource_reference_int8_checkpoint_sha256="i8",
+        int4_resource_checkpoint_sha256="i4",
+    )
+    assert d.status=="PRECISION_FRONTIER_KEEP_INT8"
+    assert d.selected_checkpoint_sha256=="i8"
+    assert "int4_source_lineage_mismatch" in d.reasons
