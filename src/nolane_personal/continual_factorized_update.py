@@ -41,8 +41,10 @@ class ContinualFactorizedUpdateConfig:
 class ContinualFactorizedUpdateReceipt:
     schema: str
     authority: str
-    adaptation_examples: int
-    retention_examples: int
+    adaptation_train_examples: int
+    retention_rehearsal_examples: int
+    retention_eval_examples: int
+    adaptation_eval_examples: int
     epochs: int
     optimizer_steps: int
     adaptation_nll_before: float
@@ -105,27 +107,41 @@ def _kl(student_logits, teacher_logits, temperature: float):
 def train_continual_factorized_update(
     candidate,
     reference,
-    adaptation_examples,
-    retention_examples,
+    adaptation_train_examples,
+    retention_rehearsal_examples,
     *,
+    retention_eval_examples,
+    adaptation_eval_examples,
     adaptation_group_sha256: list[str],
     retention_group_sha256: list[str],
     config: ContinualFactorizedUpdateConfig | None = None,
     court_policy: ContinualLearningPolicy | None = None,
 ) -> ContinualFactorizedUpdateReceipt:
+    """
+    Update only the candidate low-rank language boundary.
+
+    Training consumes adaptation-train plus old rehearsal evidence. The L30
+    court is deliberately computed on separate old/new held-out examples so a
+    model cannot earn continual-learning evidence by being scored on the same
+    rows it just optimized.
+    """
     config = config or ContinualFactorizedUpdateConfig()
     config.validate()
     court_policy = court_policy or ContinualLearningPolicy()
 
     if candidate is reference:
         raise ValueError("candidate and reference must be distinct model objects")
-    if not adaptation_examples:
-        raise ValueError("adaptation examples are empty")
-    if not retention_examples:
-        raise ValueError("retention examples are empty")
-    if len(adaptation_group_sha256) != len(adaptation_examples):
+    if not adaptation_train_examples:
+        raise ValueError("adaptation training examples are empty")
+    if not retention_rehearsal_examples:
+        raise ValueError("retention rehearsal examples are empty")
+    if not retention_eval_examples:
+        raise ValueError("retention held-out examples are empty")
+    if not adaptation_eval_examples:
+        raise ValueError("adaptation held-out examples are empty")
+    if len(adaptation_group_sha256) != len(adaptation_eval_examples):
         raise ValueError("adaptation source-group lineage length mismatch")
-    if len(retention_group_sha256) != len(retention_examples):
+    if len(retention_group_sha256) != len(retention_eval_examples):
         raise ValueError("retention source-group lineage length mismatch")
 
     torch = candidate.cortex.torch
@@ -152,8 +168,14 @@ def train_continual_factorized_update(
     for parameter in candidate.boundary.final_norm.parameters():
         parameter.requires_grad_(False)
 
-    retention_before_values = _per_example_nll(reference, retention_examples)
-    adaptation_before_values = _per_example_nll(reference, adaptation_examples)
+    retention_before_values = _per_example_nll(
+        reference,
+        retention_eval_examples,
+    )
+    adaptation_before_values = _per_example_nll(
+        reference,
+        adaptation_eval_examples,
+    )
 
     params = [
         parameter
@@ -172,9 +194,11 @@ def train_continual_factorized_update(
     candidate.eval()
 
     for _ in range(config.epochs):
-        for index, adaptation in enumerate(adaptation_examples):
+        for index, adaptation in enumerate(adaptation_train_examples):
             a_ids, a_labels, a_latent, a_weight = adaptation
-            retention = retention_examples[index % len(retention_examples)]
+            retention = retention_rehearsal_examples[
+                index % len(retention_rehearsal_examples)
+            ]
             r_ids, r_labels, r_latent, r_weight = retention
 
             ax = torch.tensor([a_ids], dtype=torch.long, device=device)
@@ -241,8 +265,14 @@ def train_continual_factorized_update(
             optimizer.step()
             steps += 1
 
-    retention_after_values = _per_example_nll(candidate, retention_examples)
-    adaptation_after_values = _per_example_nll(candidate, adaptation_examples)
+    retention_after_values = _per_example_nll(
+        candidate,
+        retention_eval_examples,
+    )
+    adaptation_after_values = _per_example_nll(
+        candidate,
+        adaptation_eval_examples,
+    )
 
     candidate_boundary_after = module_parameter_digest(candidate.boundary.module)
     reference_boundary_after = module_parameter_digest(reference.boundary.module)
@@ -264,8 +294,10 @@ def train_continual_factorized_update(
     return ContinualFactorizedUpdateReceipt(
         schema="NOLANE-L31-FACTORIZED-CONTINUAL-UPDATE-V1",
         authority="CONTINUAL_FACTORIZED_UPDATE_CANDIDATE_ONLY",
-        adaptation_examples=len(adaptation_examples),
-        retention_examples=len(retention_examples),
+        adaptation_train_examples=len(adaptation_train_examples),
+        retention_rehearsal_examples=len(retention_rehearsal_examples),
+        retention_eval_examples=len(retention_eval_examples),
+        adaptation_eval_examples=len(adaptation_eval_examples),
         epochs=config.epochs,
         optimizer_steps=steps,
         adaptation_nll_before=_mean(adaptation_before_values),
