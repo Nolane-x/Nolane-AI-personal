@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import threading
 from pathlib import Path
 from typing import Any, Callable
@@ -8,6 +10,7 @@ from .cortex import Cortex, NullCortex
 from .engine import LivingEngine
 from .product_cortex import FactorizedProductCortex
 from .product_profile import ProductProfile, ProductProfileStore
+from .promotion_ceremony import verify_promotion_ceremony_receipt
 from .store import LivingStore
 
 
@@ -26,6 +29,7 @@ class ProductRuntime:
         device: str = "auto",
         cortex_factory: CortexFactory | None = None,
         enable_rest: bool = True,
+        release_ceremony: str | Path | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -45,6 +49,42 @@ class ProductRuntime:
             None if tokenizer_path is None else Path(tokenizer_path)
         )
         self.device = str(device)
+        self.release_ceremony = (
+            None if release_ceremony is None else Path(release_ceremony)
+        )
+        if self.release_ceremony is not None:
+            if self.checkpoint is None:
+                raise ValueError(
+                    "release ceremony requires a configured checkpoint"
+                )
+            checkpoint_file = self.checkpoint
+            if checkpoint_file.is_dir():
+                checkpoint_file = checkpoint_file / "factorized-nolane.pt"
+            if not checkpoint_file.is_file():
+                raise FileNotFoundError(
+                    f"release checkpoint not found: {checkpoint_file}"
+                )
+            if not self.release_ceremony.is_file():
+                raise FileNotFoundError(
+                    f"release ceremony not found: {self.release_ceremony}"
+                )
+            ceremony_payload = json.loads(
+                self.release_ceremony.read_text(encoding="utf-8")
+            )
+            verify_promotion_ceremony_receipt(
+                ceremony_payload,
+                require_complete=True,
+            )
+            actual_sha = hashlib.sha256(
+                checkpoint_file.read_bytes()
+            ).hexdigest()
+            if (
+                ceremony_payload["candidate_checkpoint_sha256"]
+                != actual_sha
+            ):
+                raise ValueError(
+                    "release checkpoint does not match COMPLETE ceremony"
+                )
         self._factory = cortex_factory
         self._rest_allowed = bool(enable_rest)
         self._cortex: Cortex | None = None
