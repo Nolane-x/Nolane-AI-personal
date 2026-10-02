@@ -4,14 +4,14 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.18.0
+## Current executable milestone: Living Runtime v0.19.0
 
 The runtime now contains two very different compute scales:
 
 - **Standalone Nolane language model path**: owned recurrent cortex plus compressed language-boundary weights; Qwen remains an upstream teacher/provenance source for experimental training, not a required model object in the standalone runtime.
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
-L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**. L14 pushes the decoder down to a minimal 1+1 anchor shell. L15 removes the Transformer decoder entirely from native inference. L16 exports every remaining inference tensor into a standalone Nolane-owned checkpoint. L17 factorizes and distills the inherited dense language boundary. L18 adds an **Adaptive Rank Frontier** that searches progressively smaller ranks and keeps only ranks that pass development compression/quality gates before the selected artifact is exposed to held-out promotion courts. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**. L14 pushes the decoder down to a minimal 1+1 anchor shell. L15 removes the Transformer decoder entirely from native inference. L16 exports every remaining inference tensor into a standalone Nolane-owned checkpoint. L17 factorizes and distills the inherited dense language boundary. L18 adds an **Adaptive Rank Frontier** that searches progressively smaller ranks and keeps only ranks that pass development compression/quality gates before the selected artifact is exposed to held-out promotion courts. L19 adds an **int8 Quantized Factor Runtime** that stores the selected low-rank factors as row-wise int8 + scales and dequantizes vocabulary chunks only when computing logits. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
 
 ### Persistent runtime
 
@@ -737,6 +737,34 @@ Selection never consumes the frozen test split. The selected checkpoint must sub
 
 See `docs/L18-ADAPTIVE-RANK-FRONTIER.md`.
 
+### L19 Quantized Factor Runtime
+
+L19 compresses the factorized boundary chosen by L18 without changing rank, vocabulary or the recurrent cortex.
+
+```text
+L18 selected float factors
+          |
+          v
+row-wise int8 + per-row scales
+          |
+          v
+chunked dequantized logits
+```
+
+The persistent code/basis tensors stay int8. Token embedding dequantizes only requested rows, while output logits process vocabulary codes in bounded chunks instead of keeping a full float `vocab x rank` matrix.
+
+```bash
+python scripts/export_quantized_boundary.py
+python scripts/evaluate_quantized_boundary.py
+python scripts/benchmark_quantized_resources.py
+```
+
+CI includes exact byte-level storage accounting. For a representative 151,936 × 1,024 tied rank-128 boundary, the reference gate requires int8 storage below **30% of FP32** and below **60% of BF16/FP16** factorized storage.
+
+This is a pure-PyTorch chunked-dequant runtime, not a claim of native int8 GEMM acceleration. Promotion still requires held-out quality plus measured target-device latency/resource evidence.
+
+See `docs/L19-QUANTIZED-FACTOR-RUNTIME.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
@@ -859,13 +887,34 @@ L12 Selective State-Space Cortex
      v
 L13 Shrinking Qwen Scaffold
      |
-     +--> fast/slow Nolane cortex
-     +--> Qwen head/tail anchors shrink stage by stage
-     +--> target ~25% Qwen decoder scaffold
-     +--> quality + speed + scaffold-lineage courts
+     v
+L14 Minimal Qwen Anchor Cortex
      |
      v
-future Nolane-native cortex with Qwen reduced to minimal language interfaces
+L15 Native Nolane Boundary
+     |
+     +--> zero Transformer decoder blocks in native inference
+     |
+     v
+L16 Standalone Nolane Weights
+     |
+     +--> no Qwen model object required at runtime
+     |
+     v
+L17 Factorized Language Boundary
+     |
+     +--> low-rank owned token boundary
+     |
+     v
+L18 Adaptive Rank Frontier
+     |
+     +--> evidence-driven smallest accepted rank
+     |
+     v
+L19 Quantized Factor Runtime
+     |
+     +--> persistent int8 factors + row scales
+     +--> chunked dequantized logits
 ```
 
-See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`, `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`, `docs/L14-MINIMAL-QWEN-ANCHOR-CORTEX.md`, `docs/L15-NATIVE-NOLANE-BOUNDARY.md`, and `docs/L16-STANDALONE-NOLANE-WEIGHTS.md`.
+See `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/L2-PROMOTION-COURT.md`, `docs/L3-PERSISTENT-LATENT.md`, `docs/L4-REST-CONSOLIDATION.md`, `docs/L5-SHADOW-SURGERY.md`, `docs/L6-PERSONAL-CORTEX.md`, `docs/L7-HYBRID-RECURRENT-CORTEX.md`, `docs/L8-DEPTH-RECURRENT-LIVING-BRIDGE.md`, `docs/L9-RECURRENT-BLOCK-REPLACEMENT.md`, `docs/L10-PROGRESSIVE-TRANSFORMER-REPLACEMENT.md`, `docs/L11-RECURRENT-TRANSFORMER-ISLANDS.md`, `docs/L12-SELECTIVE-STATE-SPACE-CORTEX.md`, `docs/L13-SHRINKING-QWEN-SCAFFOLD.md`, `docs/L14-MINIMAL-QWEN-ANCHOR-CORTEX.md`, `docs/L15-NATIVE-NOLANE-BOUNDARY.md`, `docs/L16-STANDALONE-NOLANE-WEIGHTS.md`, `docs/L17-FACTORIZED-LANGUAGE-BOUNDARY.md`, `docs/L18-ADAPTIVE-RANK-FRONTIER.md`, and `docs/L19-QUANTIZED-FACTOR-RUNTIME.md`.

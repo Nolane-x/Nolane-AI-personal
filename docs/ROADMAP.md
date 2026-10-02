@@ -564,3 +564,47 @@ Engineering substrate: **RANK-SELECTION-COURT-READY / UNPROMOTED**.
 - [ ] only then evaluate tokenizer/vocabulary migration
 
 L18 turns low-rank compression from a fixed hyperparameter into an evidence-driven model-selection process. It does not yet claim that rank 64, 96, 128, or any other rank is the production optimum.
+
+
+## L19 — Quantized Factor Runtime
+
+Engineering substrate: **INT8-BOUNDARY-COURT-READY / UNPROMOTED**.
+
+- [x] symmetric row-wise int8 quantization for token-code factors
+- [x] symmetric row-wise int8 quantization for rank-to-hidden basis factors
+- [x] per-row float scales
+- [x] tied input/output path reuses the same quantized factors
+- [x] untied output factors quantized independently
+- [x] zero-row-safe quantization
+- [x] int8 factors remain persistent runtime buffers
+- [x] embedding dequantizes only requested token rows
+- [x] output projection dequantizes vocabulary codes in bounded chunks
+- [x] configurable logit chunk size
+- [x] no full persistent float vocab x rank reconstruction
+- [x] quantized runtime is inference-only
+- [x] source factorized checkpoint SHA-256 binding
+- [x] source L16 checkpoint SHA-256 binding
+- [x] dataset/protocol fingerprint binding
+- [x] boundary and cortex state digests
+- [x] exact artifact roundtrip
+- [x] cortex digest unchanged from source factorized candidate
+- [x] rank unchanged from source factorized candidate
+- [x] held-out NLL non-inferiority court versus float factorized source
+- [x] Vietnamese/English anchor regression court
+- [x] greedy-token agreement court
+- [x] prompt full-scan == incremental scan court
+- [x] checkpoint-size and tensor-byte resource court
+- [x] target-device latency and generation-throughput court
+- [x] exact byte audit for representative 151,936 x 1,024 rank-128 tied boundary
+- [x] analytical gate: <30% of FP32 factorized storage
+- [x] analytical gate: <60% of BF16/FP16 factorized storage
+- [x] promotion binds quantized/factorized/L16 checkpoint lineage
+- [ ] run L18 rank frontier on a promoted real L16 checkpoint
+- [ ] quantize the actual selected L18 artifact
+- [ ] pass real held-out quality court after quantization
+- [ ] pass real target CPU/GPU latency and checkpoint/RAM resource court
+- [ ] consider native int8 GEMM/packing only if pure-PyTorch dequant latency is insufficient
+- [ ] evaluate lower-bit formats only with separate quality/resource evidence
+- [ ] evaluate tokenizer/vocabulary migration only after real rank + quantization evidence
+
+L19 is a real storage-format change, not a parameter-count relabel. It intentionally does not claim native int8 compute acceleration: the reference path dequantizes bounded chunks before floating-point matrix multiplication.
