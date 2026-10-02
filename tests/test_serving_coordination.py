@@ -6,6 +6,7 @@ from nolane_personal.serving_coordination import (
     ServingCoordinator,
     ServingLeasePolicy,
     ServingSession,
+    verify_serving_convergence_receipt,
 )
 
 
@@ -328,3 +329,36 @@ def test_request_context_allows_drain_but_blocks_next_request(tmp_path):
     assert session.poll_reload(now=now) is True
     with session.request_model(now=now) as model:
         assert model["generation"] == 1
+
+
+def test_convergence_receipt_is_timestamped_and_self_verifying(tmp_path):
+    _, coord = coordinator(tmp_path, min_live=1)
+    session = ServingSession(coord, process_id="worker", loader=loader)
+    now = "2026-10-02T03:04:05+00:00"
+    session.start(now=now)
+    receipt = coord.assess_convergence(now=now)
+    assert receipt["assessed_at"] == now
+    assert verify_serving_convergence_receipt(receipt) == receipt
+
+
+def test_convergence_receipt_tamper_and_blocked_authority_fail_closed(tmp_path):
+    registry, coord = coordinator(tmp_path, min_live=1)
+    session = ServingSession(coord, process_id="worker", loader=loader)
+    now = "2026-10-02T03:04:05+00:00"
+    session.start(now=now)
+    passed = coord.assess_convergence(now=now)
+
+    tampered = dict(passed)
+    tampered["active_generation"] = 99
+    with pytest.raises(ValueError, match="digest mismatch"):
+        verify_serving_convergence_receipt(tampered)
+
+    registry.activate(1)
+    blocked = coord.assess_convergence(now=now)
+    assert blocked["status"] == "BLOCKED"
+    assert verify_serving_convergence_receipt(
+        blocked,
+        require_pass=False,
+    ) == blocked
+    with pytest.raises(ValueError, match="not PASS"):
+        verify_serving_convergence_receipt(blocked)
