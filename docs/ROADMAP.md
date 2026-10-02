@@ -1005,3 +1005,35 @@ Engineering substrate: **STABILITY-PLASTICITY-COURT-READY / NO CONTINUAL PROMOTI
 
 L30 proves stability/plasticity for one measured sequential checkpoint update. It does not yet prove indefinite lifelong learning.
 \n
+
+## L31 — Factorized Continual Neural Update
+
+Engineering substrate: **REAL-SEQUENTIAL-UPDATE-COURT-READY / UNPROMOTED**.
+
+- [x] load one parent factorized checkpoint as frozen reference and trainable candidate
+- [x] exact parent boundary-state equality required before update
+- [x] exact parent recurrent-cortex equality required before update
+- [x] candidate/reference object aliasing rejected
+- [x] old train+dev evidence used only for retention rehearsal
+- [x] old test evidence reserved for held-out retention court
+- [x] new train evidence used for adaptation update
+- [x] new test evidence reserved for held-out adaptation court
+- [x] frozen-parent KL rehearsal during adaptation
+- [x] candidate low-rank boundary is the only trainable neural ownership surface
+- [x] candidate recurrent cortex receives zero gradients
+- [x] frozen reference receives zero mutation
+- [x] old and new evidence independently require L28 PASS
+- [x] post-update candidate is judged by the L30 stability/plasticity court
+- [x] a trained candidate can remain BLOCKED
+- [x] parent/dataset/protocol/L28/L30 lineage is bound into the output artifact
+- [x] non-empty output workspace fails closed
+- [x] real local-data runner
+- [x] tiny real-PyTorch regression courts
+- [ ] execute L31 on real approved old/new evidence windows
+- [ ] pass L30 with a real factorized checkpoint transition
+- [ ] repeat sequential update cycles and quantify cumulative forgetting
+- [ ] add interruption-safe transactional update/rollback
+- [ ] bind production model promotion to multi-cycle evidence rather than one update
+
+L31 makes continual learning a real neural update path rather than only a court definition. It remains unpromoted until real held-out old/new evidence passes.
+
