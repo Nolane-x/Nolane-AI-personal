@@ -726,3 +726,43 @@ Engineering substrate: **FULL-CHAIN-ORCHESTRATION-COURT-READY / SYNTHETIC-NON-AU
 - [ ] only promote after real evidence completes the exact same contract
 
 L22 proves orchestration correctness, not model quality. Synthetic fixture artifacts cannot satisfy any production promotion court.
+
+
+## L23 — Approved Evidence Pack Builder
+
+Engineering substrate: **CONSENT-BOUND-EVIDENCE-INTAKE-READY / UNPROMOTED**.
+
+- [x] local JSONL evidence-source intake
+- [x] explicit `approved:true` required for every eligible row
+- [x] `sensitive:true` always excludes a row even when approved
+- [x] Vietnamese/English allowlist by default
+- [x] minimum seven eligible examples for downstream held-out readiness
+- [x] prompt/target length bounds
+- [x] bounded example weights
+- [x] exact prompt/target duplicate rejection
+- [x] NFC normalization
+- [x] optional raw source IDs converted to SHA-256 only
+- [x] raw source IDs absent from manifest
+- [x] raw prompts/targets absent from manifest
+- [x] output dataset contains only approved non-sensitive examples
+- [x] frozen train/dev/test personalization protocol
+- [x] at least two held-out test examples required
+- [x] dataset SHA-256 binding
+- [x] protocol SHA-256 binding
+- [x] manifest SHA-256 binding
+- [x] tampered dataset fails verification
+- [x] non-empty output directory refuses overwrite
+- [x] `runtime-data/` remains gitignored/local by default
+- [x] generated pack passes L21 readiness when other prerequisites are valid
+- [x] L21 `--evidence-pack` resolves verified dataset/protocol automatically
+- [x] readiness CLI accepts `--evidence-pack`
+- [x] L21 receipt binds exact evidence-manifest SHA-256
+- [x] L21 receipt never copies approved prompt/target text
+- [x] evidence authority explicitly remains UNPROMOTED
+- [ ] supply a real user-approved local source file
+- [ ] build and freeze the first real evidence pack
+- [ ] provide matching persistent latent + L14 comparator
+- [ ] execute L21 `--execute` on the verified pack
+- [ ] inspect the first empirical model-quality/resource blocker
+
+L23 closes the consent/intake gap without fabricating personal evidence. It does not automatically ingest chats and does not infer consent from conversation history.

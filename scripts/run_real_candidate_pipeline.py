@@ -6,6 +6,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from nolane_personal.approved_evidence import resolve_approved_evidence_pack
 from nolane_personal.evidence_chain import (
     EvidenceStageError,
     REAL_CANDIDATE_STAGE_ORDER,
@@ -23,6 +24,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def main() -> int:
     p=argparse.ArgumentParser()
+    p.add_argument("--evidence-pack",default=None)
     p.add_argument("--dataset",default="runtime-data/personalization.jsonl")
     p.add_argument("--protocol",default="runtime-data/personalization-protocol-v1.json")
     p.add_argument("--anchor",default=str(ROOT/"research/personalization-general-anchor.jsonl"))
@@ -35,6 +37,12 @@ def main() -> int:
     p.add_argument("--device",default="cpu",choices=["cpu","cuda"])
     p.add_argument("--execute",action="store_true")
     a=p.parse_args()
+
+    approved_manifest=None
+    if a.evidence_pack:
+        approved_manifest,dataset_path,protocol_path=resolve_approved_evidence_pack(a.evidence_pack)
+        a.dataset=str(dataset_path)
+        a.protocol=str(protocol_path)
 
     workspace=Path(a.workspace)
     if workspace.exists() and any(workspace.iterdir()):
@@ -63,6 +71,12 @@ def main() -> int:
         "dataset_sha256":readiness.evidence.get("dataset_sha256"),
         "protocol_sha256":protocol_sha,
         "model_revision":readiness.evidence.get("resolved_model_revision"),
+        "approved_evidence_manifest_sha256":(
+            approved_manifest.get("manifest_sha256") if approved_manifest else None
+        ),
+        "approved_evidence_authority":(
+            approved_manifest.get("authority") if approved_manifest else None
+        ),
         "stage_contract_sha256":evidence_chain_contract_sha256(),
         "stage_count_expected":len(REAL_CANDIDATE_STAGE_ORDER),
         "stages":[],
