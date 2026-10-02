@@ -867,3 +867,38 @@ Engineering substrate: **LOCAL-HUMAN-REVIEW-UX-READY / NO AUTOMATIC CONSENT**.
 - [ ] execute L21 using that real approved pack
 
 L26 reduces the manual-review friction without moving the consent boundary. It never infers approval, sensitivity, usefulness, or representativeness.
+
+
+## L27 — Local Evidence Workbench
+
+Engineering substrate: **LOCAL-EVIDENCE-WORKSPACE-READY / NO TRAINING AUTHORITY**.
+
+- [x] one local workspace for L24 queue + L26 decisions + L25 intake
+- [x] explicit phase state: QUEUE_READY
+- [x] explicit phase state: REVIEW_IN_PROGRESS
+- [x] explicit phase state: REVIEW_COMPLETE
+- [x] explicit phase state: INTAKE_READY
+- [x] initialization reuses real L24 queue builder
+- [x] review command reuses real L26 interactive reviewer
+- [x] status independently verifies queue and decisions
+- [x] finalized status independently verifies complete L25 lineage
+- [x] default finalize refuses any undecided candidates
+- [x] explicit allow-undecided override never creates approval
+- [x] finalization still requires >=7 approved non-sensitive examples
+- [x] finalization reuses real L25 pack builder
+- [x] readiness resolves exact L23/L25 approved pack
+- [x] readiness reuses real L21 readiness assessor
+- [x] workbench manifest binds source/queue/decisions/intake/dataset/protocol SHA lineage
+- [x] manifest contains no raw prompt/target text
+- [x] manifest contains no candidate IDs
+- [x] workbench-manifest self-digest
+- [x] workbench manifest tamper court
+- [x] decisions tamper after intake invalidates workbench
+- [x] private sentinels absent from readiness receipt
+- [ ] initialize a workbench from the user's real local conversation export
+- [ ] complete enough human review to reach >=7 representative approvals
+- [ ] finalize a real L25 intake through the workbench
+- [ ] pass real L21 readiness with the finalized pack
+- [ ] run L21 --execute and let held-out quality/resource evidence decide promotion
+
+L27 removes operational fragmentation from the real-data path. It does not fabricate evidence or infer consent, sensitivity, usefulness, representativeness or model quality.
