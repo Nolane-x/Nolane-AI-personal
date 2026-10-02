@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.33.0
+## Current executable milestone: Living Runtime v0.34.0
 
 The runtime now contains two very different compute scales:
 
@@ -1099,6 +1099,34 @@ python scripts/manage_checkpoint_registry.py \
 The registry remains an experimental transactional authority substrate, not permission for autonomous production updates.
 
 See `docs/L33-TRANSACTIONAL-CHECKPOINT-RECOVERY.md`.
+
+### L34 Serving Reload Convergence
+
+L34 closes the next failure mode after atomic checkpoint switching: multiple live serving processes temporarily holding different generations.
+
+Each process records a self-digested lease for the exact checkpoint it has loaded. When the L33 active pointer changes, an old process becomes `DRAIN_RELOAD_REQUIRED`. A process that has loaded the new checkpoint becomes `WAITING_FOR_PEERS` until every still-live serving lease has converged. Only then does its request gate return `SERVE`.
+
+The coordinator also double-reads the active pointer while computing convergence, so a second promotion landing during the court cannot produce a stale PASS.
+
+```text
+gen N active
+  workers A/B -> SERVE
+
+gen N+1 promoted
+  A/B old -> DRAIN
+
+A reloads
+  A new -> WAITING_FOR_PEERS
+  B old -> DRAIN
+  convergence -> BLOCKED / split-brain
+
+B reloads
+  A/B new -> SERVE
+```
+
+`ServingSession.model_for_request()` enforces this barrier directly; a model object is not returned while the process is drained, expired, or waiting for peers.
+
+See `docs/L34-SERVING-RELOAD-CONVERGENCE.md`.
 
 ## Bootstrap Qwen
 
