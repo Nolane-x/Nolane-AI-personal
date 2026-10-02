@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import hashlib
 import json
-import math
 import re
 import unicodedata
 from dataclasses import asdict, dataclass
@@ -330,6 +330,14 @@ def assess_evidence_quality(
     return receipt
 
 
+def _sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def assess_evidence_quality_files(
     dataset_path: str | Path,
     protocol_path: str | Path,
@@ -340,7 +348,7 @@ def assess_evidence_quality_files(
     protocol = load_protocol(protocol_path)
     verify_personalization_protocol(
         protocol,
-        dataset_sha256=str(protocol["dataset_sha256"]),
+        dataset_sha256=_sha256_file(dataset_path),
     )
     return assess_evidence_quality(examples, protocol, policy=policy)
 
