@@ -140,6 +140,9 @@ def decide_precision_frontier(
     int4_resource_status: str,
     int4_checkpoint_sha256: str | None,
     int4_source_factorized_checkpoint_sha256: str | None,
+    int4_quality_reference_int8_checkpoint_sha256: str | None = None,
+    int4_resource_reference_int8_checkpoint_sha256: str | None = None,
+    int4_resource_checkpoint_sha256: str | None = None,
 ):
     reasons = []
     if int8_quality_status != "QUANTIZED_FACTOR_QUALITY_PASS":
@@ -165,6 +168,18 @@ def decide_precision_frontier(
         and int4_source_factorized_checkpoint_sha256
         and int4_source_factorized_checkpoint_sha256
         == int8_source_factorized_checkpoint_sha256
+        and (
+            int4_quality_reference_int8_checkpoint_sha256 is None
+            or int4_quality_reference_int8_checkpoint_sha256 == int8_checkpoint_sha256
+        )
+        and (
+            int4_resource_reference_int8_checkpoint_sha256 is None
+            or int4_resource_reference_int8_checkpoint_sha256 == int8_checkpoint_sha256
+        )
+        and (
+            int4_resource_checkpoint_sha256 is None
+            or int4_resource_checkpoint_sha256 == int4_checkpoint_sha256
+        )
     )
     if (
         int4_quality_status == "PACKED_INT4_QUALITY_PASS"
