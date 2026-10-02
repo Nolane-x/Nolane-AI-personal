@@ -33,6 +33,28 @@ class QuantizedBoundaryConfig:
             raise ValueError("logit_chunk_size must be positive")
 
 
+def analytical_factorized_storage_bytes(config: QuantizedBoundaryConfig, *, source_element_size: int = 4) -> int:
+    config.validate()
+    copies = 1 if config.tie_word_embeddings else 2
+    factor_elements = copies * (
+        config.vocab_size * config.rank + config.rank * config.hidden_size
+    )
+    return factor_elements * int(source_element_size) + config.hidden_size * int(source_element_size)
+
+
+def analytical_quantized_storage_bytes(config: QuantizedBoundaryConfig) -> int:
+    config.validate()
+    copies = 1 if config.tie_word_embeddings else 2
+    factor_bytes = copies * (
+        config.vocab_size * config.rank
+        + config.vocab_size * 4
+        + config.rank * config.hidden_size
+        + config.rank * 4
+    )
+    norm_bytes = config.hidden_size * 4
+    return factor_bytes + norm_bytes
+
+
 def _dtype(torch, name: str):
     return {
         "float32": torch.float32,
