@@ -1251,3 +1251,41 @@ Engineering substrate: **REAL-PROCESS-CRASH-RECOVERY-COURT-READY / REAL LARGE-CH
 
 L37 replaces exception-only crash simulation with real child-process death and closes the orphan-pointer window discovered between pointer-history write and active authority swap.
 
+## L38 — Recurrent Cortex Continual Plasticity
+
+Engineering substrate: **INTERNAL-RECURRENT-PLASTICITY-READY / UNPROMOTED**.
+
+- [x] load one factorized parent as frozen reference + identical candidate
+- [x] exact candidate/reference boundary equality required before training
+- [x] exact candidate/reference recurrent-cortex equality required before training
+- [x] composite model-state digest binds boundary + cortex
+- [x] candidate language boundary fully frozen
+- [x] candidate boundary gradients must remain zero
+- [x] candidate deep recurrent cortex is the only trainable surface
+- [x] finite cortex gradients required every optimizer step
+- [x] candidate cortex digest must change
+- [x] frozen reference boundary/cortex must remain unchanged
+- [x] new train evidence drives cortex adaptation
+- [x] old train+dev evidence provides rehearsal
+- [x] frozen-reference KL protects old behavior
+- [x] recurrent-cortex parameter anchor limits unnecessary neural drift
+- [x] old test remains held-out retention court
+- [x] new test remains held-out adaptation court
+- [x] old/new evidence independently require L28 PASS in the real runner
+- [x] post-update L30 stability/plasticity court
+- [x] optimizer success may still finish BLOCKED
+- [x] self-digested L38 training receipt
+- [x] embedded L30 receipt reverified
+- [x] real local-data cortex update runner
+- [x] output remains standalone factorized Nolane artifact with no Qwen runtime dependency
+- [x] Neural Shadow runs real PyTorch L38 courts
+- [x] L38 deliberately excluded from current L32/L35 L31-only promotion schema
+- [ ] execute L38 on approved real old/new evidence windows
+- [ ] compare L38 adaptation/forgetting against L31 boundary-only updates
+- [ ] repeat L38 across multiple real time windows
+- [ ] build mixed-cycle ledger that understands boundary and cortex update types explicitly
+- [ ] add identity/relationship-specific retention panels before any cortex promotion
+- [ ] only then consider L38 artifacts eligible for L35/L36 promotion
+
+L38 makes the Nolane-owned recurrent cognition itself plastic. It remains unpromoted because the existing production evidence chain intentionally understands only L31 boundary-update cycles.
+
