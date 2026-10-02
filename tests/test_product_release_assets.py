@@ -103,6 +103,7 @@ def test_release_asset_staging_requires_exact_model_and_runtime(tmp_path):
     assert completed.returncode == 0, completed.stderr
     assert (resources / "runtime" / "nolane-product-runtime.exe").is_file()
     assert (resources / "model" / "factorized-nolane.pt").read_bytes() == b"approved-model"
+    assert (resources / "model" / "promotion-ceremony.json").is_file()
     manifest = json.loads(
         (resources / "release-assets.json").read_text(encoding="utf-8")
     )
