@@ -321,10 +321,14 @@ def finalize_promotion_ceremony(
         reasons.append("commit_predates_transaction")
     if pointer_at < prepared_at:
         reasons.append("pointer_predates_transaction")
+    if committed_at < pointer_at:
+        reasons.append("commit_predates_pointer_swap")
     if pointer_at > expires_at:
         reasons.append("pointer_swap_after_authorization_expiry")
     if convergence_at < pointer_at:
         reasons.append("serving_convergence_predates_pointer_swap")
+    if convergence_at < committed_at:
+        reasons.append("serving_convergence_predates_commit")
     if ceremony_at < convergence_at:
         reasons.append("ceremony_predates_serving_convergence")
 
