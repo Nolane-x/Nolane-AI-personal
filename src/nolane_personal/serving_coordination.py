@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import threading
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -392,6 +393,35 @@ class ServingCoordinator:
             "gate_sha256",
         )
 
+    def verify_request_fence(
+        self,
+        process_id: str,
+        gate: dict[str, Any],
+    ) -> dict[str, Any]:
+        _verify_digest(
+            gate,
+            schema=GATE_SCHEMA,
+            digest_field="gate_sha256",
+            what="serving gate",
+        )
+        if gate.get("process_id_sha256") != _process_hash(process_id):
+            raise ValueError("serving gate process binding mismatch")
+        if gate.get("status") != "SERVE":
+            raise RuntimeError(
+                f"serving gate blocked request: {gate.get('status')}"
+            )
+        active = self.registry.active_pointer()
+        if gate.get("active_pointer_sha256") != active["pointer_sha256"]:
+            raise RuntimeError(
+                "request fence invalidated by active checkpoint change"
+            )
+        lease = self.load_lease(process_id)
+        if lease["loaded_pointer_sha256"] != active["pointer_sha256"]:
+            raise RuntimeError(
+                "request fence invalidated by local checkpoint drift"
+            )
+        return gate
+
 
 class ServingSession:
     """One process-local serving model with safe reload gating.
@@ -467,14 +497,21 @@ class ServingSession:
                 now=now,
             )
 
-    def model_for_request(self, *, now: str | None = None) -> Any:
+    @contextmanager
+    def request_model(self, *, now: str | None = None):
+        """Hold one loaded generation stable for an in-flight request."""
         with self._lock:
             gate = self.gate(now=now)
-            if gate["status"] != "SERVE":
-                raise RuntimeError(
-                    f"serving gate blocked request: {gate['status']}"
-                )
-            return self.model
+            self.coordinator.verify_request_fence(
+                self.process_id,
+                gate,
+            )
+            yield self.model
+
+    def model_for_request(self, *, now: str | None = None) -> Any:
+        """Admission helper; production inference should prefer request_model()."""
+        with self.request_model(now=now) as model:
+            return model
 
 
 def factorized_loader(

@@ -137,3 +137,42 @@ depends on the L30-L32 evidence path plus the L33 transaction.
 The next authority layer must bind those evidence receipts into an explicit
 promotion decision instead of allowing any valid L31 candidate to reach the
 transactional registry.
+
+## v0.35.1 request-admission hardening
+
+The original L34 gate blocked mixed live generations, but one smaller race
+remained possible: `active.json` could change immediately after a gate returned
+SERVE and immediately before the caller took the model reference.
+
+v0.35.1 adds a second **request fence** at admission time.
+
+The fence re-verifies:
+
+- the gate self-digest;
+- the process binding;
+- SERVE status;
+- the current active pointer;
+- the process lease still matching that pointer.
+
+If authority moved after gate evaluation, admission fails closed.
+
+Production inference should use:
+
+```python
+with session.request_model() as model:
+    # inference
+    ...
+```
+
+The session lock remains held for the full request. This gives explicit drain
+semantics:
+
+- a request admitted before a pointer transition may finish;
+- `poll_reload()` cannot replace its local model while that request is active;
+- once it exits, every later request must pass a fresh gate and request fence;
+- if authority moved, later requests drain/block until reload and convergence.
+
+This does not claim that an already-running inference can be retroactively
+moved to a new checkpoint. The guarantee is that no **new** request is admitted
+using stale authority after the transition is observed.
+

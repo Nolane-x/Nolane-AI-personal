@@ -1126,6 +1126,10 @@ Engineering substrate: **SPLIT-BRAIN-SAFE-SERVING-BARRIER-READY / NO PROMOTION D
 - [x] active-change race fails closed
 - [x] process-local model swap lock
 - [x] model_for_request enforces serving gate
+- [x] post-gate request fence rechecks active authority before admission
+- [x] request context holds process-local generation stable for in-flight inference
+- [x] admitted old-generation request may drain; later requests fail closed
+- [x] poll_reload cannot swap local model inside request context
 - [x] real factorized checkpoint loader helper
 - [x] local serving coordination CLI
 - [x] CI multi-worker convergence court

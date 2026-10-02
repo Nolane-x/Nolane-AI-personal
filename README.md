@@ -1126,6 +1126,8 @@ B reloads
 
 `ServingSession.model_for_request()` enforces this barrier directly; a model object is not returned while the process is drained, expired, or waiting for peers.
 
+v0.35.1 hardens request admission further: a second fence rechecks the active pointer after a gate PASS, and `ServingSession.request_model()` holds the process-local model generation stable for the lifetime of one in-flight inference. Already-admitted work may drain, but later requests are blocked as soon as checkpoint authority moves.
+
 See `docs/L34-SERVING-RELOAD-CONVERGENCE.md`.
 
 ### L35 Evidence-Bound Promotion Authority
