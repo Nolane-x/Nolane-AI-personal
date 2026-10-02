@@ -44,7 +44,7 @@ def assert_min_target(locator, minimum=44):
 
 
 def run_desktop(browser, base_url):
-    page = browser.new_page(viewport={"width": 1280, "height": 820})
+    context = browser.new_context(viewport={"width": 1280, "height": 820}, locale="vi-VN")\n    page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
 
     power = page.locator("#powerButton")
@@ -135,7 +135,7 @@ def run_mobile(browser, base_url):
 
 
 def run_reduced_motion(browser, base_url):
-    context = browser.new_context(reduced_motion="reduce")
+    context = browser.new_context(reduced_motion="reduce", locale="vi-VN")
     page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
     page.locator("#powerButton").click()
