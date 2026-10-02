@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from nolane_personal.native_promotion import decide_native_promotion
+from nolane_personal.heldout_group_robustness import verify_group_robustness_digest
 
 
 def main() -> int:
@@ -17,8 +18,18 @@ def main() -> int:
 
     quality = json.loads(Path(args.quality).read_text(encoding="utf-8"))
     resources = json.loads(Path(args.resources).read_text(encoding="utf-8"))
+    group = quality.get("group_robustness")
+    try:
+        verify_group_robustness_digest(group if isinstance(group, dict) else {})
+        group_pass = group.get("status") == "PASS"
+    except ValueError:
+        group_pass = False
+    effective_quality_status = (
+        str(quality.get("decision", {}).get("status", ""))
+        if group_pass else ""
+    )
     decision = decide_native_promotion(
-        quality_status=str(quality.get("decision", {}).get("status", "")),
+        quality_status=effective_quality_status,
         quality_checkpoint_sha256=quality.get("native_checkpoint_sha256"),
         quality_spec_sha256=quality.get("spec_sha256"),
         resource_status=str(resources.get("decision", {}).get("status", "")),
@@ -27,6 +38,8 @@ def main() -> int:
     )
     result = {
         "schema": "NOLANE-L15-NATIVE-BOUNDARY-PROMOTION-V1",
+        "group_robustness_status": group.get("status") if isinstance(group, dict) else None,
+        "group_robustness_court_sha256": group.get("court_sha256") if isinstance(group, dict) else None,
         "decision": asdict(decision),
     }
     rendered = json.dumps(result, indent=2, sort_keys=True)
