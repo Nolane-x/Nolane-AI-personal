@@ -5,6 +5,11 @@ use crate::{
         MobileMemoryStore,
         DEFAULT_RETRIEVAL_LIMIT,
     },
+    social::{
+        apply_social_proposal,
+        deterministic_explicit_preference_observer,
+        MobileMutationReceipt,
+    },
     read_persistent_mobile_state,
     write_persistent_mobile_state,
     MobileRuntime,
@@ -1165,6 +1170,39 @@ impl LocalMobileProductRuntime {
         self.tick_at(at_ms, Some(max_new_tokens))
     }
 
+    fn run_deterministic_social_observer(
+        &mut self,
+        text: &str,
+        source_event_id: &str,
+        at_ms: u64,
+    ) -> Result<Option<MobileMutationReceipt>, RuntimeError> {
+        let proposal =
+            deterministic_explicit_preference_observer(text);
+        if proposal.memories.is_empty()
+            && proposal.affect_delta.is_empty()
+            && proposal.relationship_delta.is_empty()
+        {
+            return Ok(None);
+        }
+        let mut state = self
+            .runtime
+            .persistent_state()
+            .cloned()
+            .ok_or_else(|| RuntimeError::Invalid(
+                "LocalMobile persistent state disappeared".into(),
+            ))?;
+        let receipt = apply_social_proposal(
+            &mut state,
+            &mut self.memory_store,
+            &mut self.meta.social_drive,
+            &proposal,
+            source_event_id,
+            at_ms,
+        )?;
+        self.runtime.set_persistent_state(state)?;
+        Ok(Some(receipt))
+    }
+
     fn send_message(&mut self, text: &str) -> Result<Value, RuntimeError> {
         self.send_message_with_token_limit(text, None)
     }
@@ -1204,8 +1242,13 @@ impl LocalMobileProductRuntime {
         let ordinal = self.meta.state_version.saturating_add(1);
         let user_event_id = format!("local-mobile-u-{ordinal}");
         self.apply_user_lifecycle(clean, at_ms)?;
-        if self.meta.memory_enabled {
+        let observer_receipt = if self.meta.memory_enabled {
             self.memory_store.record_user_message(
+                clean,
+                &user_event_id,
+                at_ms,
+            )?;
+            let receipt = self.run_deterministic_social_observer(
                 clean,
                 &user_event_id,
                 at_ms,
@@ -1215,9 +1258,12 @@ impl LocalMobileProductRuntime {
                 &self.memory_path,
                 &self.memory_store,
             )?;
-        }
-        // Desktop LivingEngine commits the user event + episodic memory before
-        // cortex generation. Preserve that causal ordering on mobile.
+            receipt
+        } else {
+            None
+        };
+        // Desktop LivingEngine commits the user event + episodic memory and
+        // validated observer mutation before cortex generation.
         self.runtime.save_persistent_state(&self.state_path)?;
         write_json(&self.meta_path, &self.meta)?;
 
@@ -1261,6 +1307,7 @@ impl LocalMobileProductRuntime {
         Ok(json!({
             "reply": reply,
             "state_version": self.meta.state_version,
+            "observer_receipt": observer_receipt,
             "observer_error": Value::Null,
         }))
     }
