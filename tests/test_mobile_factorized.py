@@ -131,6 +131,12 @@ def test_mobile_modules_are_frozen_and_contract_is_explicit(tied):
     assert payload["packed_state_dim"] == 15
     assert payload["virtual_steps"] == 3
     assert payload["tie_word_embeddings"] is tied
+    assert payload["hidden_norm_eps"] == pytest.approx(
+        model.cortex.module.hidden_norm.eps
+    )
+    assert payload["latent_norm_eps"] == pytest.approx(
+        model.cortex.module.latent_norm.eps
+    )
     assert payload["input_contract"]["step_token_id"] == [1]
     assert payload["output_contract"]["step_logits"] == [1, 47]
     assert payload["autoregressive_loop_in_graph"] is False
