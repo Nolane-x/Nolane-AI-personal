@@ -158,6 +158,16 @@ class ProductLearningWorkspace:
                     )
                 previous_high_water = high_water
 
+            registered_expected_next = len(registry["windows"]) + 1
+            if int(registry["last_exported_rowid"]) != previous_high_water:
+                raise ValueError(
+                    "in-app evidence registry final cursor mismatch"
+                )
+            if int(registry["next_window_index"]) != registered_expected_next:
+                raise ValueError(
+                    "in-app evidence registry next-window index mismatch"
+                )
+
             # Recover a crash that happened after the fully verified window
             # directory was atomically installed but before the registry
             # pointer was written. Only the exact next contiguous window may be
