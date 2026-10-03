@@ -18,9 +18,9 @@ It does not:
 - require Transformers;
 - require a Qwen model object.
 
-The Rust `tokenizers` dependency is built with default features disabled so
-Android does not inherit the default progressbar/onig/C++ esaxx stack merely to
-read and execute an already frozen tokenizer.
+The Rust `tokenizers` dependency is built with default features disabled and
+the `fancy-regex` feature enabled. This keeps the regex path pure Rust instead
+of pulling Oniguruma/C into the Android runtime.
 
 ## Native prompt prefill
 
@@ -74,7 +74,25 @@ outputs.
 
 The native runtime crate must also compile for `aarch64-linux-android`.
 
+## Exact pinned Qwen tokenizer court
+
+The synthetic WordLevel fixture is not enough to close tokenizer compatibility.
+
+Product Client CI also reads `model.lock.json`, downloads only
+`tokenizer.json` from the exact pinned `Qwen/Qwen3-0.6B` revision, and freezes
+Python tokenization for Vietnamese, English, Unicode/emoji and code-like text.
+
+The Rust runtime must load that same tokenizer file and reproduce:
+
+- vocabulary size including added tokens;
+- token IDs for every frozen input;
+- decoded text for every frozen token sequence.
+
+This court downloads tokenizer assets only. It does not download the 0.6B model
+weights.
+
 ## What remains open
+
 
 v0.51 is not yet the full Android product runtime.
 
