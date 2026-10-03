@@ -1404,7 +1404,7 @@ See `docs/L44-PRODUCT-EXPERIENCE-EVIDENCE-BRIDGE.md`.
 
 L45 removes the terminal as a requirement for reviewing real product evidence while keeping the main chat surface unchanged.
 
-Under Personalization -> Advanced, the user can prepare one local learning window from new product conversations and review one real USER/NOLANE pair at a time. Every candidate remains unapproved until the user explicitly chooses Approve, Reject or Sensitive. There is no approve-all or background training action.
+Under Personalization -> Advanced, the user can prepare one local learning window from new product conversations and review one real USER/NOLANE pair at a time. Every candidate remains unapproved until the user explicitly chooses Approve, Reject or Sensitive. Before approval, the assistant target is editable, so the user can supply the exact corrected behavior Nolane should learn instead of merely reinforcing an answer the current model already produced. There is no approve-all or background training action.
 
 The local learning registry forms a contiguous SQLite high-water chain, so later windows cannot silently reuse earlier product turns. Failed window preparation does not advance the cursor. Raw candidate text is returned only to the authenticated local review dialog; window/registry metadata remains text-free.
 
