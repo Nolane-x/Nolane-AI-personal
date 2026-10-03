@@ -1482,3 +1482,41 @@ Scientific execution target: **5+-WINDOW REAL CORTEX LEARNING / NO SELF-PROMOTIO
 
 L43 is the point where “Nolane learns over time” becomes an empirical claim rather than an architectural capability. A synthetic fixture cannot close these unchecked items.
 
+## L44 — Product Experience Evidence Bridge
+
+Empirical-input target: **REAL PRODUCT USE -> HUMAN REVIEW -> L43 PLAN / NO AUTO-TRAINING AUTHORITY**.
+
+- [x] read product `living.db` through a read-only SQLite snapshot
+- [x] export only complete user -> assistant supervised turns
+- [x] ignore autonomous assistant messages without a pending user turn
+- [x] configurable session-gap source grouping
+- [x] bounded pairs per source group to keep grouped held-out splitting possible
+- [x] require at least three leakage-safe source groups before review intake
+- [x] product language hint may come from explicit vi/en profile only
+- [x] raw transcript stays in local export/workbench files
+- [x] public export/window receipts exclude raw prompt/target and raw event IDs
+- [x] imported review candidates remain approved=false and reviewed=false
+- [x] one command initializes L24/L26/L27 workbench from product DB
+- [x] reuse explicit immutable human-review decisions
+- [x] reuse L25/L27 finalization and L28 quality/leakage court
+- [x] incremental SQLite row cursor for later real evidence windows
+- [x] explicit operator assignment of fixed/retention/adaptation workbench roles
+- [x] require at least five cycles before product->L43 plan handoff
+- [x] fixed-panel exact prompt/pair leakage blocked across all training packs
+- [x] adaptation exact prompt/pair reuse blocked across longitudinal windows
+- [x] within-cycle retention/adaptation exact content overlap blocked
+- [x] individual prompt hashes excluded from bridge receipt
+- [x] emitted plan is immediately revalidated by native L43 validator
+- [x] bridge cannot train, authorize or promote a checkpoint
+- [ ] L44 CI PASS
+- [ ] collect first real product window from actual Nolane usage
+- [ ] complete explicit local human review of that window
+- [ ] accumulate at least five distinct real adaptation windows
+- [ ] freeze one real fixed panel that never enters training/rehearsal
+- [ ] build a real L43 plan from finalized workbenches
+- [ ] execute real L43 and measure adaptation + learned-window retention
+- [ ] only if L43 PASS: human review -> separate L40 authorization
+- [ ] run real L33/L34/L36 ceremony and product release on that trained checkpoint
+
+L44 does not make synthetic evidence more authoritative. Its job is to make genuine product experience usable without weakening consent, privacy or held-out isolation.
+
