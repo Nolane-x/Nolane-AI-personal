@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::HashSet,
     fs,
     fs::OpenOptions,
     io::Write,
@@ -26,8 +27,17 @@ pub const LOCAL_MOBILE_RELEASE_AUTHORITY: &str =
 pub const LOCAL_MOBILE_COURT_AUTHORITY: &str =
     "SYNTHETIC_COURT_ONLY_NO_RELEASE_AUTHORITY";
 pub const LOCAL_MOBILE_META_SCHEMA: &str =
+    "NOLANE-V059-LOCALMOBILE-LIFECYCLE-META-V1";
+pub const LEGACY_LOCAL_MOBILE_META_SCHEMA: &str =
     "NOLANE-V056-LOCALMOBILE-META-V1";
 const MAX_HISTORY_MESSAGES: usize = 400;
+const INITIATIVE_THRESHOLD: f64 = 0.66;
+const MIN_USER_SILENCE_MS: u64 = 15 * 60 * 1000;
+const SPEECH_COOLDOWN_MS: u64 = 30 * 60 * 1000;
+const HARD_MAX_WITHOUT_USER_MS: u64 = 24 * 60 * 60 * 1000;
+const REST_MIN_IDLE_MS: u64 = 30 * 60 * 1000;
+const REST_MIN_INTERVAL_MS: u64 = 45 * 60 * 1000;
+const REST_DUPLICATE_SIMILARITY: f64 = 0.72;
 const MAX_PROFILE_NAME_CHARS: usize = 80;
 const MAX_PERSONAL_INSTRUCTION_CHARS: usize = 1200;
 
@@ -57,11 +67,22 @@ struct PromotionCeremonyView {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default)]
 struct LocalMobileMeta {
     schema: String,
     state_version: u64,
     memory_enabled: bool,
     initiative: String,
+    tick: u64,
+    last_event_ms: Option<u64>,
+    last_user_event_ms: Option<u64>,
+    last_ai_speech_ms: Option<u64>,
+    social_drive: f64,
+    curiosity: f64,
+    rest_cycles: u64,
+    last_rest_ms: Option<u64>,
+    last_rest_source_count: usize,
+    last_rest_new_memories: usize,
 }
 
 impl Default for LocalMobileMeta {
@@ -71,6 +92,16 @@ impl Default for LocalMobileMeta {
             state_version: 0,
             memory_enabled: true,
             initiative: "gentle".to_string(),
+            tick: 0,
+            last_event_ms: None,
+            last_user_event_ms: None,
+            last_ai_speech_ms: None,
+            social_drive: 0.20,
+            curiosity: 0.35,
+            rest_cycles: 0,
+            last_rest_ms: None,
+            last_rest_source_count: 0,
+            last_rest_new_memories: 0,
         }
     }
 }
@@ -150,12 +181,60 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), RuntimeError> 
     atomic_write(path, &bytes)
 }
 
-fn now_marker() -> String {
-    let millis = SystemTime::now()
+fn now_millis() -> u64 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
-        .as_millis();
-    millis.to_string()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
+}
+
+fn now_marker() -> String {
+    now_millis().to_string()
+}
+
+fn clamp01(value: f64) -> f64 {
+    value.clamp(0.0, 1.0)
+}
+
+fn clamp_signed(value: f64) -> f64 {
+    value.clamp(-1.0, 1.0)
+}
+
+fn relax(
+    value: f64,
+    target: f64,
+    dt_seconds: f64,
+    half_life_seconds: f64,
+) -> f64 {
+    if dt_seconds <= 0.0 {
+        return value;
+    }
+    let retention = 0.5_f64.powf(dt_seconds / half_life_seconds);
+    target + (value - target) * retention
+}
+
+fn contains_any(text: &str, cues: &[&str]) -> bool {
+    let folded = text.to_lowercase();
+    cues.iter().any(|cue| folded.contains(cue))
+}
+
+fn lexical_tokens(text: &str) -> HashSet<String> {
+    text.split(|ch: char| !ch.is_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .map(|token| token.to_lowercase())
+        .collect()
+}
+
+fn lexical_similarity(a: &str, b: &str) -> f64 {
+    let left = lexical_tokens(a);
+    let right = lexical_tokens(b);
+    if left.is_empty() || right.is_empty() {
+        return 0.0;
+    }
+    let intersection = left.intersection(&right).count() as f64;
+    let union = left.union(&right).count() as f64;
+    intersection / union
 }
 
 fn fresh_identity() -> String {
@@ -308,8 +387,12 @@ fn load_meta(path: &Path) -> Result<LocalMobileMeta, RuntimeError> {
     if !path.exists() {
         return Ok(LocalMobileMeta::default());
     }
-    let meta: LocalMobileMeta = serde_json::from_slice(&fs::read(path)?)?;
-    if meta.schema != LOCAL_MOBILE_META_SCHEMA {
+    let mut meta: LocalMobileMeta =
+        serde_json::from_slice(&fs::read(path)?)?;
+    if !matches!(
+        meta.schema.as_str(),
+        LOCAL_MOBILE_META_SCHEMA | LEGACY_LOCAL_MOBILE_META_SCHEMA
+    ) {
         return Err(RuntimeError::Invalid(
             "LocalMobile metadata schema mismatch".into(),
         ));
@@ -319,6 +402,14 @@ fn load_meta(path: &Path) -> Result<LocalMobileMeta, RuntimeError> {
             "LocalMobile initiative value is invalid".into(),
         ));
     }
+    if !meta.social_drive.is_finite() || !meta.curiosity.is_finite() {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile lifecycle metadata contains non-finite value".into(),
+        ));
+    }
+    meta.schema = LOCAL_MOBILE_META_SCHEMA.to_string();
+    meta.social_drive = clamp01(meta.social_drive);
+    meta.curiosity = clamp01(meta.curiosity);
     Ok(meta)
 }
 
