@@ -84,6 +84,51 @@ def test_seeded_sampler_is_repeatable_and_rejects_invalid_inputs():
         SeededNucleusSampler(1, temperature=0.0)
 
 
+def test_top_p_retains_minimal_q32_nucleus_with_stable_tie_break():
+    logits = [0.0, 0.0, 0.0, 0.0]
+
+    quarter = SeededNucleusSampler(
+        state=123,
+        temperature=1.0,
+        top_p=0.25,
+    )
+    before = quarter.state
+    token = quarter.sample(logits)
+    expected_state, _ = splitmix64_next(before)
+    assert token == 0
+    assert quarter.state == expected_state
+
+    for seed in range(32):
+        half = SeededNucleusSampler(
+            state=seed,
+            temperature=1.0,
+            top_p=0.50,
+        )
+        assert half.sample(logits) in {0, 1}
+
+    observed = {
+        SeededNucleusSampler(
+            state=seed,
+            temperature=1.0,
+            top_p=1.0,
+        ).sample(logits)
+        for seed in range(64)
+    }
+    assert observed.issubset({0, 1, 2, 3})
+    assert len(observed) > 2
+
+
+def test_tiny_positive_top_p_still_retains_exactly_one_best_token():
+    logits = [8.0, 1.0, 0.0, -4.0]
+    for seed in range(16):
+        sampler = SeededNucleusSampler(
+            state=seed,
+            temperature=0.78,
+            top_p=1e-9,
+        )
+        assert sampler.sample(logits) == 0
+
+
 def test_standalone_seeded_generation_is_exactly_repeatable():
     model = small_model()
     prompt = torch.tensor([[1, 5, 9, 7]], dtype=torch.long)
