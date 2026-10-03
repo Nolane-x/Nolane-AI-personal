@@ -10,6 +10,58 @@ pub const PROMPT_CONTRACT_SCHEMA: &str =
 pub const PROMPT_CONTRACT_AUTHORITY: &str =
     "PROMPT_RENDER_CONTRACT_ONLY_NO_MODEL_AUTHORITY";
 
+pub const PRODUCT_PAYLOAD_SCHEMA: &str =
+    "NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1";
+pub const PRODUCT_SYSTEM_PROMPT: &str = "You are the language cortex of Nolane AI Personal.\nYou are not a generic assistant. Speak like a persistent personal companion whose state and memories are supplied by the runtime.\nUse natural language, usually concise. Vietnamese and English are both allowed; follow the user's language.\nYou may disagree, tease gently, joke, or sound mildly annoyed when context supports it, but never guilt the user for leaving, demand attention, threaten abandonment, or claim suffering to pressure them.\nDo not invent memories. Do not claim certainty about the user's emotion; phrase uncertain impressions naturally.\nThe runtime may ask you to initiate a conversation. In that case, do not mention that you were triggered or scored by a policy.\n";
+
+pub const MAX_PRODUCT_OPEN_THREADS: usize = 4;
+pub const MAX_PRODUCT_MEMORIES: usize = 8;
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ProductPayloadProfile {
+    pub preferred_name: String,
+    pub language: String,
+    pub response_length: String,
+    pub conversation_style: String,
+    pub personal_instruction: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ProductPayloadRelationship {
+    pub closeness: f64,
+    pub trust: f64,
+    pub familiarity: f64,
+    pub interaction_count: i64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ProductPayloadAffect {
+    pub valence: f64,
+    pub energy: f64,
+    pub playfulness: f64,
+    pub concern: f64,
+    pub irritation: f64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ProductPayloadState {
+    pub identity_id: String,
+    pub relationship: ProductPayloadRelationship,
+    pub affect: ProductPayloadAffect,
+    pub open_threads: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ProductPayloadInput {
+    pub schema: String,
+    pub profile: ProductPayloadProfile,
+    pub state: ProductPayloadState,
+    pub mode: String,
+    pub intent: String,
+    pub user_text: Option<String>,
+    pub memories: Vec<String>,
+}
+
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("kernel error: {0}")]
@@ -177,6 +229,154 @@ impl FrozenPromptContract {
     }
 }
 
+fn language_guidance(language: &str) -> Result<&'static str, RuntimeError> {
+    match language {
+        "auto" => Ok("Follow the user's current language naturally."),
+        "vi" => Ok("Prefer Vietnamese unless the user explicitly asks for another language."),
+        "en" => Ok("Prefer English unless the user explicitly asks for another language."),
+        other => Err(RuntimeError::Invalid(format!(
+            "unsupported product language: {other}"
+        ))),
+    }
+}
+
+fn style_guidance(style: &str) -> Result<&'static str, RuntimeError> {
+    match style {
+        "natural" => Ok("Speak naturally. Avoid canned assistant phrasing."),
+        "warm" => Ok("Be warm and attentive without becoming sentimental or clingy."),
+        "direct" => Ok("Be direct, concrete and low-fluff."),
+        "playful" => Ok("Allow light wit and playfulness when context supports it."),
+        other => Err(RuntimeError::Invalid(format!(
+            "unsupported conversation style: {other}"
+        ))),
+    }
+}
+
+impl ProductPayloadInput {
+    pub fn validate(&self) -> Result<(), RuntimeError> {
+        if self.schema != PRODUCT_PAYLOAD_SCHEMA {
+            return Err(RuntimeError::Invalid(
+                "product payload schema mismatch".into(),
+            ));
+        }
+        if self.state.open_threads.len() > MAX_PRODUCT_OPEN_THREADS {
+            return Err(RuntimeError::Invalid(
+                "product payload exceeds open-thread limit".into(),
+            ));
+        }
+        if self.memories.len() > MAX_PRODUCT_MEMORIES {
+            return Err(RuntimeError::Invalid(
+                "product payload exceeds memory limit".into(),
+            ));
+        }
+        if self.mode != "reply" && self.mode != "initiative" {
+            return Err(RuntimeError::Invalid(format!(
+                "unsupported product payload mode: {}",
+                self.mode
+            )));
+        }
+        if self.mode == "initiative"
+            && self.user_text.as_deref().unwrap_or("") != ""
+        {
+            return Err(RuntimeError::Invalid(
+                "initiative product payload must not contain user_text".into(),
+            ));
+        }
+        let _ = language_guidance(&self.profile.language)?;
+        let _ = style_guidance(&self.profile.conversation_style)?;
+        match self.profile.response_length.as_str() {
+            "compact" | "balanced" | "expansive" => {}
+            other => {
+                return Err(RuntimeError::Invalid(format!(
+                    "unsupported response length: {other}"
+                )))
+            }
+        }
+        let numeric = [
+            self.state.relationship.closeness,
+            self.state.relationship.trust,
+            self.state.relationship.familiarity,
+            self.state.affect.valence,
+            self.state.affect.energy,
+            self.state.affect.playfulness,
+            self.state.affect.concern,
+            self.state.affect.irritation,
+        ];
+        if numeric.iter().any(|value| !value.is_finite()) {
+            return Err(RuntimeError::Invalid(
+                "product payload contains non-finite state value".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn max_new_tokens(&self) -> Result<usize, RuntimeError> {
+        self.validate()?;
+        match self.profile.response_length.as_str() {
+            "compact" => Ok(96),
+            "balanced" => Ok(160),
+            "expansive" => Ok(256),
+            _ => unreachable!("validated response length"),
+        }
+    }
+
+    pub fn render_user_payload(&self) -> Result<String, RuntimeError> {
+        self.validate()?;
+
+        let preferred_name = if self.profile.preferred_name.is_empty() {
+            "(not set)"
+        } else {
+            self.profile.preferred_name.as_str()
+        };
+        let personal_instruction = if self.profile.personal_instruction.is_empty() {
+            "(none)"
+        } else {
+            self.profile.personal_instruction.as_str()
+        };
+        let threads_json = serde_json::to_string(&self.state.open_threads)?;
+        let memories = if self.memories.is_empty() {
+            "(none)".to_string()
+        } else {
+            self.memories
+                .iter()
+                .map(|memory| format!("- {memory}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let task = if self.mode == "reply" {
+            format!(
+                "User message:\n{}\n\nReply as this persistent personal companion.",
+                self.user_text.as_deref().unwrap_or("")
+            )
+        } else {
+            "Initiate one natural, non-intrusive message that genuinely uses the supplied state or open thread.".to_string()
+        };
+
+        Ok(format!(
+            "Personalization:\npreferred_name={preferred_name}\nlanguage={}: {}\nresponse_length={}\nconversation_style={}: {}\npersonal_instruction={personal_instruction}\nDo not mention these settings unless they are directly relevant.\n\nRuntime state:\nidentity_id={}\nrelationship: closeness={:.2}, trust={:.2}, familiarity={:.2}, interactions={}\nbehavior: valence={:.2}, energy={:.2}, playfulness={:.2}, concern={:.2}, irritation={:.2}\nopen_threads={}\nrequested_intent={}\n\nRelevant memories:\n{}\n\n{}",
+            self.profile.language,
+            language_guidance(&self.profile.language)?,
+            self.profile.response_length,
+            self.profile.conversation_style,
+            style_guidance(&self.profile.conversation_style)?,
+            self.state.identity_id,
+            self.state.relationship.closeness,
+            self.state.relationship.trust,
+            self.state.relationship.familiarity,
+            self.state.relationship.interaction_count,
+            self.state.affect.valence,
+            self.state.affect.energy,
+            self.state.affect.playfulness,
+            self.state.affect.concern,
+            self.state.affect.irritation,
+            threads_json,
+            self.intent,
+            memories,
+            task,
+        ))
+    }
+}
+
 fn argmax(values: &[f32]) -> Result<usize, RuntimeError> {
     if values.is_empty() {
         return Err(RuntimeError::Invalid("cannot argmax empty logits".into()));
@@ -305,6 +505,23 @@ impl MobileRuntime {
             )
         })?;
         Ok(contract.render(system_text, user_text))
+    }
+
+    pub fn render_product_prompt(
+        &self,
+        payload: &ProductPayloadInput,
+    ) -> Result<String, RuntimeError> {
+        let user_payload = payload.render_user_payload()?;
+        self.render_chat_prompt(PRODUCT_SYSTEM_PROMPT, &user_payload)
+    }
+
+    pub fn generate_product_greedy(
+        &self,
+        payload: &ProductPayloadInput,
+    ) -> Result<GenerationResult, RuntimeError> {
+        let max_new_tokens = payload.max_new_tokens()?;
+        let prompt = self.render_product_prompt(payload)?;
+        self.generate_greedy(&prompt, max_new_tokens)
     }
 
     pub fn generate_chat_greedy(

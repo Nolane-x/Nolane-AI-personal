@@ -1735,13 +1735,46 @@ Android product-prompt target: **EXACT PINNED CHAT TEMPLATE / NO JINJA IN APK**.
 - [x] desktop AutoTokenizer vs raw native-tokenizer ID boundary check
 - [x] Rust byte-for-byte prompt render parity on pinned Qwen
 - [x] Rust token-for-token prompt parity on pinned Qwen
-- [ ] L52 Product Client Court PASS
-- [ ] merge v0.52
-- [ ] dynamic product personalization/state/memory payload parity
+- [x] L52 Product Client Court PASS
+- [x] merge v0.52
+- [x] dynamic product personalization/state/memory payload parity
 - [ ] seeded sampling parity with desktop product
 - [ ] persistent Android latent/profile/state bridge
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile model/prompt/tokenizer release binding
 - [ ] emulator/device local-chat court
+- [ ] only then call Android local chat production-complete
+
+## L53 — Product Payload Parity
+
+Android behavioral-parity target: **SAME PROFILE/STATE/MEMORY -> SAME PRODUCT PAYLOAD/PROMPT/TOKENS**.
+
+- [x] no new primary product UI
+- [x] desktop ProductCortex prompt assembly extracted into shared payload module
+- [x] canonical structured `NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1`
+- [x] desktop generation renders from the structured payload contract
+- [x] only reply / initiative modes accepted
+- [x] initiative payload rejects unexpected user text
+- [x] <=4 unresolved open threads
+- [x] <=8 relevant memories
+- [x] open-thread representation changed from Python repr to compact UTF-8 JSON
+- [x] native language guidance parity
+- [x] native conversational-style guidance parity
+- [x] native relationship/affect formatting parity
+- [x] native memory/task wording parity
+- [x] native compact/balanced/expansive token budgets 96/160/256
+- [x] exact pinned Qwen fixture includes VI/EN/initiative product cases
+- [x] Unicode/quotes/backslashes/multiline-memory edge case
+- [x] Rust user payload byte-for-byte parity court
+- [x] Rust frozen full-prompt byte-for-byte parity court
+- [x] Rust pinned-Qwen prompt token-ID parity court
+- [ ] L53 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.53
+- [ ] seeded sampling parity with desktop product path
+- [ ] persistent Android latent/profile/state bridge
+- [ ] Tauri Android LocalMobile target
+- [ ] L36-authorized mobile model/prompt/tokenizer/payload release binding
+- [ ] emulator/device end-to-end local chat court
 - [ ] only then call Android local chat production-complete
 

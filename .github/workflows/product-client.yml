@@ -17,6 +17,7 @@ on:
       - "scripts/check_product_version.py"
       - "scripts/verify_windows_clean_install.ps1"
       - "tests/test_product_cortex_selftest.py"
+      - "tests/test_product_prompt_payload.py"
       - "tests/test_product_version.py"
       - "src/nolane_personal/mobile_factorized.py"
       - "src/nolane_personal/mobile_prompt_contract.py"
@@ -48,6 +49,7 @@ on:
       - "scripts/check_product_version.py"
       - "scripts/verify_windows_clean_install.ps1"
       - "tests/test_product_cortex_selftest.py"
+      - "tests/test_product_prompt_payload.py"
       - "tests/test_product_version.py"
       - "src/nolane_personal/mobile_factorized.py"
       - "src/nolane_personal/mobile_prompt_contract.py"
@@ -79,7 +81,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e '.[dev]'
-      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py tests/test_product_cortex_selftest.py tests/test_product_version.py tests/test_mobile_factorized.py tests/test_mobile_factorized_export.py tests/test_mobile_prompt_contract.py
+      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py tests/test_product_cortex_selftest.py tests/test_product_version.py tests/test_mobile_factorized.py tests/test_mobile_factorized_export.py tests/test_mobile_prompt_contract.py tests/test_product_prompt_payload.py
       - run: python scripts/check_product_version.py
       - run: python -m compileall -q src/nolane_personal/product_*.py src/nolane_personal/mobile_factorized.py src/nolane_personal/mobile_prompt_contract.py scripts/stage_product_release_assets.py scripts/check_product_version.py scripts/export_mobile_factorized.py scripts/build_real_mobile_tokenizer_fixture.py packaging/product_runtime_entry.py
 
@@ -168,6 +170,8 @@ jobs:
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_real_qwen_tokenizer -- artifacts/real-qwen-tokenizer
       - name: Exact pinned Qwen product-prompt parity
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_real_qwen_prompt -- artifacts/real-qwen-tokenizer
+      - name: Dynamic product payload -> pinned Qwen prompt parity
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_product_payload_fixture -- artifacts/real-qwen-tokenizer
       - name: Android target compile court
         run: |
           cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
