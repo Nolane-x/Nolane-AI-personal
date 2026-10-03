@@ -336,12 +336,12 @@ def build_longitudinal_report(
                 "cycle_retention_worst_group_regression": continual[
                     "retention"
                 ]["summary"]["worst_group_regression"],
-                "final_learned_window_overall_regression": retention["summary"][
-                    "overall_regression"
-                ],
+                "final_learned_window_overall_regression": retention[
+                    "group_robustness"
+                ]["summary"]["overall_regression"],
                 "final_learned_window_worst_group_regression": retention[
-                    "summary"
-                ]["worst_group_regression"],
+                    "group_robustness"
+                ]["summary"]["worst_group_regression"],
                 "learned_window_court_sha256": retention["court_sha256"],
             }
         )
