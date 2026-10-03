@@ -266,7 +266,9 @@ jobs:
           tauri android init --ci --skip-targets-install
           python ../../scripts/patch_tauri_android_cli_bridge.py src-tauri/gen/android
           tauri icon icon-source.svg
-          tauri android build --apk --target x86_64
+          # Emulator evidence needs an installable APK. The release court stays
+          # separate; use Android's standard debug signing only for this CI APK.
+          tauri android build --debug --apk --target x86_64
       - name: Verify x86_64 APK exists
         shell: bash
         run: |
