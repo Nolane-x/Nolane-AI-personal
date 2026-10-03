@@ -129,6 +129,20 @@ Raw local paths are used only to execute the run. The public plan receipt stores
 hash bindings/counts and does not copy paths, prompts, targets or source-group
 hash values.
 
+The plan identity also binds:
+
+- exact initial factorized checkpoint SHA-256;
+- exact persistent latent file SHA-256;
+- a deterministic recursive SHA-256 over tokenizer assets;
+- the full **effective** training configuration for every cycle, including
+  defaults that the operator did not explicitly write.
+
+This means a later change to model bytes, latent state, tokenizer files or
+training defaults produces a different plan identity instead of silently
+reusing old longitudinal evidence.
+
+Unknown training knobs are rejected rather than ignored.
+
 ## Validate before training
 
 Run:
