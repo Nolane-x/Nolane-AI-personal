@@ -118,6 +118,105 @@ fn profile_state_and_latent_updates_are_durable_and_versioned() {
 }
 
 #[test]
+fn profile_update_normalizes_like_desktop_product_profile() {
+    let root = tempdir().unwrap();
+    let store = MobileStateStore::new(root.path());
+    store
+        .load_or_initialize(
+            "identity-normalize",
+            &checkpoint('9'),
+            2,
+        )
+        .unwrap();
+
+    let profile = MobileProfile {
+        preferred_name: format!("  {}  ", "x".repeat(100)),
+        language: "invalid".into(),
+        response_length: "invalid".into(),
+        conversation_style: "invalid".into(),
+        initiative: "invalid".into(),
+        memory_enabled: true,
+        personal_instruction: format!("  {}  ", "y".repeat(1300)),
+    };
+    let normalized = store.update_profile(profile).unwrap();
+
+    assert_eq!(normalized.profile.preferred_name.chars().count(), 80);
+    assert_eq!(normalized.profile.language, "auto");
+    assert_eq!(normalized.profile.response_length, "balanced");
+    assert_eq!(normalized.profile.conversation_style, "natural");
+    assert_eq!(normalized.profile.initiative, "gentle");
+    assert_eq!(
+        normalized.profile.personal_instruction.chars().count(),
+        1200
+    );
+    assert!(!normalized.profile.preferred_name.starts_with(' '));
+    assert!(!normalized.profile.personal_instruction.starts_with(' '));
+}
+
+
+#[test]
+fn latent_update_requires_the_current_product_state_version() {
+    let root = tempdir().unwrap();
+    let store = MobileStateStore::new(root.path());
+    store
+        .load_or_initialize(
+            "identity-version",
+            &checkpoint('8'),
+            2,
+        )
+        .unwrap();
+
+    let product = store
+        .update_profile(MobileProfile {
+            preferred_name: "versioned".into(),
+            ..MobileProfile::default()
+        })
+        .unwrap();
+    assert_eq!(product.version, 1);
+
+    let error = store
+        .update_latent(vec![0.2, -0.1], 0)
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("current product state version"));
+
+    let updated = store
+        .update_latent(vec![0.2, -0.1], product.version)
+        .unwrap();
+    assert_eq!(updated.source_state_version, product.version);
+}
+
+
+#[test]
+fn future_bound_latent_fails_closed_instead_of_being_reused() {
+    let root = tempdir().unwrap();
+    let store = MobileStateStore::new(root.path());
+    let bundle = store
+        .load_or_initialize(
+            "identity-future",
+            &checkpoint('7'),
+            2,
+        )
+        .unwrap();
+
+    let mut latent = bundle.latent.clone();
+    latent.source_state_version = bundle.product.version + 1;
+    latent.seal().unwrap();
+    store.save_latent(&latent).unwrap();
+
+    let error = store
+        .load_or_initialize(
+            "identity-future",
+            &checkpoint('7'),
+            2,
+        )
+        .unwrap_err();
+    assert!(error.to_string().contains("state version is in the future"));
+}
+
+
+#[test]
 fn checkpoint_change_archives_only_latent_and_preserves_product_state() {
     let root = tempdir().unwrap();
     let store = MobileStateStore::new(root.path());
