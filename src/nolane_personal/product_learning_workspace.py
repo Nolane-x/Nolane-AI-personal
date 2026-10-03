@@ -121,7 +121,11 @@ class ProductLearningWorkspace:
             raise ValueError("invalid product evidence window id")
         return self.windows_dir / rendered
 
-    def verify_registry(self) -> dict[str, Any]:
+    def verify_registry(
+        self,
+        *,
+        recover_orphans: bool = True,
+    ) -> dict[str, Any]:
         with self._lock:
             registry = self._load_registry()
             seen: set[str] = set()
@@ -170,34 +174,35 @@ class ProductLearningWorkspace:
 
             # Recover a crash that happened after the fully verified window
             # directory was atomically installed but before the registry
-            # pointer was written. Only the exact next contiguous window may be
-            # adopted; gaps or unrelated directories remain fail-closed.
+            # pointer was written. Readiness/preflight may inspect with
+            # recover_orphans=False so startup never mutates evidence.
             changed = False
             expected_next = len(registry["windows"]) + 1
-            while True:
-                window_id = f"window-{expected_next:04d}"
-                root = self._window_root(window_id)
-                if not root.is_dir():
-                    break
-                window = verify_product_evidence_window(root)
-                source = window["source_event_range"]
-                after = int(source["after_rowid_exclusive"])
-                high_water = int(source["through_rowid_inclusive"])
-                if after != previous_high_water or high_water <= after:
-                    raise ValueError(
-                        "orphan evidence window is not contiguous with registry"
+            if recover_orphans:
+                while True:
+                    window_id = f"window-{expected_next:04d}"
+                    root = self._window_root(window_id)
+                    if not root.is_dir():
+                        break
+                    window = verify_product_evidence_window(root)
+                    source = window["source_event_range"]
+                    after = int(source["after_rowid_exclusive"])
+                    high_water = int(source["through_rowid_inclusive"])
+                    if after != previous_high_water or high_water <= after:
+                        raise ValueError(
+                            "orphan evidence window is not contiguous with registry"
+                        )
+                    registry["windows"].append(
+                        {
+                            "window_id": window_id,
+                            "window_manifest_sha256": window["manifest_sha256"],
+                            "through_rowid_inclusive": high_water,
+                        }
                     )
-                registry["windows"].append(
-                    {
-                        "window_id": window_id,
-                        "window_manifest_sha256": window["manifest_sha256"],
-                        "through_rowid_inclusive": high_water,
-                    }
-                )
-                seen.add(window_id)
-                previous_high_water = high_water
-                expected_next += 1
-                changed = True
+                    seen.add(window_id)
+                    previous_high_water = high_water
+                    expected_next += 1
+                    changed = True
 
             unregistered = sorted(
                 path.name
