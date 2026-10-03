@@ -288,11 +288,25 @@ def main() -> int:
     (root / "localmobile-manifest.json").write_text(
         json.dumps(
             {
-                "schema": "NOLANE-V056-LOCALMOBILE-BUNDLE-V1",
+                "schema": "NOLANE-V057-AUTHORIZED-LOCALMOBILE-BUNDLE-V1",
+                "authority": "SYNTHETIC_COURT_ONLY_NO_RELEASE_AUTHORITY",
                 "source_checkpoint_sha256": SOURCE_SHA,
                 "prompt_contract_file_sha256": sha256_file(
                     prompt_contract_path
                 ),
+                "mobile_package_manifest_sha256": sha256_file(
+                    package / "manifest.json"
+                ),
+                "tokenizer_json_sha256": sha256_file(tokenizer_path),
+                "tokenizer_config_json_sha256": sha256_file(
+                    tokenizer_config_path
+                ),
+                "bootstrap_state_sha256": sha256_file(
+                    root / "bootstrap-state.json"
+                ),
+                "promotion_ceremony_sha256": "a" * 64,
+                "promotion_authorization_sha256": "b" * 64,
+                "promotion_ceremony_file_sha256": "c" * 64,
             },
             indent=2,
             sort_keys=True,

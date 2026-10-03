@@ -1874,9 +1874,9 @@ Android app-routing target: **TAURI PRODUCT API -> NATIVE RUST LOCALMOBILE -> PE
 - [x] deterministic Python fixture emits LocalMobile bundle manifest/bootstrap state
 - [x] Rust LocalMobile court covers power -> chat -> history -> profile -> restart continuity
 - [x] Android APK must compile with the native runtime path dependency
-- [ ] L56 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.56
+- [x] L56 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.56
 - [ ] L36-authorized LocalMobile release bundle
 - [ ] emulator/device persistent local-chat court
 - [ ] full mobile LivingEngine transition/initiative-learning parity
@@ -1884,4 +1884,42 @@ Android app-routing target: **TAURI PRODUCT API -> NATIVE RUST LOCALMOBILE -> PE
 - [ ] only then call Android local chat production-complete
 
 L56 closes the app-routing split, not the production-release authority gap. Source APKs may compile with only the resource namespace present; a release may claim working LocalMobile only after L36-bound assets and device courts close.
+
+
+## L57 — L36-Authorized LocalMobile Release Bundle
+
+Android release-authority target: **COMPLETE L36 CEREMONY -> EXACT CHECKPOINT -> MOBILE PACKAGE/TOKENIZER/PROMPT/BOOTSTRAP -> STRICT LOCALMOBILE BUNDLE**.
+
+- [x] frozen `NOLANE-V057-AUTHORIZED-LOCALMOBILE-BUNDLE-V1`
+- [x] production authority marker is exactly `L36_COMPLETE_PROMOTION_CEREMONY`
+- [x] synthetic CI authority has a separate non-release marker
+- [x] strict LocalMobile loader rejects court-only bundles
+- [x] runtime verifies source-checkpoint binding across bundle and mobile package
+- [x] runtime verifies prompt-contract, tokenizer, bootstrap-state and package-manifest file hashes
+- [x] runtime requires COMPLETE L36 ceremony metadata for production authority
+- [x] runtime binds ceremony candidate checkpoint to the bundle checkpoint
+- [x] runtime binds ceremony authorization SHA and ceremony SHA to the bundle
+- [x] Python staging verifies the full promotion-ceremony receipt with `require_complete=True`
+- [x] Python staging fully verifies the native mobile factorized package
+- [x] Python staging verifies tokenizer/prompt-contract binding
+- [x] Python staging verifies bootstrap-state checkpoint and latent dimension
+- [x] neutral bootstrap latent uses the same zero-vector initialization as a fresh desktop identity/checkpoint
+- [x] release workflow exports the native mobile package from the exact promoted checkpoint
+- [x] release workflow freezes the product prompt contract from local tokenizer assets
+- [x] release workflow stages authority-bound LocalMobile resources
+- [x] release workflow performs a strict native-authority smoke before APK build
+- [x] Android release artifact includes manifest + ceremony evidence alongside the APK
+- [x] CI builds a synthetic COMPLETE ceremony only for staging/court mechanics
+- [x] CI strict-loader accepts the staged authority-bound court bundle
+- [ ] L57 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.57
+- [ ] run real Android Product Release with a real COMPLETE L36 ceremony
+- [ ] emulator/device install + persistent local-chat court on that exact APK
+- [ ] full mobile LivingEngine transition/initiative-learning parity
+- [ ] latency/memory/battery court
+- [ ] only then call Android local chat production-complete
+
+L57 closes release **binding and tooling**, not the real-device evidence requirement. A synthetic court ceremony proves the pipeline mechanics only and is structurally prevented from passing the production strict-loader unless it is restaged through the explicit court path.
+
 

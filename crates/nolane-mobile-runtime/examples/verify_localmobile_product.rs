@@ -11,11 +11,20 @@ fn main() {
     assert!(args.next().is_none(), "unexpected extra arguments");
 
     let data = tempdir().expect("create LocalMobile data directory");
-    let mut host = LocalMobileProductRuntime::load(
+    let strict = LocalMobileProductRuntime::load(
+        &bundle,
+        data.path(),
+    );
+    assert!(
+        strict.is_err(),
+        "court-only LocalMobile bundle must never pass strict release loading"
+    );
+
+    let mut host = LocalMobileProductRuntime::load_for_court(
         &bundle,
         data.path(),
     )
-    .expect("load LocalMobile product host");
+    .expect("load LocalMobile product host for court");
 
     let status = host
         .api("GET", "/v1/status", None)
@@ -90,11 +99,11 @@ fn main() {
 
     drop(host);
 
-    let mut reloaded = LocalMobileProductRuntime::load(
+    let mut reloaded = LocalMobileProductRuntime::load_for_court(
         &bundle,
         data.path(),
     )
-    .expect("reload LocalMobile product host");
+    .expect("reload LocalMobile product host for court");
 
     let status = reloaded
         .api("GET", "/v1/status", None)

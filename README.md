@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.56.0
+## Current executable milestone: Living Runtime v0.57.0
 
 The runtime now contains two very different compute scales:
 
@@ -1528,6 +1528,18 @@ Android now has a dedicated `RuntimeTarget::LocalMobile`. Remote pairing remains
 This is still not a production Android release claim. L36-authorized LocalMobile assets, emulator/device local-chat evidence, full mobile LivingEngine transition parity and latency/memory/battery courts remain open.
 
 See `docs/V056-TAURI-LOCALMOBILE-TARGET.md`.
+
+### v0.57 L36-Authorized LocalMobile Release Bundle
+
+v0.57 closes the Android release-binding gap. A production LocalMobile bundle must now bind the native package, tokenizer, prompt contract and bootstrap state to the exact checkpoint named by a COMPLETE L36 promotion ceremony.
+
+The strict Rust loader rejects source/court bundles, asset hash drift, package checkpoint drift and incomplete/mismatched ceremony evidence. CI keeps its deterministic source bundle under an explicit non-release authority marker; a separate synthetic ceremony is used only to court the staging mechanics.
+
+The new Android Product Release workflow takes the promoted checkpoint, COMPLETE L36 ceremony and tokenizer archive, exports the native package from that checkpoint, freezes the product prompt contract, creates the same zero-vector latent used by a fresh desktop identity, stages the authority-bound bundle, runs a strict native smoke and then builds the aarch64 APK.
+
+This still does not claim Android production completion: a real L36-authorized release run, emulator/device install + persistent local-chat court, fuller LivingEngine parity and latency/RAM/battery evidence remain open.
+
+See `docs/V057-L36-AUTHORIZED-LOCALMOBILE-BUNDLE.md`.
 
 ## Bootstrap Qwen
 
