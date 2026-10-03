@@ -1,0 +1,11 @@
+{
+  "name": "nolane-product-client",
+  "private": true,
+  "version": "0.42.0",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.1"
+  }
+}
