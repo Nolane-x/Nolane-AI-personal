@@ -1479,6 +1479,59 @@ mod tests {
     }
 
     #[test]
+    fn persistent_mobile_state_lifecycle_floats_are_restart_idempotent() {
+        let root = tempdir().unwrap();
+        let first_path = root.path().join("lifecycle-state-1.json");
+        let second_path = root.path().join("lifecycle-state-2.json");
+        let mut state = persistent_fixture();
+
+        // Values intentionally mirror non-binary decimal results produced by
+        // v0.59 relationship/affect dynamics rather than tidy fixture floats.
+        state.state.relationship.closeness = 0.71116;
+        state.state.relationship.familiarity = 0.63444;
+        state.state.affect.energy = 0.42000000000000004;
+        state.state.affect.playfulness = 0.12345678901234568;
+        state.state.affect.concern = 0.03765432109876543;
+        state.latent = vec![0.1, -0.2, 0.33333334, -0.7777778];
+
+        write_persistent_mobile_state(
+            &first_path,
+            &state,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        let once = read_persistent_mobile_state(
+            &first_path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+
+        write_persistent_mobile_state(
+            &second_path,
+            &once,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        let twice = read_persistent_mobile_state(
+            &second_path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+
+        assert_eq!(twice, once);
+        let raw: Value =
+            serde_json::from_slice(&fs::read(&second_path).unwrap()).unwrap();
+        assert_eq!(
+            raw["integrity"].as_str(),
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+        );
+    }
+
+    #[test]
     fn persistent_mobile_state_fails_closed_on_tamper_and_wrong_checkpoint() {
         let root = tempdir().unwrap();
         let path = root.path().join("state.json");
