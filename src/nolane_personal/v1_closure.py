@@ -24,6 +24,17 @@ CLOSURE_AUTHORITY = "V1_RELEASE_READINESS_EVALUATION_NO_PROMOTION_AUTHORITY"
 READY_STATUS = "READY_FOR_V1_0"
 BLOCKED_STATUS = "BLOCKED"
 
+FROZEN_ANDROID_PERFORMANCE_POLICY: dict[str, Any] = {
+    "schema": PERFORMANCE_POLICY_SCHEMA,
+    "minimum_samples": 5,
+    "max_cold_boot_ms": 30000,
+    "max_p95_turn_ms": 30000,
+    "max_peak_pss_mb": 2048,
+    "max_battery_drain_pct_per_hour": 25.0,
+    "max_thermal_status": 3,
+    "max_crash_count": 0,
+}
+
 
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -193,21 +204,11 @@ def verify_android_performance_policy(
     body.pop("policy_sha256", None)
     if supplied is not None and payload_digest(body) != supplied:
         raise ValueError("Android performance policy digest mismatch")
-    if int(policy.get("minimum_samples", 0)) < 5:
-        raise ValueError("Android performance policy requires >=5 samples")
-    limits = {
-        "max_cold_boot_ms": 120_000.0,
-        "max_p95_turn_ms": 120_000.0,
-        "max_peak_pss_mb": 4096.0,
-        "max_battery_drain_pct_per_hour": 100.0,
-        "max_thermal_status": 6.0,
-    }
-    for key, absolute_ceiling in limits.items():
-        value = float(policy.get(key, -1))
-        if value < 0 or value > absolute_ceiling:
-            raise ValueError(f"Android performance policy {key} invalid")
-    if int(policy.get("max_crash_count", -1)) != 0:
-        raise ValueError("Android v1 performance policy requires zero crashes")
+
+    # v0.60 freezes one product acceptance floor. A closure caller may not
+    # substitute a looser policy and still claim READY_FOR_V1_0.
+    if body != FROZEN_ANDROID_PERFORMANCE_POLICY:
+        raise ValueError("Android performance policy differs from frozen v1 policy")
     return policy
 
 
@@ -370,6 +371,10 @@ def verify_windows_clean_install_receipt(
         "release_manifest_model_sha256",
     ):
         _sha256(receipt.get(key), field=key)
+    if receipt.get("release_manifest_model_sha256") != receipt.get(
+        "installed_model_sha256"
+    ):
+        raise ValueError("Windows release manifest/model binding mismatch")
     if str(receipt.get("product_version")) != str(expected_version):
         raise ValueError("Windows clean-install product version mismatch")
     if str(receipt.get("app_file_version", "")).startswith(str(expected_version)) is False:
