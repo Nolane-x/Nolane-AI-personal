@@ -54,9 +54,21 @@ launch_app() {
 echo "Installing $APK"
 adb install -r "$APK"
 
-VERSION="$(adb shell dumpsys package "$PACKAGE"   | tr -d '\r'   | sed -n 's/.*versionName=//p'   | head -n 1)"
-if [[ "$VERSION" != "0.58.0" ]]; then
-  echo "Unexpected installed version: $VERSION" >&2
+EXPECTED_VERSION="$(python - <<'PY'
+import json
+from pathlib import Path
+payload = json.loads(
+    Path("apps/product-client/package.json").read_text(encoding="utf-8")
+)
+print(payload["version"])
+PY
+)"
+VERSION="$(adb shell dumpsys package "$PACKAGE" \
+  | tr -d '\r' \
+  | sed -n 's/.*versionName=//p' \
+  | head -n 1)"
+if [[ "$VERSION" != "$EXPECTED_VERSION" ]]; then
+  echo "Unexpected installed version: got=$VERSION expected=$EXPECTED_VERSION" >&2
   exit 1
 fi
 
