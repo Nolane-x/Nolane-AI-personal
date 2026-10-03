@@ -1,3 +1,4 @@
+pub mod memory;
 pub mod product;
 
 use nolane_mobile_kernel::{KernelError, MobileKernel};
