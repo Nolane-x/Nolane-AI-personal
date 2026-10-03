@@ -1,0 +1,15 @@
+[package]
+name = "nolane-mobile-runtime"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "Apache-2.0"
+description = "Native tokenizer and autoregressive host for Nolane mobile inference"
+
+[dependencies]
+nolane-mobile-kernel = { path = "../nolane-mobile-kernel" }
+tokenizers = { version = "0.23.2", default-features = false }
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
