@@ -158,11 +158,63 @@ class ProductLearningWorkspace:
                     )
                 previous_high_water = high_water
 
+            # Recover a crash that happened after the fully verified window
+            # directory was atomically installed but before the registry
+            # pointer was written. Only the exact next contiguous window may be
+            # adopted; gaps or unrelated directories remain fail-closed.
+            changed = False
+            expected_next = len(registry["windows"]) + 1
+            while True:
+                window_id = f"window-{expected_next:04d}"
+                root = self._window_root(window_id)
+                if not root.is_dir():
+                    break
+                window = verify_product_evidence_window(root)
+                source = window["source_event_range"]
+                after = int(source["after_rowid_exclusive"])
+                high_water = int(source["through_rowid_inclusive"])
+                if after != previous_high_water or high_water <= after:
+                    raise ValueError(
+                        "orphan evidence window is not contiguous with registry"
+                    )
+                registry["windows"].append(
+                    {
+                        "window_id": window_id,
+                        "window_manifest_sha256": window["manifest_sha256"],
+                        "through_rowid_inclusive": high_water,
+                    }
+                )
+                seen.add(window_id)
+                previous_high_water = high_water
+                expected_next += 1
+                changed = True
+
+            unregistered = sorted(
+                path.name
+                for path in self.windows_dir.iterdir()
+                if (
+                    path.is_dir()
+                    and path.name.startswith("window-")
+                    and path.name not in seen
+                )
+            )
+            if unregistered:
+                raise ValueError(
+                    "unregistered evidence window gap/conflict: "
+                    + ",".join(unregistered)
+                )
+
+            expected_next = len(registry["windows"]) + 1
+            if changed:
+                registry["last_exported_rowid"] = previous_high_water
+                registry["next_window_index"] = expected_next
+                self._write_registry(registry)
+                registry = self._load_registry()
+
             if int(registry["last_exported_rowid"]) != previous_high_water:
                 raise ValueError(
                     "in-app evidence registry final cursor mismatch"
                 )
-            expected_next = len(registry["windows"]) + 1
             if int(registry["next_window_index"]) != expected_next:
                 raise ValueError(
                     "in-app evidence registry next-window index mismatch"
@@ -172,6 +224,19 @@ class ProductLearningWorkspace:
     def create_window(self) -> dict[str, Any]:
         with self._lock:
             registry = self.verify_registry()
+
+            # A retry/double-click while the newest window is still under
+            # review must return that same window instead of consuming the
+            # next slice of product history.
+            if registry["windows"]:
+                latest_id = str(registry["windows"][-1]["window_id"])
+                latest_root = self._window_root(latest_id)
+                latest_status = workbench_status(
+                    latest_root / "workbench"
+                )
+                if not bool(latest_status["intake_ready"]):
+                    return self.window_status(latest_id)
+
             index = int(registry["next_window_index"])
             window_id = f"window-{index:04d}"
             final_root = self._window_root(window_id)
