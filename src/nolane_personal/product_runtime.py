@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any, Callable
@@ -54,39 +56,9 @@ class ProductRuntime:
         self.release_ceremony = (
             None if release_ceremony is None else Path(release_ceremony)
         )
+        self._release_binding: dict[str, Any] | None = None
         if self.release_ceremony is not None:
-            if self.checkpoint is None:
-                raise ValueError(
-                    "release ceremony requires a configured checkpoint"
-                )
-            checkpoint_file = self.checkpoint
-            if checkpoint_file.is_dir():
-                checkpoint_file = checkpoint_file / "factorized-nolane.pt"
-            if not checkpoint_file.is_file():
-                raise FileNotFoundError(
-                    f"release checkpoint not found: {checkpoint_file}"
-                )
-            if not self.release_ceremony.is_file():
-                raise FileNotFoundError(
-                    f"release ceremony not found: {self.release_ceremony}"
-                )
-            ceremony_payload = json.loads(
-                self.release_ceremony.read_text(encoding="utf-8")
-            )
-            verify_promotion_ceremony_receipt(
-                ceremony_payload,
-                require_complete=True,
-            )
-            actual_sha = hashlib.sha256(
-                checkpoint_file.read_bytes()
-            ).hexdigest()
-            if (
-                ceremony_payload["candidate_checkpoint_sha256"]
-                != actual_sha
-            ):
-                raise ValueError(
-                    "release checkpoint does not match COMPLETE ceremony"
-                )
+            self._release_binding = self._verify_release_binding()
         self.learning = ProductLearningWorkspace(data_dir=self.data_dir)
         self._factory = cortex_factory
         self._cortex: Cortex | None = None
@@ -94,6 +66,170 @@ class ProductRuntime:
         self._error: str | None = None
         self._model_checkpoint_sha256: str | None = None
         self._lock = threading.RLock()
+
+    def _checkpoint_file(self) -> Path:
+        if self.checkpoint is None:
+            raise FileNotFoundError(
+                "release model checkpoint is not configured"
+            )
+        checkpoint_file = self.checkpoint
+        if checkpoint_file.is_dir():
+            checkpoint_file = checkpoint_file / "factorized-nolane.pt"
+        if not checkpoint_file.is_file():
+            raise FileNotFoundError(
+                f"release checkpoint not found: {checkpoint_file}"
+            )
+        return checkpoint_file
+
+    def _verify_release_binding(self) -> dict[str, Any]:
+        if self.release_ceremony is None:
+            raise FileNotFoundError(
+                "release promotion ceremony is not configured"
+            )
+        checkpoint_file = self._checkpoint_file()
+        if not self.release_ceremony.is_file():
+            raise FileNotFoundError(
+                f"release ceremony not found: {self.release_ceremony}"
+            )
+        ceremony_payload = json.loads(
+            self.release_ceremony.read_text(encoding="utf-8")
+        )
+        verify_promotion_ceremony_receipt(
+            ceremony_payload,
+            require_complete=True,
+        )
+        actual_sha = hashlib.sha256(
+            checkpoint_file.read_bytes()
+        ).hexdigest()
+        if ceremony_payload["candidate_checkpoint_sha256"] != actual_sha:
+            raise ValueError(
+                "release checkpoint does not match COMPLETE ceremony"
+            )
+        return {
+            "checkpoint_sha256": actual_sha,
+            "ceremony_sha256": ceremony_payload["ceremony_sha256"],
+        }
+
+    def _verify_tokenizer_assets(self) -> dict[str, Any]:
+        if self.tokenizer_path is None:
+            raise FileNotFoundError(
+                "release tokenizer assets are not configured"
+            )
+        path = self.tokenizer_path
+        if not path.is_dir():
+            raise FileNotFoundError(
+                f"release tokenizer directory not found: {path}"
+            )
+        config = path / "tokenizer_config.json"
+        if not config.is_file():
+            raise FileNotFoundError(
+                f"release tokenizer_config.json missing: {config}"
+            )
+        payload_names = (
+            "tokenizer.json",
+            "tokenizer.model",
+            "spiece.model",
+            "vocab.json",
+        )
+        payload = next(
+            (path / name for name in payload_names if (path / name).is_file()),
+            None,
+        )
+        if payload is None:
+            raise FileNotFoundError(
+                "release tokenizer payload missing "
+                "(expected tokenizer.json/tokenizer.model/spiece.model/vocab.json)"
+            )
+        return {
+            "config": config.name,
+            "payload": payload.name,
+        }
+
+    def preflight(self) -> dict[str, Any]:
+        with self._lock:
+            checks: dict[str, dict[str, Any]] = {}
+            reasons: list[str] = []
+
+            def run_check(name: str, fn) -> None:
+                try:
+                    detail = fn()
+                    checks[name] = {
+                        "status": "pass",
+                        "detail": detail,
+                    }
+                except Exception as exc:
+                    checks[name] = {
+                        "status": "blocked",
+                        "error": type(exc).__name__,
+                        "message": str(exc),
+                    }
+                    reasons.append(name)
+
+            def writable_probe() -> dict[str, Any]:
+                handle = tempfile.NamedTemporaryFile(
+                    "wb",
+                    dir=self.data_dir,
+                    prefix=".nolane-preflight.",
+                    suffix=".tmp",
+                    delete=False,
+                )
+                path = Path(handle.name)
+                try:
+                    with handle:
+                        handle.write(b"nolane-preflight")
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                    path.unlink()
+                finally:
+                    if path.exists():
+                        path.unlink()
+                return {"writable": True}
+
+            run_check("data_dir", writable_probe)
+            run_check(
+                "conversation_store",
+                lambda: {
+                    "readable": True,
+                    "sample_messages": len(
+                        self.store.conversation_messages(limit=1)
+                    ),
+                },
+            )
+            run_check(
+                "learning_registry",
+                lambda: {
+                    "verified": True,
+                    "windows": len(
+                        self.learning.verify_registry()["windows"]
+                    ),
+                },
+            )
+
+            if self._factory is None:
+                run_check(
+                    "release_binding",
+                    lambda: self._verify_release_binding(),
+                )
+                run_check(
+                    "tokenizer_assets",
+                    self._verify_tokenizer_assets,
+                )
+            else:
+                checks["release_binding"] = {
+                    "status": "not_applicable",
+                    "detail": "custom_cortex_factory",
+                }
+                checks["tokenizer_assets"] = {
+                    "status": "not_applicable",
+                    "detail": "custom_cortex_factory",
+                }
+
+            return {
+                "schema": "NOLANE-PRODUCT-PREFLIGHT-V1",
+                "status": "ready" if not reasons else "blocked",
+                "reasons": reasons,
+                "checks": checks,
+            }
 
     def current_profile(self) -> ProductProfile:
         return self.profile
