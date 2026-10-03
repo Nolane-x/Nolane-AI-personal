@@ -170,6 +170,9 @@ def test_inapp_windows_advance_without_reusing_old_product_turns(tmp_path):
         fill_runtime(runtime, prefix="old")
         first = runtime.create_learning_window()
         first_high_water = first["through_rowid_inclusive"]
+        approve_all(runtime, first["window_id"])
+        finalized = runtime.finalize_learning_window(first["window_id"])
+        assert finalized["intake_ready"] is True
 
         fill_runtime(runtime, prefix="new")
         second = runtime.create_learning_window()
