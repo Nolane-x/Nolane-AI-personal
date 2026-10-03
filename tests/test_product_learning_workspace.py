@@ -297,6 +297,141 @@ def test_learning_review_api_is_authenticated_and_explicit(tmp_path):
         runtime.close()
 
 
+def test_create_window_retry_returns_same_pending_window(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="retry-window")
+        first = runtime.create_learning_window()
+        second = runtime.create_learning_window()
+        assert second["window_id"] == first["window_id"] == "window-0001"
+        assert second["through_rowid_inclusive"] == first["through_rowid_inclusive"]
+
+        registry = runtime.learning.verify_registry()
+        assert len(registry["windows"]) == 1
+        assert registry["next_window_index"] == 2
+        assert registry["last_exported_rowid"] == first[
+            "through_rowid_inclusive"
+        ]
+    finally:
+        runtime.close()
+
+
+def test_exact_decision_retry_is_idempotent_but_conflicting_retry_is_blocked(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    corrected = "Use this exact corrected answer."
+    try:
+        fill_runtime(runtime, prefix="retry-decision")
+        runtime.create_learning_window()
+        candidate = runtime.next_learning_candidate("window-0001")
+        assert candidate is not None
+
+        first = runtime.record_learning_decision(
+            "window-0001",
+            candidate["candidate_id"],
+            decision="approve",
+            language="en",
+            corrected_target=corrected,
+        )
+        repeated = runtime.record_learning_decision(
+            "window-0001",
+            candidate["candidate_id"],
+            decision="approve",
+            language="en",
+            corrected_target=corrected,
+        )
+        assert repeated["window"]["review_progress"] == first["window"][
+            "review_progress"
+        ]
+        assert repeated["window"]["review_progress"]["decided"] == 1
+
+        decisions = (
+            tmp_path
+            / "learning-evidence"
+            / "windows"
+            / "window-0001"
+            / "workbench"
+            / "review-decisions.jsonl"
+        )
+        rows = [
+            line
+            for line in decisions.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        assert len(rows) == 1
+
+        with pytest.raises(ValueError, match="conflicting retry"):
+            runtime.record_learning_decision(
+                "window-0001",
+                candidate["candidate_id"],
+                decision="approve",
+                language="en",
+                corrected_target="different answer",
+            )
+        with pytest.raises(ValueError, match="conflicting retry"):
+            runtime.record_learning_decision(
+                "window-0001",
+                candidate["candidate_id"],
+                decision="reject",
+                language="en",
+            )
+    finally:
+        runtime.close()
+
+
+def test_partial_review_resumes_exactly_after_runtime_restart(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    fill_runtime(runtime, prefix="restart")
+    first = runtime.create_learning_window()
+    candidate1 = runtime.next_learning_candidate(first["window_id"])
+    runtime.record_learning_decision(
+        first["window_id"],
+        candidate1["candidate_id"],
+        decision="approve",
+        language="en",
+        corrected_target="Persist this corrected answer through restart.",
+    )
+    candidate2 = runtime.next_learning_candidate(first["window_id"])
+    assert candidate2 is not None
+    assert candidate2["candidate_id"] != candidate1["candidate_id"]
+    runtime.close()
+
+    reopened = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        windows = reopened.learning_windows()
+        assert len(windows) == 1
+        assert windows[0]["review_progress"]["decided"] == 1
+        resumed = reopened.next_learning_candidate("window-0001")
+        assert resumed is not None
+        assert resumed["candidate_id"] == candidate2["candidate_id"]
+        assert resumed["prompt"] == candidate2["prompt"]
+
+        exact_retry = reopened.record_learning_decision(
+            "window-0001",
+            candidate1["candidate_id"],
+            decision="approve",
+            language="en",
+            corrected_target="Persist this corrected answer through restart.",
+        )
+        assert exact_retry["window"]["review_progress"]["decided"] == 1
+    finally:
+        reopened.close()
+
+
+def test_finalize_retry_is_idempotent(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="finalize-retry")
+        runtime.create_learning_window()
+        approve_all(runtime, "window-0001")
+        first = runtime.finalize_learning_window("window-0001")
+        second = runtime.finalize_learning_window("window-0001")
+        assert first == second
+        assert second["intake_ready"] is True
+        assert second["quality_status"] == "PASS"
+    finally:
+        runtime.close()
+
+
 def test_sensitive_decision_is_rejected_from_approved_count(tmp_path):
     runtime = ProductRuntime(tmp_path, cortex_factory=factory)
     try:
