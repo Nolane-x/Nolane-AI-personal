@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.51.0
+## Current executable milestone: Living Runtime v0.52.0
 
 The runtime now contains two very different compute scales:
 
@@ -1470,6 +1470,16 @@ The mobile runtime now loads a frozen `tokenizer.json` without Python or Transfo
 This still does **not** claim end-to-end Android product chat. Exact product chat-template rendering, sampling, persistent product-state/latent wiring, Tauri LocalMobile routing, release-bound promoted assets and emulator/device courts remain explicit gates.
 
 See `docs/V051-NATIVE-TOKENIZER-GENERATION.md`.
+
+### v0.52 Frozen Product Prompt Contract
+
+v0.52 keeps the product UI frozen and closes another Android backend parity boundary.
+
+Instead of embedding a Jinja chat-template runtime or manually copying Qwen markup into Rust, Python Transformers renders unique system/user sentinels through the exact pinned tokenizer template at export/court time. Nolane freezes the resulting prefix/between/suffix segments into an integrity-bound prompt contract. Rust verifies the contract-file SHA plus tokenizer.json/tokenizer_config.json hashes, reproduces the exact prompt by concatenation, and can feed that prompt directly into the v0.51 native generation host.
+
+CI requires both a synthetic end-to-end prompt→generation trajectory and an exact pinned Qwen3 tokenizer/template court. Android still is not called product-complete until dynamic product state/profile/memory payloads, sampling, LocalMobile Tauri routing, authorized release assets and emulator/device courts close.
+
+See `docs/V052-FROZEN-PRODUCT-PROMPT-CONTRACT.md`.
 
 ## Bootstrap Qwen
 
