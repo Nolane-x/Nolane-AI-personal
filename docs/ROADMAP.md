@@ -1435,9 +1435,9 @@ Engineering target: **WINDOWS-ONE-CLICK + ANDROID-SHELL / COURT-PENDING UNTIL CI
 - [x] >=44px primary touch-target court source
 - [x] Windows native build CI job
 - [x] Android APK init/build CI job
-- [ ] Product Client Court PASS on branch head
+- [x] Product Client Court PASS on branch head
 - [x] record two NUI critique/correction cycles with re-observation obligations
-- [ ] close both cycles with final-head rendered CI evidence
+- [x] close both cycles with final-head rendered CI evidence
 - [ ] build release Windows sidecar with actual torch/transformers runtime
 - [ ] stage an approved real factorized checkpoint + tokenizer into installer
 - [ ] produce installable Windows NSIS/MSI release artifact
@@ -1470,8 +1470,8 @@ Scientific execution target: **5+-WINDOW REAL CORTEX LEARNING / NO SELF-PROMOTIO
 - [x] privacy-preserving longitudinal report
 - [x] training executor cannot call L40 or grant itself promotion authority
 - [x] validate-only mode before expensive training
-- [ ] Product v0.42 merge becomes the base for L43 PR
-- [ ] L43 CI PASS
+- [x] Product v0.42 merge becomes the base for L43 PR
+- [x] L43 CI PASS
 - [ ] collect at least five real approved adaptation windows
 - [ ] freeze one completely isolated real fixed panel
 - [ ] execute 5+ real L38 cycles
@@ -1508,7 +1508,7 @@ Empirical-input target: **REAL PRODUCT USE -> HUMAN REVIEW -> L43 PLAN / NO AUTO
 - [x] individual prompt hashes excluded from bridge receipt
 - [x] emitted plan is immediately revalidated by native L43 validator
 - [x] bridge cannot train, authorize or promote a checkpoint
-- [ ] L44 CI PASS
+- [x] L44 CI PASS
 - [ ] collect first real product window from actual Nolane usage
 - [ ] complete explicit local human review of that window
 - [ ] accumulate at least five distinct real adaptation windows
@@ -1547,12 +1547,54 @@ Product-consent target: **REAL CHAT -> ONE-BY-ONE LOCAL HUMAN REVIEW / NO AUTO-T
 - [x] older/unsupported remote runtime fails soft without breaking chat
 - [x] backend product-history -> review -> finalized-pack tests
 - [x] browser rendered review-flow court
-- [ ] L45 CI PASS
-- [ ] merge v0.45
+- [x] L45 CI PASS
+- [x] merge v0.45
 - [ ] collect first real reviewed window from normal Nolane usage
 - [ ] collect 5+ real adaptation windows
 - [ ] execute real L43 and obtain empirical PASS/BLOCKED result
 - [ ] only after human review issue L40 authorization if merited
 
 L45 changes the ergonomics of real evidence collection, not its authority. The system still cannot learn from a conversation merely because it happened.
+
+## L46 — Real Learning Campaign
+
+Campaign-construction target: **REVIEWED WINDOWS -> LEAKAGE-SAFE L43 PLAN / BACKEND ONLY**.
+
+- [x] no additional primary UI surface
+- [x] require one fixed held-out window
+- [x] require one baseline-retention window
+- [x] require at least five chronological adaptation windows
+- [x] all campaign windows bound to one local learning registry
+- [x] exact cross-window prompt/pair leakage court
+- [x] near-duplicate cross-window court
+- [x] cycle 2+ retention composed from baseline/prior train+dev only
+- [x] original held-out tests excluded from future rehearsal
+- [x] composed retention re-runs native protocol + L28 quality court
+- [x] emitted plan revalidated by native L43 validator
+- [x] campaign receipt excludes raw prompt/target and individual prompt hashes
+- [x] L46 cannot train, authorize or promote
+- [x] Living Runtime CI PASS
+- [x] Neural Shadow CI PASS
+- [x] Product Client Court PASS
+- [x] Platform Crash Court PASS
+- [x] merge v0.46
+- [ ] collect one real fixed window + one baseline + five adaptation windows
+- [ ] execute real L43 campaign
+
+## L47 — Product Reliability Freeze
+
+v1 hardening target: **NO NEW PRIMARY SURFACE / RETRY + CRASH SAFETY**.
+
+- [x] exact frozen review-decision retry is idempotent
+- [x] conflicting retry remains blocked
+- [x] repeated create-window returns current pending window
+- [x] recover exact next verified orphan after atomic-window/install crash
+- [x] orphan recovery requires contiguous SQLite high-water lineage
+- [x] registry cursor/index checked before recovery
+- [x] unregistered window gaps fail closed
+- [x] cursor corruption fail-closed regression court
+- [x] no new primary UI surface
+- [ ] L47 CI PASS
+- [ ] merge v0.47
+- [ ] begin v1 release-readiness closure
 
