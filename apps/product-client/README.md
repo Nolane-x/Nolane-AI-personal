@@ -46,6 +46,8 @@ v0.50 adds the local-inference foundation underneath that shell: a Python-free m
 
 v0.51 adds a separate native generation host on top of that kernel. It loads the frozen Hugging Face `tokenizer.json` directly in Rust, performs prompt prefill and bounded greedy autoregressive generation, and is checked against Python tokenization/generation goldens. Exact product chat-template rendering, sampling, persistent state bridging and Tauri local routing remain open.
 
+v0.52 freezes the exact pinned product chat-template result into an integrity-bound prefix/between/suffix contract. Rust verifies the contract and tokenizer hashes, renders system+user prompts without shipping Jinja, and is checked byte-for-byte and token-for-token against Python Transformers on the exact pinned Qwen3 tokenizer revision. Dynamic product state/profile/memory construction, sampling and Tauri LocalMobile routing remain open.
+
 ## Browser UI court
 
 The frontend includes a deterministic browser-preview backend only for UI verification. It is never packaged as inference authority.
