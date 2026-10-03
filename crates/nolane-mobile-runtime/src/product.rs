@@ -2,7 +2,6 @@ use crate::{
     read_persistent_mobile_state,
     write_persistent_mobile_state,
     MobileRuntime,
-    PersistentMobileState,
     RuntimeError,
     PRODUCT_SAMPLING_TEMPERATURE,
     PRODUCT_SAMPLING_TOP_P,
@@ -196,10 +195,6 @@ fn now_millis() -> u64 {
         .unwrap_or_default()
         .as_millis()
         .min(u64::MAX as u128) as u64
-}
-
-fn now_marker() -> String {
-    now_millis().to_string()
 }
 
 fn clamp01(value: f64) -> f64 {
