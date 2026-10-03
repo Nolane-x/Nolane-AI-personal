@@ -1,16 +1,22 @@
-# LocalMobile resource namespace
+# LocalMobile release resource namespace
 
-v0.56 wires the Android Tauri shell to a native Rust LocalMobile product host.
+v0.57 reserves this directory for an authority-bound Android LocalMobile
+release bundle.
 
-Production release tooling will later stage the following L36-bound assets here:
+Normal source history intentionally contains no model weights or real promotion
+evidence. The Android Product Release workflow stages:
 
 - `localmobile-manifest.json`
+- `promotion-ceremony.json`
 - `bootstrap-state.json`
 - `package/`
 - `tokenizer.json`
 - `tokenizer_config.json`
 - `prompt-contract.json`
 
-Source builds intentionally do not commit model weights or promotion authority.
-If these release assets are absent, Android exposes a clear LocalMobile runtime
-error and may still be manually pointed at a remote runtime for development.
+`scripts/stage_mobile_release_assets.py` accepts these resources only after
+verifying a COMPLETE L36 promotion ceremony and binding every asset to the exact
+authorized checkpoint.
+
+The Android Tauri shell uses the strict LocalMobile loader. Source/court-only
+bundles are not accepted as production authority.
