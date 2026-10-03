@@ -140,6 +140,16 @@ jobs:
             }
 
             $headers = @{ "X-Nolane-Token" = $token }
+            $preflight = Invoke-RestMethod `
+              -Method Get `
+              -Uri "http://127.0.0.1:$port/v1/preflight" `
+              -Headers $headers `
+              -TimeoutSec 10
+            if ($preflight.status -ne "ready") {
+              $reasons = ($preflight.reasons -join ",")
+              throw "Nolane startup preflight blocked: $reasons"
+            }
+
             $power = Invoke-RestMethod `
               -Method Post `
               -Uri "http://127.0.0.1:$port/v1/power" `
