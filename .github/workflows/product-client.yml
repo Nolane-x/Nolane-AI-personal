@@ -15,6 +15,7 @@ on:
       - "packaging/**"
       - "scripts/stage_product_release_assets.py"
       - "scripts/check_product_version.py"
+      - "scripts/verify_windows_clean_install.ps1"
       - "tests/test_product_cortex_selftest.py"
       - "tests/test_product_version.py"
       - "tests/product_ui_browser.py"
@@ -35,6 +36,7 @@ on:
       - "packaging/**"
       - "scripts/stage_product_release_assets.py"
       - "scripts/check_product_version.py"
+      - "scripts/verify_windows_clean_install.ps1"
       - "tests/test_product_cortex_selftest.py"
       - "tests/test_product_version.py"
       - "tests/product_ui_browser.py"
@@ -88,6 +90,20 @@ jobs:
         with:
           node-version: "24"
       - uses: dtolnay/rust-toolchain@stable
+      - name: Parse Windows clean-install court script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "scripts/verify_windows_clean_install.ps1"),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Windows clean-install court PowerShell syntax invalid"
+          }
       - name: Install pinned Tauri CLI
         run: npm install --global @tauri-apps/cli@2.12.0
       - name: Generate product icons
