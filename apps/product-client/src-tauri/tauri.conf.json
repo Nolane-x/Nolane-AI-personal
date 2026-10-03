@@ -31,8 +31,7 @@
     "resources": [
       "resources/runtime/**/*",
       "resources/model/**/*",
-      "resources/tokenizer/**/*",
-      "resources/release-assets.json"
+      "resources/tokenizer/**/*"
     ],
     "windows": {
       "webviewInstallMode": {
