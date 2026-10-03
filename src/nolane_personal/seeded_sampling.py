@@ -6,6 +6,8 @@ from typing import Iterable, Sequence
 
 
 SAMPLER_SCHEMA = "NOLANE-V054-SEEDED-Q32-NUCLEUS-V1"
+LOGIT_SCALE = 1_000
+EXP_WEIGHT_SCALE = 1 << 40
 PROBABILITY_SCALE = 1 << 32
 U64_MASK = (1 << 64) - 1
 
@@ -18,6 +20,14 @@ def _round_half_up_positive(value: float) -> int:
     if not math.isfinite(value) or value < 0.0:
         raise ValueError("sampler quantization input must be finite and non-negative")
     return int(math.floor(value + 0.5))
+
+
+def _round_half_away_from_zero(value: float) -> int:
+    if not math.isfinite(value):
+        raise ValueError("sampler logit must be finite")
+    if value >= 0.0:
+        return int(math.floor(value + 0.5))
+    return int(math.ceil(value - 0.5))
 
 
 def splitmix64_next(state: int) -> tuple[int, int]:
@@ -43,20 +53,33 @@ def _quantized_weights(
     values = [float(value) for value in logits]
     if any(not math.isfinite(value) for value in values):
         raise ValueError("logits contain non-finite value")
-    maximum = max(values)
-    exps = [
-        math.exp((value - maximum) / temperature)
+
+    quantized_logits = [
+        _round_half_away_from_zero(value * LOGIT_SCALE)
         for value in values
     ]
-    total = math.fsum(exps)
-    if not math.isfinite(total) or total <= 0.0:
+    maximum = max(quantized_logits)
+    exp_weights = [
+        _round_half_up_positive(
+            math.exp(
+                ((value - maximum) / LOGIT_SCALE)
+                / temperature
+            )
+            * EXP_WEIGHT_SCALE
+        )
+        for value in quantized_logits
+    ]
+    total_exp = sum(exp_weights)
+    if total_exp <= 0:
         raise ValueError("softmax normalization failed")
 
     weights = [
-        _round_half_up_positive(
-            (value / total) * PROBABILITY_SCALE
+        (
+            value * PROBABILITY_SCALE
+            + total_exp // 2
         )
-        for value in exps
+        // total_exp
+        for value in exp_weights
     ]
     if not any(weights):
         # The maximum logit has exp(0)=1, so this should only be reachable
