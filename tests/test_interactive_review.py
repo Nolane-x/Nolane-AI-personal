@@ -225,7 +225,7 @@ def test_frozen_decision_cannot_be_silently_replaced(tmp_path):
         approved=False,
         sensitive=False,
     )
-    with pytest.raises(ValueError,match="already has a frozen decision"):
+    with pytest.raises(ValueError,match="different frozen decision"):
         review.record_decision(
             candidate["candidate_id"],
             approved=True,
