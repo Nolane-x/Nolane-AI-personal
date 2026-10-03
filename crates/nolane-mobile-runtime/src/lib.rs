@@ -929,10 +929,49 @@ impl MobileRuntime {
 
 #[cfg(test)]
 mod tests {
-    use super::{argmax, sha256_hex, FrozenPromptContract};
+    use super::{
+        argmax,
+        sha256_hex,
+        splitmix64_next,
+        FrozenPromptContract,
+        SeededNucleusSampler,
+    };
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
+
+    #[test]
+    fn seeded_top_p_retains_minimal_nucleus_with_stable_ties() {
+        let logits = [0.0f32, 0.0, 0.0, 0.0];
+
+        let mut quarter = SeededNucleusSampler::new(123, 1.0, 0.25).unwrap();
+        let expected_state = splitmix64_next(123).0;
+        assert_eq!(quarter.sample(&logits).unwrap(), 0);
+        assert_eq!(quarter.state(), expected_state);
+
+        for seed in 0..32u64 {
+            let mut half = SeededNucleusSampler::new(seed, 1.0, 0.50).unwrap();
+            assert!(matches!(half.sample(&logits).unwrap(), 0 | 1));
+        }
+
+        let mut seen = std::collections::BTreeSet::new();
+        for seed in 0..64u64 {
+            let mut full = SeededNucleusSampler::new(seed, 1.0, 1.0).unwrap();
+            seen.insert(full.sample(&logits).unwrap());
+        }
+        assert!(seen.len() > 2);
+        assert!(seen.iter().all(|token| *token < 4));
+    }
+
+    #[test]
+    fn seeded_tiny_top_p_keeps_single_best_token() {
+        let logits = [8.0f32, 1.0, 0.0, -4.0];
+        for seed in 0..16u64 {
+            let mut sampler =
+                SeededNucleusSampler::new(seed, 0.78, 1e-9).unwrap();
+            assert_eq!(sampler.sample(&logits).unwrap(), 0);
+        }
+    }
 
     #[test]
     fn argmax_is_deterministic_and_first_wins_ties() {
