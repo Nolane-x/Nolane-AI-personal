@@ -16,9 +16,9 @@ fn mobile_state_initializes_desktop_compatible_product_defaults() {
     let store = MobileStateStore::new(root.path());
     let bundle = store
         .load_or_initialize(
-            identity_id: "identity-1",
-            checkpoint_sha256: &checkpoint('a'),
-            latent_dim: 4,
+            "identity-1",
+            &checkpoint('a'),
+            4,
         )
         .unwrap();
 
@@ -57,9 +57,9 @@ fn profile_state_and_latent_updates_are_durable_and_versioned() {
     let store = MobileStateStore::new(root.path());
     let initial = store
         .load_or_initialize(
-            identity_id: "identity-2",
-            checkpoint_sha256: &checkpoint('b'),
-            latent_dim: 3,
+            "identity-2",
+            &checkpoint('b'),
+            3,
         )
         .unwrap();
 
@@ -96,7 +96,7 @@ fn profile_state_and_latent_updates_are_durable_and_versioned() {
     let latent = store
         .update_latent(
             vec![0.1, -0.2, 0.3],
-            source_state_version: updated_state.version,
+            updated_state.version,
         )
         .unwrap();
     assert_eq!(latent.sequence, 1);
@@ -104,9 +104,9 @@ fn profile_state_and_latent_updates_are_durable_and_versioned() {
 
     let reopened = MobileStateStore::new(root.path())
         .load_or_initialize(
-            identity_id: "identity-2",
-            checkpoint_sha256: &checkpoint('b'),
-            latent_dim: 3,
+            "identity-2",
+            &checkpoint('b'),
+            3,
         )
         .unwrap();
     assert_eq!(reopened.product.profile, profile);
@@ -123,9 +123,9 @@ fn checkpoint_change_archives_only_latent_and_preserves_product_state() {
     let store = MobileStateStore::new(root.path());
     store
         .load_or_initialize(
-            identity_id: "identity-3",
-            checkpoint_sha256: &checkpoint('c'),
-            latent_dim: 2,
+            "identity-3",
+            &checkpoint('c'),
+            2,
         )
         .unwrap();
 
@@ -137,15 +137,15 @@ fn checkpoint_change_archives_only_latent_and_preserves_product_state() {
     store
         .update_latent(
             vec![0.4, -0.6],
-            source_state_version: product.version,
+            product.version,
         )
         .unwrap();
 
     let migrated = store
         .load_or_initialize(
-            identity_id: "identity-3",
-            checkpoint_sha256: &checkpoint('d'),
-            latent_dim: 2,
+            "identity-3",
+            &checkpoint('d'),
+            2,
         )
         .unwrap();
 
@@ -167,17 +167,17 @@ fn identity_mismatch_never_silently_adopts_product_state() {
     let store = MobileStateStore::new(root.path());
     store
         .load_or_initialize(
-            identity_id: "identity-a",
-            checkpoint_sha256: &checkpoint('e'),
-            latent_dim: 2,
+            "identity-a",
+            &checkpoint('e'),
+            2,
         )
         .unwrap();
 
     let error = store
         .load_or_initialize(
-            identity_id: "identity-b",
-            checkpoint_sha256: &checkpoint('e'),
-            latent_dim: 2,
+            "identity-b",
+            &checkpoint('e'),
+            2,
         )
         .unwrap_err();
     assert!(error.to_string().contains("product identity mismatch"));
@@ -189,9 +189,9 @@ fn tampered_main_state_fails_closed_even_when_valid_temp_exists() {
     let store = MobileStateStore::new(root.path());
     store
         .load_or_initialize(
-            identity_id: "identity-4",
-            checkpoint_sha256: &checkpoint('f'),
-            latent_dim: 2,
+            "identity-4",
+            &checkpoint('f'),
+            2,
         )
         .unwrap();
 
@@ -217,9 +217,9 @@ fn valid_temp_recovers_only_when_main_file_is_missing() {
     let store = MobileStateStore::new(root.path());
     let created = store
         .load_or_initialize(
-            identity_id: "identity-5",
-            checkpoint_sha256: &checkpoint('1'),
-            latent_dim: 2,
+            "identity-5",
+            &checkpoint('1'),
+            2,
         )
         .unwrap();
 
@@ -241,9 +241,9 @@ fn state_update_cannot_change_identity_and_invalid_latent_is_rejected() {
     let store = MobileStateStore::new(root.path());
     let initial = store
         .load_or_initialize(
-            identity_id: "identity-6",
-            checkpoint_sha256: &checkpoint('2'),
-            latent_dim: 2,
+            "identity-6",
+            &checkpoint('2'),
+            2,
         )
         .unwrap();
 
@@ -257,7 +257,7 @@ fn state_update_cannot_change_identity_and_invalid_latent_is_rejected() {
     let error = store
         .update_latent(
             vec![f32::NAN, 0.0],
-            source_state_version: 0,
+            0,
         )
         .unwrap_err();
     assert!(error.to_string().contains("non-finite"));
@@ -269,19 +269,19 @@ fn persisted_state_builds_the_existing_frozen_product_payload() {
     let store = MobileStateStore::new(root.path());
     let bundle = store
         .load_or_initialize(
-            identity_id: "identity-7",
-            checkpoint_sha256: &checkpoint('3'),
-            latent_dim: 2,
+            "identity-7",
+            &checkpoint('3'),
+            2,
         )
         .unwrap();
 
     let payload = bundle
         .product
         .to_payload(
-            mode: "reply",
-            intent: "conversation",
-            user_text: Some("xin chào".into()),
-            memories: vec!["user likes concise answers".into()],
+            "reply",
+            "conversation",
+            Some("xin chào".into()),
+            vec!["user likes concise answers".into()],
         )
         .unwrap();
 
