@@ -240,6 +240,39 @@ class FactorizedProductCortex:
         ).strip()
         return CortexReply(text, intent=request.intent)
 
+    def self_test(self) -> dict[str, object]:
+        """Run one real local token through the loaded neural runtime.
+
+        This is intentionally tiny: it proves tokenizer -> device -> model
+        generation works before ProductRuntime reports AI ON.
+        """
+        inputs = self.tokenizer(
+            "Nolane readiness check.",
+            return_tensors="pt",
+        )
+        ids = inputs["input_ids"].to(self.device)
+        if ids.ndim != 2 or ids.shape[1] < 1:
+            raise RuntimeError("product tokenizer smoke test produced no input ids")
+        with self.torch.inference_mode():
+            generated = self.model.generate(
+                input_ids=ids,
+                max_new_tokens=1,
+                do_sample=False,
+                eos_token_id=self.tokenizer.eos_token_id,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+        if generated.ndim != 2 or generated.shape[0] != 1:
+            raise RuntimeError("product model smoke test returned invalid shape")
+        produced = int(generated.shape[1] - ids.shape[1])
+        if produced < 1:
+            raise RuntimeError("product model smoke test produced no new token")
+        return {
+            "status": "PASS",
+            "generated_tokens": produced,
+            "checkpoint_sha256": self.checkpoint_sha256,
+            "device": self.device,
+        }
+
     def close(self) -> None:
         self.model = None
         if self.device == "cuda" and self.torch.cuda.is_available():

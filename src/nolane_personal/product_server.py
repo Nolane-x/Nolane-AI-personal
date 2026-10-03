@@ -128,6 +128,12 @@ class ProductHandler(BaseHTTPRequestHandler):
                     self.server.runtime.status(),
                 )
                 return
+            if path == "/v1/readiness":
+                self._json(
+                    HTTPStatus.OK,
+                    self.server.runtime.readiness(),
+                )
+                return
             if path == "/v1/history":
                 self._json(
                     HTTPStatus.OK,
@@ -298,6 +304,16 @@ def main() -> int:
         device=args.device,
         release_ceremony=Path(args.ceremony),
     )
+    readiness = runtime.preflight()
+    if readiness["status"] != "PASS":
+        details = "; ".join(
+            str(row["detail"])
+            for row in readiness["critical"]
+            if row["status"] != "PASS"
+        )
+        runtime.close()
+        raise SystemExit("product readiness blocked before listen: " + details)
+
     server = ProductHTTPServer(
         (args.host, args.port),
         runtime,
