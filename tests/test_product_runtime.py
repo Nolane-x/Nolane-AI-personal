@@ -133,6 +133,81 @@ def test_product_profile_persists_and_normalizes(tmp_path):
     assert len(payload["digest"]) == 64
 
 
+def test_product_preflight_is_ready_for_custom_cortex_runtime(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
+    try:
+        receipt = runtime.preflight()
+        assert receipt["status"] == "ready"
+        assert receipt["reasons"] == []
+        assert receipt["checks"]["data_dir"]["status"] == "pass"
+        assert receipt["checks"]["conversation_store"]["status"] == "pass"
+        assert receipt["checks"]["learning_registry"]["status"] == "pass"
+        assert receipt["checks"]["release_binding"]["status"] == "not_applicable"
+        assert receipt["checks"]["tokenizer_assets"]["status"] == "not_applicable"
+    finally:
+        runtime.close()
+
+
+def test_release_preflight_blocks_incomplete_tokenizer_assets(tmp_path):
+    checkpoint = tmp_path / "factorized-nolane.pt"
+    checkpoint.write_bytes(b"release-checkpoint")
+    actual_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    ceremony_path = tmp_path / "promotion-ceremony.json"
+    ceremony_path.write_text(
+        json.dumps(release_ceremony(actual_sha)),
+        encoding="utf-8",
+    )
+    tokenizer = tmp_path / "tokenizer"
+    tokenizer.mkdir()
+    (tokenizer / "tokenizer_config.json").write_text(
+        "{}",
+        encoding="utf-8",
+    )
+
+    runtime = ProductRuntime(
+        tmp_path / "data",
+        checkpoint=checkpoint,
+        tokenizer_path=tokenizer,
+        release_ceremony=ceremony_path,
+    )
+    try:
+        receipt = runtime.preflight()
+        assert receipt["status"] == "blocked"
+        assert receipt["reasons"] == ["tokenizer_assets"]
+        assert receipt["checks"]["release_binding"]["status"] == "pass"
+        assert receipt["checks"]["tokenizer_assets"]["status"] == "blocked"
+
+        (tokenizer / "tokenizer.json").write_text(
+            "{}",
+            encoding="utf-8",
+        )
+        ready = runtime.preflight()
+        assert ready["status"] == "ready"
+        assert ready["checks"]["tokenizer_assets"]["status"] == "pass"
+    finally:
+        runtime.close()
+
+
+def test_preflight_blocks_corrupt_learning_registry_without_crashing_runtime(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
+    try:
+        registry = runtime.learning.registry_path
+        payload = json.loads(registry.read_text(encoding="utf-8"))
+        payload["next_window_index"] = 99
+        registry.write_text(
+            json.dumps(payload),
+            encoding="utf-8",
+        )
+
+        receipt = runtime.preflight()
+        assert receipt["status"] == "blocked"
+        assert "learning_registry" in receipt["reasons"]
+        assert receipt["checks"]["learning_registry"]["status"] == "blocked"
+        assert runtime.status()["phase"] == "off"
+    finally:
+        runtime.close()
+
+
 def test_product_runtime_surfaces_model_start_failure(tmp_path):
     def broken(_identity, _profile):
         raise FileNotFoundError("missing release model")
@@ -195,6 +270,32 @@ def test_product_http_server_requires_configured_auth_token(tmp_path):
         )
         assert status == 200
         assert data["phase"] == "on"
+    finally:
+        server.shutdown()
+        server.server_close()
+        runtime.close()
+
+
+def test_product_preflight_endpoint_is_authenticated(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
+    server = ProductHTTPServer(
+        ("127.0.0.1", 0),
+        runtime,
+        auth_token="preflight-secret",
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, _ = request(server, "GET", "/v1/preflight")
+        assert status == 401
+        status, receipt = request(
+            server,
+            "GET",
+            "/v1/preflight",
+            token="preflight-secret",
+        )
+        assert status == 200
+        assert receipt["status"] == "ready"
     finally:
         server.shutdown()
         server.server_close()
