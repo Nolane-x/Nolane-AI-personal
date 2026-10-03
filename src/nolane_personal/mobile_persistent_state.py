@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import struct
 import tempfile
 from pathlib import Path
 from typing import Iterable
@@ -13,6 +14,9 @@ from .store import canonical_json, payload_digest
 
 
 PERSISTENT_MOBILE_STATE_SCHEMA = "NOLANE-V055-MOBILE-PERSISTENT-STATE-V1"
+PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1 = (
+    "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V1"
+)
 MAX_PERSISTENT_MOBILE_STATE_BYTES = 4 * 1024 * 1024
 MAX_OPEN_THREADS = 4
 MAX_MEMORIES = 8
@@ -22,6 +26,74 @@ def _is_lower_hex_sha256(value: str) -> bool:
     return len(value) == 64 and all(
         char in "0123456789abcdef" for char in value
     )
+
+
+def _f32_bits(value: object) -> int:
+    packed = struct.pack(">f", float(value))
+    return struct.unpack(">I", packed)[0]
+
+
+def _f64_bits(value: object) -> int:
+    packed = struct.pack(">d", float(value))
+    return struct.unpack(">Q", packed)[0]
+
+
+def _typed_integrity_projection(
+    payload: dict[str, object],
+) -> dict[str, object]:
+    profile = payload["profile"]
+    runtime_state = payload["state"]
+    relationship = runtime_state["relationship"]
+    affect = runtime_state["affect"]
+    return {
+        "source_checkpoint_sha256": payload[
+            "source_checkpoint_sha256"
+        ],
+        "latent_f32_bits": [
+            _f32_bits(value) for value in payload["latent"]
+        ],
+        "profile": {
+            "preferred_name": profile["preferred_name"],
+            "language": profile["language"],
+            "response_length": profile["response_length"],
+            "conversation_style": profile["conversation_style"],
+            "personal_instruction": profile["personal_instruction"],
+        },
+        "state": {
+            "identity_id": runtime_state["identity_id"],
+            "relationship": {
+                "closeness_f64_bits": _f64_bits(
+                    relationship["closeness"]
+                ),
+                "trust_f64_bits": _f64_bits(
+                    relationship["trust"]
+                ),
+                "familiarity_f64_bits": _f64_bits(
+                    relationship["familiarity"]
+                ),
+                "interaction_count": int(
+                    relationship["interaction_count"]
+                ),
+            },
+            "affect": {
+                "valence_f64_bits": _f64_bits(affect["valence"]),
+                "energy_f64_bits": _f64_bits(affect["energy"]),
+                "playfulness_f64_bits": _f64_bits(
+                    affect["playfulness"]
+                ),
+                "concern_f64_bits": _f64_bits(affect["concern"]),
+                "irritation_f64_bits": _f64_bits(
+                    affect["irritation"]
+                ),
+            },
+            "open_threads": list(runtime_state["open_threads"]),
+        },
+        "memories": list(payload["memories"]),
+    }
+
+
+def _typed_integrity_digest(payload: dict[str, object]) -> str:
+    return payload_digest(_typed_integrity_projection(payload))
 
 
 def build_persistent_mobile_state(
@@ -202,7 +274,8 @@ def write_persistent_mobile_state(
     )
     envelope = {
         "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
-        "state_sha256": payload_digest(payload),
+        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+        "state_sha256": _typed_integrity_digest(payload),
         "state": payload,
     }
     encoded = (canonical_json(envelope) + "\n").encode("utf-8")
@@ -262,7 +335,17 @@ def read_persistent_mobile_state(
     payload = envelope.get("state")
     if not isinstance(payload, dict):
         raise ValueError("persistent mobile state payload is missing")
-    if payload_digest(payload) != digest:
+    integrity = envelope.get("integrity")
+    if integrity is None:
+        actual_digest = payload_digest(payload)
+    elif integrity == PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1:
+        actual_digest = _typed_integrity_digest(payload)
+    else:
+        raise ValueError(
+            "unsupported persistent mobile state integrity mode: "
+            + str(integrity)
+        )
+    if actual_digest != digest:
         raise ValueError("persistent mobile state integrity mismatch")
     validate_persistent_mobile_state(
         payload,
