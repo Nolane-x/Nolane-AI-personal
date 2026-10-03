@@ -1972,6 +1972,8 @@ Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERV
 - [x] introduce migratable `NOLANE-V059-LOCALMOBILE-LIFECYCLE-META-V1`
 - [x] accept/migrate v0.56 LocalMobile metadata
 - [x] persist lifecycle tick + last event/user/speech timestamps
+- [x] float-stable typed persistent-state integrity with legacy v0.55 read compatibility
+- [x] Python/Rust share the same typed integrity projection
 - [x] persist social-drive + curiosity controls
 - [x] port desktop valence/energy/playfulness/irritation/concern half-life dynamics
 - [x] port bounded seven-day time advance
@@ -1983,6 +1985,9 @@ Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERV
 - [x] port 0.66 initiative threshold and component weights
 - [x] use desktop default thread importance 0.5 when frozen mobile state has topic-only threads
 - [x] add LocalMobile `POST /v1/tick`
+- [x] production tick time is host-clock authoritative; request bodies cannot time-travel lifecycle
+- [x] Android native heartbeat matches desktop off/gentle/active cadence (5s/30s/12s)
+- [x] heartbeat lives in Tauri Rust host rather than web UI
 - [x] initiative generation uses normal native product prompt/sampler/kernel path
 - [x] port 30m REST idle threshold
 - [x] port 45m REST cooldown
