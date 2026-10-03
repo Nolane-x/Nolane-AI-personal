@@ -128,5 +128,7 @@ v0.54 freezes seeded stochastic decoding parity below the same Ember Quiet UI. D
 
 v0.55 adds the native persistent state bridge without adding a new settings surface. A checkpoint-bound, integrity-checked local artifact now carries latent/profile/identity/relationship/affect/open-thread/memory continuity between launches, and Python-authored state is courted directly inside the Rust runtime.
 
-Android is still not called production-complete until Tauri LocalMobile routing, authorized release assets and emulator/device courts close.
+v0.56 routes Android through a native Rust LocalMobile product host. The existing UI now has local status/power/profile/history/chat semantics without a Python sidecar or loopback HTTP server, and restart continuity is courted from the same persisted mobile state.
+
+Android is still not called production-complete until L36-authorized LocalMobile assets, emulator/device courts, fuller LivingEngine parity and latency/memory/battery evidence close.
 
