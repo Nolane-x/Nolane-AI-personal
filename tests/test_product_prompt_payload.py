@@ -5,11 +5,14 @@ from nolane_personal.memory import MemoryRecord
 from nolane_personal.product_cortex import FactorizedProductCortex
 from nolane_personal.product_profile import ProductProfile
 from nolane_personal.product_prompt_payload import (
+    PAYLOAD_SCHEMA,
     build_product_messages,
+    product_payload_input,
     product_profile_summary,
     product_state_summary,
     product_task_text,
     product_user_payload,
+    render_product_payload_input,
 )
 from nolane_personal.qwen import SYSTEM_PROMPT
 from nolane_personal.state import (
@@ -96,7 +99,7 @@ def test_product_state_summary_snapshot_and_thread_limit():
         "identity_id=identity-fixture\n"
         "relationship: closeness=0.61, trust=0.84, familiarity=0.55, interactions=42\n"
         "behavior: valence=-0.12, energy=0.73, playfulness=0.41, concern=0.29, irritation=0.02\n"
-        "open_threads=['Nolane Android', 'Học toán', 'Dự án Hira', 'Tin AI']\n"
+        'open_threads=["Nolane Android","Học toán","Dự án Hira","Tin AI"]\n'
         "requested_intent=conversation"
     )
     assert product_state_summary(request) == expected
@@ -124,10 +127,55 @@ def test_reply_payload_snapshot_and_memory_limit():
 
 
 def test_initiate_task_is_stable():
-    request = fixture_request(mode="initiate")
+    request = fixture_request(mode="initiative")
     expected = (
         "Initiate one natural, non-intrusive message that genuinely "
         "uses the supplied state or open thread."
     )
     assert product_task_text(request) == expected
     assert product_user_payload(fixture_profile(), request).endswith(expected)
+
+def test_structured_payload_is_canonical_and_desktop_renders_from_it():
+    profile = fixture_profile()
+    request = fixture_request()
+    structured = product_payload_input(profile, request)
+
+    assert structured.to_dict()["schema"] == PAYLOAD_SCHEMA
+    assert structured.mode == "reply"
+    assert structured.intent == "conversation"
+    assert structured.user_text == "Tiếp tục nhé"
+    assert structured.memories == [
+        f"memory-{index}" for index in range(1, 9)
+    ]
+    assert structured.state["open_threads"] == [
+        "Nolane Android",
+        "Học toán",
+        "Dự án Hira",
+        "Tin AI",
+    ]
+    assert render_product_payload_input(structured) == product_user_payload(
+        profile,
+        request,
+    )
+
+
+def test_unknown_mode_fails_closed():
+    request = fixture_request(mode="surprise")
+    try:
+        product_payload_input(fixture_profile(), request)
+    except ValueError as exc:
+        assert "unsupported product payload mode" in str(exc)
+    else:
+        raise AssertionError("unknown product payload mode must fail")
+
+
+def test_initiative_rejects_user_text():
+    request = fixture_request(mode="initiative")
+    request.user_text = "must not be present"
+    try:
+        product_payload_input(fixture_profile(), request)
+    except ValueError as exc:
+        assert "must not contain user_text" in str(exc)
+    else:
+        raise AssertionError("initiative payload with user_text must fail")
+
