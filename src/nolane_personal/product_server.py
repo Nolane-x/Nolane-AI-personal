@@ -211,6 +211,7 @@ class ProductHandler(BaseHTTPRequestHandler):
                         decision=str(payload.get("decision", "")),
                         language=payload.get("language"),
                         weight=float(payload.get("weight", 1.0)),
+                        corrected_target=payload.get("corrected_target"),
                     ),
                 )
                 return
