@@ -11,6 +11,14 @@ the frozen v0.55 product-state contract. The v0.55 neural/product state remains
 unchanged, so existing identity, latent, profile and relationship state migrate
 without destructive rewriting.
 
+Rust-authored persistent state now uses
+`NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V1`: integrity is computed over
+a canonical projection in which neural f32 and behavioral f64 values are
+represented by their IEEE bit patterns. This removes JSON decimal-spelling
+drift across save/restart cycles. Legacy v0.55 canonical-JSON envelopes remain
+readable, and Python implements the same typed projection so the bridge remains
+bidirectional.
+
 This wave targets **time dynamics + user-event dynamics + initiative +
 conservative REST scheduling**. It does not claim full desktop memory
 provenance or continual-learning parity.
@@ -84,6 +92,18 @@ importance values.
 
 If initiative fires, generation uses the normal product prompt, seeded
 sampler, native kernel and persistent state path.
+
+Android Tauri also owns a process-resident native heartbeat, matching the
+desktop product server cadence:
+
+- initiative off: 5 seconds;
+- gentle: 30 seconds;
+- active: 12 seconds.
+
+The heartbeat is implemented in the Rust host rather than the web UI, so focus
+changes do not stop lifecycle progression while the Android process remains
+resident. The synthetic v0.58 packaged-emulator probe disables this heartbeat
+to keep its frozen restart receipt deterministic.
 
 ## REST baseline
 
