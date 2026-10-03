@@ -9,6 +9,7 @@ SAMPLER_SCHEMA = "NOLANE-V054-SEEDED-Q32-NUCLEUS-V1"
 LOGIT_SCALE = 1_000
 EXP_WEIGHT_SCALE = 1 << 40
 PROBABILITY_SCALE = 1 << 32
+MAX_QUANTIZED_LOGIT_ABS = (1 << 60) - 1
 U64_MASK = (1 << 64) - 1
 
 _SPLITMIX_GAMMA = 0x9E3779B97F4A7C15
@@ -28,6 +29,18 @@ def _round_half_away_from_zero(value: float) -> int:
     if value >= 0.0:
         return int(math.floor(value + 0.5))
     return int(math.ceil(value - 0.5))
+
+
+def _quantize_logit(value: float) -> int:
+    scaled = float(value) * LOGIT_SCALE
+    if (
+        not math.isfinite(scaled)
+        or abs(scaled) > MAX_QUANTIZED_LOGIT_ABS
+    ):
+        raise ValueError(
+            "logit magnitude exceeds seeded sampler quantization range"
+        )
+    return _round_half_away_from_zero(scaled)
 
 
 def splitmix64_next(state: int) -> tuple[int, int]:
@@ -55,7 +68,7 @@ def _quantized_weights(
         raise ValueError("logits contain non-finite value")
 
     quantized_logits = [
-        _round_half_away_from_zero(value * LOGIT_SCALE)
+        _quantize_logit(value)
         for value in values
     ]
     maximum = max(quantized_logits)
