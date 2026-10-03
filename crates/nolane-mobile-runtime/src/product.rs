@@ -389,10 +389,9 @@ fn load_meta(path: &Path) -> Result<LocalMobileMeta, RuntimeError> {
     }
     let mut meta: LocalMobileMeta =
         serde_json::from_slice(&fs::read(path)?)?;
-    if !matches!(
-        meta.schema.as_str(),
-        LOCAL_MOBILE_META_SCHEMA | LEGACY_LOCAL_MOBILE_META_SCHEMA
-    ) {
+    if meta.schema != LOCAL_MOBILE_META_SCHEMA
+        && meta.schema != LEGACY_LOCAL_MOBILE_META_SCHEMA
+    {
         return Err(RuntimeError::Invalid(
             "LocalMobile metadata schema mismatch".into(),
         ));
@@ -561,6 +560,14 @@ impl LocalMobileProductRuntime {
                     .unwrap_or("");
                 self.send_message(text)
             }
+            ("POST", "/v1/tick") => {
+                let at_ms = body
+                    .as_ref()
+                    .and_then(|value| value.get("at_ms"))
+                    .and_then(Value::as_u64)
+                    .unwrap_or_else(now_millis);
+                self.tick_at(at_ms, None)
+            }
             (_, route) if route.starts_with("/v1/learning/") => {
                 Err(RuntimeError::Invalid(
                     "Learning review is not available on LocalMobile".into(),
@@ -597,6 +604,17 @@ impl LocalMobileProductRuntime {
             "initiative": &self.meta.initiative,
             "model_checkpoint_sha256": self.runtime.source_checkpoint_sha256(),
             "device": "android-local-rust",
+            "lifecycle": {
+                "schema": LOCAL_MOBILE_META_SCHEMA,
+                "tick": self.meta.tick,
+                "last_event_ms": self.meta.last_event_ms,
+                "last_user_event_ms": self.meta.last_user_event_ms,
+                "last_ai_speech_ms": self.meta.last_ai_speech_ms,
+                "social_drive": self.meta.social_drive,
+                "curiosity": self.meta.curiosity,
+                "rest_cycles": self.meta.rest_cycles,
+                "last_rest_ms": self.meta.last_rest_ms,
+            },
             "readiness": {
                 "status": "PASS",
                 "critical_failures": 0,
@@ -678,6 +696,404 @@ impl LocalMobileProductRuntime {
         self.runtime.save_persistent_state(&self.state_path)?;
         write_json(&self.meta_path, &self.meta)?;
         self.profile_json()
+    }
+
+    fn advance_lifecycle_to(
+        &mut self,
+        at_ms: u64,
+    ) -> Result<(), RuntimeError> {
+        let Some(previous_ms) = self.meta.last_event_ms else {
+            self.meta.last_event_ms = Some(at_ms);
+            return Ok(());
+        };
+        let dt_ms = at_ms.saturating_sub(previous_ms)
+            .min(7 * 24 * 60 * 60 * 1000);
+        let dt = dt_ms as f64 / 1000.0;
+        let mut state = self
+            .runtime
+            .persistent_state()
+            .cloned()
+            .ok_or_else(|| RuntimeError::Invalid(
+                "LocalMobile persistent state disappeared".into(),
+            ))?;
+
+        state.state.affect.valence = clamp_signed(relax(
+            state.state.affect.valence,
+            0.0,
+            dt,
+            6.0 * 3600.0,
+        ));
+        state.state.affect.energy = clamp01(relax(
+            state.state.affect.energy,
+            0.62,
+            dt,
+            8.0 * 3600.0,
+        ));
+        state.state.affect.playfulness = clamp01(relax(
+            state.state.affect.playfulness,
+            0.45,
+            dt,
+            10.0 * 3600.0,
+        ));
+        state.state.affect.irritation = clamp01(relax(
+            state.state.affect.irritation,
+            0.0,
+            dt,
+            45.0 * 60.0,
+        ));
+        state.state.affect.concern = clamp01(relax(
+            state.state.affect.concern,
+            0.0,
+            dt,
+            4.0 * 3600.0,
+        ));
+        let rise = 1.0 - (-dt / (6.0 * 3600.0)).exp();
+        self.meta.social_drive = clamp01(
+            self.meta.social_drive
+                + 0.22 * rise * (1.0 - self.meta.social_drive),
+        );
+        self.meta.tick = self.meta.tick.saturating_add(1);
+        self.meta.last_event_ms = Some(at_ms);
+        self.runtime.set_persistent_state(state)?;
+        Ok(())
+    }
+
+    fn apply_user_lifecycle(
+        &mut self,
+        text: &str,
+        at_ms: u64,
+    ) -> Result<(), RuntimeError> {
+        self.advance_lifecycle_to(at_ms)?;
+        let mut state = self
+            .runtime
+            .persistent_state()
+            .cloned()
+            .ok_or_else(|| RuntimeError::Invalid(
+                "LocalMobile persistent state disappeared".into(),
+            ))?;
+        let relationship = &mut state.state.relationship;
+        relationship.interaction_count =
+            relationship.interaction_count.saturating_add(1);
+        relationship.familiarity = clamp01(
+            relationship.familiarity
+                + 0.012 * (1.0 - relationship.familiarity),
+        );
+        relationship.closeness = clamp01(
+            relationship.closeness
+                + 0.004 * (1.0 - relationship.closeness),
+        );
+
+        self.meta.social_drive = clamp01(self.meta.social_drive * 0.45);
+        self.meta.curiosity = clamp01(self.meta.curiosity + 0.04);
+        state.state.affect.energy =
+            clamp01(state.state.affect.energy + 0.02);
+
+        const NEGATIVE: &[&str] = &[
+            "buồn", "mệt", "chán", "khóc", "tệ", "cô đơn",
+            "stress", "áp lực", "sad", "tired", "upset", "awful",
+            "cry", "lonely", "stressed",
+        ];
+        const POSITIVE: &[&str] = &[
+            "vui", "tuyệt", "haha", "hehe", "hihi", "đỉnh",
+            "thích", "happy", "great", "awesome", "lol", "nice",
+            "love",
+        ];
+        const ANGER: &[&str] = &[
+            "tức", "bực", "ghét", "điên", "angry", "mad",
+            "furious", "annoyed",
+        ];
+
+        if contains_any(text, NEGATIVE) {
+            state.state.affect.concern =
+                clamp01(state.state.affect.concern + 0.22);
+            state.state.affect.playfulness =
+                clamp01(state.state.affect.playfulness - 0.10);
+            state.state.affect.valence =
+                clamp_signed(state.state.affect.valence - 0.06);
+        }
+        if contains_any(text, POSITIVE) {
+            state.state.affect.playfulness =
+                clamp01(state.state.affect.playfulness + 0.11);
+            state.state.affect.valence =
+                clamp_signed(state.state.affect.valence + 0.08);
+        }
+        if contains_any(text, ANGER) {
+            state.state.affect.concern =
+                clamp01(state.state.affect.concern + 0.10);
+        }
+
+        self.meta.last_user_event_ms = Some(at_ms);
+        self.meta.last_event_ms = Some(at_ms);
+        self.runtime.set_persistent_state(state)?;
+        Ok(())
+    }
+
+    fn record_ai_lifecycle(&mut self, at_ms: u64) {
+        self.meta.social_drive = clamp01(self.meta.social_drive * 0.30);
+        self.meta.last_ai_speech_ms = Some(at_ms);
+        self.meta.last_event_ms = Some(at_ms);
+    }
+
+    fn initiative_decision(&self, at_ms: u64) -> Result<Value, RuntimeError> {
+        let state = self.runtime.persistent_state().ok_or_else(|| {
+            RuntimeError::Invalid(
+                "LocalMobile persistent state disappeared".into(),
+            )
+        })?;
+        let silence = self
+            .meta
+            .last_user_event_ms
+            .map(|value| at_ms.saturating_sub(value));
+        let cooldown = self
+            .meta
+            .last_ai_speech_ms
+            .map(|value| at_ms.saturating_sub(value));
+
+        if silence.is_some_and(|value| value < MIN_USER_SILENCE_MS) {
+            return Ok(json!({
+                "speak": false,
+                "score": 0.0,
+                "intent": "remain_silent",
+                "reasons": ["user_recently_active"],
+            }));
+        }
+        if cooldown.is_some_and(|value| value < SPEECH_COOLDOWN_MS) {
+            return Ok(json!({
+                "speak": false,
+                "score": 0.0,
+                "intent": "remain_silent",
+                "reasons": ["speech_cooldown"],
+            }));
+        }
+        if silence.is_some_and(|value| value > HARD_MAX_WITHOUT_USER_MS)
+            && state.state.open_threads.is_empty()
+        {
+            return Ok(json!({
+                "speak": false,
+                "score": 0.0,
+                "intent": "remain_silent",
+                "reasons": ["long_silence_without_open_thread"],
+            }));
+        }
+
+        // v0.55 stores thread topics but not importance. Use the desktop
+        // OpenThread default importance=0.5 until a richer frozen state
+        // contract carries importance explicitly.
+        let thread_count = state.state.open_threads.len().min(3);
+        let thread_component =
+            (thread_count as f64 * (0.12 + 0.14 * 0.5)).min(0.34);
+        let concern_component = 0.20 * state.state.affect.concern;
+        let social_component = 0.26 * self.meta.social_drive;
+        let curiosity_component = 0.16 * self.meta.curiosity;
+        let closeness_component =
+            0.08 * state.state.relationship.closeness;
+        let score = clamp01(
+            thread_component
+                + concern_component
+                + social_component
+                + curiosity_component
+                + closeness_component,
+        );
+
+        let mut reasons: Vec<&str> = Vec::new();
+        if thread_component > 0.0 {
+            reasons.push("unresolved_thread");
+        }
+        if state.state.affect.concern > 0.35 {
+            reasons.push("concern");
+        }
+        if self.meta.social_drive > 0.45 {
+            reasons.push("social_drive");
+        }
+        if self.meta.curiosity > 0.55 {
+            reasons.push("curiosity");
+        }
+        if score < INITIATIVE_THRESHOLD {
+            if reasons.is_empty() {
+                reasons.push("below_threshold");
+            }
+            return Ok(json!({
+                "speak": false,
+                "score": score,
+                "intent": "remain_silent",
+                "reasons": reasons,
+            }));
+        }
+
+        let intent = if let Some(topic) = state.state.open_threads.first() {
+            format!("follow_up:{topic}")
+        } else if state.state.affect.concern > 0.45 {
+            "gentle_check_in".to_string()
+        } else {
+            "casual_reconnect".to_string()
+        };
+        Ok(json!({
+            "speak": true,
+            "score": score,
+            "intent": intent,
+            "reasons": reasons,
+        }))
+    }
+
+    fn rest_due(&self, at_ms: u64) -> (bool, &'static str) {
+        if !self.meta.memory_enabled {
+            return (false, "memory_disabled");
+        }
+        let Some(last_user) = self.meta.last_user_event_ms else {
+            return (false, "no_user_history");
+        };
+        if at_ms.saturating_sub(last_user) < REST_MIN_IDLE_MS {
+            return (false, "user_not_idle_enough");
+        }
+        if let Some(last_rest) = self.meta.last_rest_ms {
+            if at_ms.saturating_sub(last_rest) < REST_MIN_INTERVAL_MS {
+                return (false, "rest_cycle_cooldown");
+            }
+        }
+        (true, "idle_window")
+    }
+
+    fn run_rest_baseline(
+        &mut self,
+        at_ms: u64,
+    ) -> Result<Value, RuntimeError> {
+        let mut state = self
+            .runtime
+            .persistent_state()
+            .cloned()
+            .ok_or_else(|| RuntimeError::Invalid(
+                "LocalMobile persistent state disappeared".into(),
+            ))?;
+        let source_count = state.memories.len();
+        let mut compacted: Vec<String> = Vec::new();
+        let mut removed = 0usize;
+        for memory in &state.memories {
+            if compacted
+                .iter()
+                .any(|kept| lexical_similarity(kept, memory)
+                    >= REST_DUPLICATE_SIMILARITY)
+            {
+                removed += 1;
+            } else {
+                compacted.push(memory.clone());
+            }
+        }
+        state.memories = compacted;
+        self.meta.rest_cycles = self.meta.rest_cycles.saturating_add(1);
+        self.meta.last_rest_ms = Some(at_ms);
+        self.meta.last_rest_source_count = source_count;
+        self.meta.last_rest_new_memories = 0;
+        self.runtime.set_persistent_state(state)?;
+        Ok(json!({
+            "ran": true,
+            "strategy": "conservative_near_duplicate_compaction",
+            "source_count": source_count,
+            "removed_duplicates": removed,
+            "new_memories": 0,
+            "provenance_rich_consolidation": false,
+        }))
+    }
+
+    fn tick_at(
+        &mut self,
+        at_ms: u64,
+        max_new_tokens: Option<usize>,
+    ) -> Result<Value, RuntimeError> {
+        if !self.powered {
+            return Ok(json!({"speech": "", "skipped": "ai_off"}));
+        }
+        if self.meta.initiative == "off" {
+            return Ok(json!({"speech": "", "skipped": "initiative_off"}));
+        }
+
+        self.advance_lifecycle_to(at_ms)?;
+        let (rest_due, rest_reason) = self.rest_due(at_ms);
+        let rest = if rest_due {
+            self.run_rest_baseline(at_ms)?
+        } else {
+            json!({
+                "ran": false,
+                "reason": rest_reason,
+            })
+        };
+
+        let decision = self.initiative_decision(at_ms)?;
+        let should_speak = decision
+            .get("speak")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let mut speech = String::new();
+        if should_speak {
+            let intent = decision
+                .get("intent")
+                .and_then(Value::as_str)
+                .unwrap_or("casual_reconnect");
+            let mut rng = OsRng;
+            let seed = rng.next_u64();
+            let generated = if let Some(limit) = max_new_tokens {
+                let payload = self.runtime.persistent_product_payload(
+                    "initiative",
+                    intent,
+                    None,
+                )?;
+                let prompt = self.runtime.render_product_prompt(&payload)?;
+                self.runtime.generate_seeded(
+                    &prompt,
+                    limit,
+                    seed,
+                    PRODUCT_SAMPLING_TEMPERATURE,
+                    PRODUCT_SAMPLING_TOP_P,
+                )?
+            } else {
+                self.runtime.generate_persistent_product_seeded(
+                    "initiative",
+                    intent,
+                    None,
+                    seed,
+                )?
+            };
+            speech = generated.text.trim().to_string();
+            if !speech.is_empty() {
+                let ordinal = self.meta.state_version.saturating_add(1);
+                self.history.push(LocalMobileMessage {
+                    event_id: format!("local-mobile-i-{ordinal}"),
+                    at: at_ms.to_string(),
+                    role: "assistant".into(),
+                    text: speech.clone(),
+                });
+                if self.history.len() > MAX_HISTORY_MESSAGES {
+                    let excess = self.history.len() - MAX_HISTORY_MESSAGES;
+                    self.history.drain(0..excess);
+                }
+                self.record_ai_lifecycle(at_ms);
+            }
+        }
+
+        self.meta.state_version =
+            self.meta.state_version.saturating_add(1);
+        self.runtime.save_persistent_state(&self.state_path)?;
+        write_json(&self.meta_path, &self.meta)?;
+        write_json(&self.history_path, &self.history)?;
+        Ok(json!({
+            "speech": speech,
+            "state_version": self.meta.state_version,
+            "initiative": decision,
+            "rest": rest,
+            "rest_error": Value::Null,
+        }))
+    }
+
+    pub fn synthetic_court_tick(
+        &mut self,
+        at_ms: u64,
+        max_new_tokens: usize,
+    ) -> Result<Value, RuntimeError> {
+        if max_new_tokens == 0 || max_new_tokens > 16 {
+            return Err(RuntimeError::Invalid(
+                "synthetic court token limit must be in 1..=16".into(),
+            ));
+        }
+        self.tick_at(at_ms, Some(max_new_tokens))
     }
 
     fn send_message(&mut self, text: &str) -> Result<Value, RuntimeError> {
