@@ -288,21 +288,21 @@ fn persistent_state_typed_projection(
     state: &PersistentMobileState,
 ) -> serde_json::Value {
     serde_json::json!({
-        "source_checkpoint_sha256": state.source_checkpoint_sha256,
+        "source_checkpoint_sha256": &state.source_checkpoint_sha256,
         "latent_f32_bits": state
             .latent
             .iter()
             .map(|value| value.to_bits())
             .collect::<Vec<u32>>(),
         "profile": {
-            "preferred_name": state.profile.preferred_name,
-            "language": state.profile.language,
-            "response_length": state.profile.response_length,
-            "conversation_style": state.profile.conversation_style,
-            "personal_instruction": state.profile.personal_instruction,
+            "preferred_name": &state.profile.preferred_name,
+            "language": &state.profile.language,
+            "response_length": &state.profile.response_length,
+            "conversation_style": &state.profile.conversation_style,
+            "personal_instruction": &state.profile.personal_instruction,
         },
         "state": {
-            "identity_id": state.state.identity_id,
+            "identity_id": &state.state.identity_id,
             "relationship": {
                 "closeness_f64_bits": state.state.relationship.closeness.to_bits(),
                 "trust_f64_bits": state.state.relationship.trust.to_bits(),
@@ -316,9 +316,9 @@ fn persistent_state_typed_projection(
                 "concern_f64_bits": state.state.affect.concern.to_bits(),
                 "irritation_f64_bits": state.state.affect.irritation.to_bits(),
             },
-            "open_threads": state.state.open_threads,
+            "open_threads": &state.state.open_threads,
         },
-        "memories": state.memories,
+        "memories": &state.memories,
     })
 }
 
