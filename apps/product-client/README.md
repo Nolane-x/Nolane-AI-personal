@@ -124,3 +124,7 @@ v0.53 freezes the personalization/state/memory payload below the existing UI. De
 
 The current native parity covers preferred name, language, response length, conversational style, personal instruction, relationship/affect state, four unresolved threads, eight relevant memories and reply/initiative task wording. Sampling and persistent Android state remain separate follow-on gates.
 
+v0.54 freezes seeded stochastic decoding parity below the same Ember Quiet UI. Desktop Python and native Rust share SplitMix64 + quantized nucleus sampling; CI freezes generated sampled token IDs, text, EOS behavior and final recurrent state. The production desktop path still chooses a fresh 64-bit seed per response unless a deterministic seed source is injected for courts/replay.
+
+Android is still not called production-complete until persistent local state/latent binding, Tauri LocalMobile routing, authorized release assets and emulator/device courts close.
+
