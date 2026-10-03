@@ -18,7 +18,11 @@ use std::{
 };
 
 pub const LOCAL_MOBILE_BUNDLE_SCHEMA: &str =
-    "NOLANE-V056-LOCALMOBILE-BUNDLE-V1";
+    "NOLANE-V057-AUTHORIZED-LOCALMOBILE-BUNDLE-V1";
+pub const LOCAL_MOBILE_RELEASE_AUTHORITY: &str =
+    "L36_COMPLETE_PROMOTION_CEREMONY";
+pub const LOCAL_MOBILE_COURT_AUTHORITY: &str =
+    "SYNTHETIC_COURT_ONLY_NO_RELEASE_AUTHORITY";
 pub const LOCAL_MOBILE_META_SCHEMA: &str =
     "NOLANE-V056-LOCALMOBILE-META-V1";
 const MAX_HISTORY_MESSAGES: usize = 400;
@@ -28,8 +32,26 @@ const MAX_PERSONAL_INSTRUCTION_CHARS: usize = 1200;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LocalMobileBundleManifest {
     pub schema: String,
+    pub authority: String,
     pub source_checkpoint_sha256: String,
     pub prompt_contract_file_sha256: String,
+    pub mobile_package_manifest_sha256: String,
+    pub tokenizer_json_sha256: String,
+    pub tokenizer_config_json_sha256: String,
+    pub bootstrap_state_sha256: String,
+    pub promotion_ceremony_sha256: String,
+    pub promotion_authorization_sha256: String,
+    pub promotion_ceremony_file_sha256: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct PromotionCeremonyView {
+    schema: String,
+    authority: String,
+    status: String,
+    candidate_checkpoint_sha256: String,
+    authorization_sha256: String,
+    ceremony_sha256: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -144,7 +166,29 @@ fn fresh_identity() -> String {
     format!("nolane-mobile-{suffix}")
 }
 
-fn load_manifest(bundle_dir: &Path) -> Result<LocalMobileBundleManifest, RuntimeError> {
+fn verify_bundle_file(
+    path: &Path,
+    expected_sha256: &str,
+    label: &str,
+) -> Result<(), RuntimeError> {
+    if !is_lower_hex_sha256(expected_sha256) {
+        return Err(RuntimeError::Invalid(format!(
+            "LocalMobile {label} digest is malformed"
+        )));
+    }
+    let actual = sha256_hex(&fs::read(path)?);
+    if actual != expected_sha256 {
+        return Err(RuntimeError::Invalid(format!(
+            "LocalMobile {label} SHA-256 mismatch"
+        )));
+    }
+    Ok(())
+}
+
+fn load_manifest(
+    bundle_dir: &Path,
+    allow_court_authority: bool,
+) -> Result<LocalMobileBundleManifest, RuntimeError> {
     let bytes = fs::read(bundle_dir.join("localmobile-manifest.json"))?;
     let manifest: LocalMobileBundleManifest = serde_json::from_slice(&bytes)?;
     if manifest.schema != LOCAL_MOBILE_BUNDLE_SCHEMA {
@@ -152,14 +196,107 @@ fn load_manifest(bundle_dir: &Path) -> Result<LocalMobileBundleManifest, Runtime
             "LocalMobile bundle schema mismatch".into(),
         ));
     }
-    if !is_lower_hex_sha256(&manifest.source_checkpoint_sha256) {
+    let authorized = manifest.authority == LOCAL_MOBILE_RELEASE_AUTHORITY;
+    let court = manifest.authority == LOCAL_MOBILE_COURT_AUTHORITY;
+    if !authorized && !(allow_court_authority && court) {
         return Err(RuntimeError::Invalid(
-            "LocalMobile source checkpoint digest is malformed".into(),
+            "LocalMobile bundle lacks L36 release authority".into(),
         ));
     }
-    if !is_lower_hex_sha256(&manifest.prompt_contract_file_sha256) {
+    for (name, value) in [
+        ("source checkpoint", manifest.source_checkpoint_sha256.as_str()),
+        ("prompt contract", manifest.prompt_contract_file_sha256.as_str()),
+        ("mobile package manifest", manifest.mobile_package_manifest_sha256.as_str()),
+        ("tokenizer.json", manifest.tokenizer_json_sha256.as_str()),
+        ("tokenizer_config.json", manifest.tokenizer_config_json_sha256.as_str()),
+        ("bootstrap state", manifest.bootstrap_state_sha256.as_str()),
+        ("promotion ceremony", manifest.promotion_ceremony_sha256.as_str()),
+        ("promotion authorization", manifest.promotion_authorization_sha256.as_str()),
+        ("promotion ceremony file", manifest.promotion_ceremony_file_sha256.as_str()),
+    ] {
+        if !is_lower_hex_sha256(value) {
+            return Err(RuntimeError::Invalid(format!(
+                "LocalMobile {name} digest is malformed"
+            )));
+        }
+    }
+
+    verify_bundle_file(
+        &bundle_dir.join("package").join("manifest.json"),
+        &manifest.mobile_package_manifest_sha256,
+        "mobile package manifest",
+    )?;
+    verify_bundle_file(
+        &bundle_dir.join("tokenizer.json"),
+        &manifest.tokenizer_json_sha256,
+        "tokenizer.json",
+    )?;
+    verify_bundle_file(
+        &bundle_dir.join("tokenizer_config.json"),
+        &manifest.tokenizer_config_json_sha256,
+        "tokenizer_config.json",
+    )?;
+    verify_bundle_file(
+        &bundle_dir.join("bootstrap-state.json"),
+        &manifest.bootstrap_state_sha256,
+        "bootstrap state",
+    )?;
+    verify_bundle_file(
+        &bundle_dir.join("prompt-contract.json"),
+        &manifest.prompt_contract_file_sha256,
+        "prompt contract",
+    )?;
+
+    if authorized {
+        let ceremony_path = bundle_dir.join("promotion-ceremony.json");
+        verify_bundle_file(
+            &ceremony_path,
+            &manifest.promotion_ceremony_file_sha256,
+            "promotion ceremony file",
+        )?;
+        let ceremony: PromotionCeremonyView =
+            serde_json::from_slice(&fs::read(&ceremony_path)?)?;
+        if ceremony.schema != "NOLANE-L36-PROMOTION-CEREMONY-V1"
+            || ceremony.authority != "FINAL_PROMOTION_CEREMONY_EVIDENCE"
+            || ceremony.status != "COMPLETE"
+        {
+            return Err(RuntimeError::Invalid(
+                "LocalMobile promotion ceremony is not COMPLETE L36 evidence".into(),
+            ));
+        }
+        if ceremony.candidate_checkpoint_sha256
+            != manifest.source_checkpoint_sha256
+        {
+            return Err(RuntimeError::Invalid(
+                "LocalMobile ceremony checkpoint mismatch".into(),
+            ));
+        }
+        if ceremony.authorization_sha256
+            != manifest.promotion_authorization_sha256
+        {
+            return Err(RuntimeError::Invalid(
+                "LocalMobile ceremony authorization mismatch".into(),
+            ));
+        }
+        if ceremony.ceremony_sha256
+            != manifest.promotion_ceremony_sha256
+        {
+            return Err(RuntimeError::Invalid(
+                "LocalMobile ceremony digest mismatch".into(),
+            ));
+        }
+    }
+
+    let package_manifest: Value = serde_json::from_slice(
+        &fs::read(bundle_dir.join("package").join("manifest.json"))?
+    )?;
+    if package_manifest
+        .get("source_checkpoint_sha256")
+        .and_then(Value::as_str)
+        != Some(manifest.source_checkpoint_sha256.as_str())
+    {
         return Err(RuntimeError::Invalid(
-            "LocalMobile prompt contract digest is malformed".into(),
+            "LocalMobile package checkpoint mismatch".into(),
         ));
     }
     Ok(manifest)
@@ -214,11 +351,29 @@ impl LocalMobileProductRuntime {
         bundle_dir: impl AsRef<Path>,
         data_dir: impl AsRef<Path>,
     ) -> Result<Self, RuntimeError> {
+        Self::load_inner(bundle_dir, data_dir, false)
+    }
+
+    pub fn load_for_court(
+        bundle_dir: impl AsRef<Path>,
+        data_dir: impl AsRef<Path>,
+    ) -> Result<Self, RuntimeError> {
+        Self::load_inner(bundle_dir, data_dir, true)
+    }
+
+    fn load_inner(
+        bundle_dir: impl AsRef<Path>,
+        data_dir: impl AsRef<Path>,
+        allow_court_authority: bool,
+    ) -> Result<Self, RuntimeError> {
         let bundle_dir = bundle_dir.as_ref();
         let data_dir = data_dir.as_ref().to_path_buf();
         fs::create_dir_all(&data_dir)?;
 
-        let manifest = load_manifest(bundle_dir)?;
+        let manifest = load_manifest(
+            bundle_dir,
+            allow_court_authority,
+        )?;
         let state_path = data_dir.join("persistent-state.json");
         let meta_path = data_dir.join("local-mobile-meta.json");
         let history_path = data_dir.join("local-mobile-history.json");
