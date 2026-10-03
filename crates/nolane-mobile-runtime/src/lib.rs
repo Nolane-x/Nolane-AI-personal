@@ -22,6 +22,9 @@ pub struct GenerationResult {
     pub final_state: Vec<f32>,
 }
 
+pub const MAX_PROMPT_TOKENS: usize = 8192;
+pub const MAX_NEW_TOKENS: usize = 512;
+
 pub struct MobileRuntime {
     kernel: MobileKernel,
     tokenizer: Tokenizer,
@@ -102,6 +105,13 @@ impl MobileRuntime {
                 "tokenizer produced an empty prompt".into(),
             ));
         }
+        if ids.len() > MAX_PROMPT_TOKENS {
+            return Err(RuntimeError::Invalid(format!(
+                "prompt exceeds native token limit: {} > {}",
+                ids.len(),
+                MAX_PROMPT_TOKENS,
+            )));
+        }
         Ok(ids)
     }
 
@@ -120,6 +130,13 @@ impl MobileRuntime {
             return Err(RuntimeError::Invalid(
                 "max_new_tokens must be positive".into(),
             ));
+        }
+        if max_new_tokens > MAX_NEW_TOKENS {
+            return Err(RuntimeError::Invalid(format!(
+                "max_new_tokens exceeds native limit: {} > {}",
+                max_new_tokens,
+                MAX_NEW_TOKENS,
+            )));
         }
         let prompt_token_ids = self.encode(prompt)?;
         let mut state = self.kernel.init_state(&self.latent)?;
