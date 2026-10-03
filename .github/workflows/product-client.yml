@@ -22,7 +22,9 @@ on:
       - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
       - "docs/V042-NUI-CRITIQUE-LEDGER.md"
       - "docs/ROADMAP.md"
-      - "pyproject.toml"\n      - "scripts/check_product_versions.py"\n      - "README.md"
+      - "pyproject.toml"
+      - "scripts/check_product_versions.py"
+      - "README.md"
   pull_request:
     paths:
       - "apps/product-client/**"
