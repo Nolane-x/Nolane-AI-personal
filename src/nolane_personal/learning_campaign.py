@@ -482,6 +482,30 @@ def _window_public(binding: CampaignWindow) -> dict[str, Any]:
     }
 
 
+def verify_real_learning_campaign(
+    output_dir: str | Path,
+) -> dict[str, Any]:
+    root = Path(output_dir).resolve()
+    receipt_path = root / "campaign-receipt.json"
+    plan_path = root / "l43-plan.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if receipt.get("schema") != CAMPAIGN_RECEIPT_SCHEMA:
+        raise ValueError("unsupported real learning campaign receipt schema")
+    supplied = receipt.get("receipt_sha256")
+    body = dict(receipt)
+    body.pop("receipt_sha256", None)
+    if payload_digest(body) != supplied:
+        raise ValueError("real learning campaign receipt digest mismatch")
+    if receipt.get("authority") != CAMPAIGN_AUTHORITY:
+        raise ValueError("real learning campaign authority mismatch")
+    if receipt.get("status") != "READY_FOR_EXPLICIT_L43_EXECUTION":
+        raise ValueError("real learning campaign is not execution-ready")
+    validated = validate_longitudinal_plan(plan_path)
+    if validated.receipt["plan_sha256"] != receipt.get("l43_plan_sha256"):
+        raise ValueError("real learning campaign L43 plan lineage mismatch")
+    return receipt
+
+
 def build_real_learning_campaign(
     spec_path: str | Path,
     output_dir: str | Path,
