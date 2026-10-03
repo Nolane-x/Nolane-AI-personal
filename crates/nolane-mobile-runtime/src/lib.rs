@@ -263,7 +263,10 @@ impl PersistentMobileState {
 fn persistent_state_digest(
     state: &PersistentMobileState,
 ) -> Result<String, RuntimeError> {
-    Ok(sha256_hex(&serde_json::to_vec(state)?))
+    // Digest the semantic JSON object through serde_json::Value so object
+    // keys have one deterministic ordering across Python and Rust.
+    let value = serde_json::to_value(state)?;
+    Ok(sha256_hex(&serde_json::to_vec(&value)?))
 }
 
 pub fn read_persistent_mobile_state(
