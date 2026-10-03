@@ -357,6 +357,55 @@ mod tests {
     }
 
     #[test]
+    fn validator_is_atomic_when_memory_commit_fails() {
+        let mut state = state();
+        let original_state = state.clone();
+        let mut store = MobileMemoryStore::default();
+        for index in 0..crate::memory::MAX_MEMORY_RECORDS {
+            store.records.push(MobileMemoryRecord {
+                memory_id: format!("full-{index}"),
+                text: format!("memory {index}"),
+                kind: "episodic".into(),
+                salience: 0.5,
+                confidence: 1.0,
+                source_event_id: Some("seed".into()),
+                created_at_ms: index as u64,
+                metadata: BTreeMap::new(),
+            });
+        }
+        store.validate().unwrap();
+        let original_store = store.clone();
+        let mut social_drive = 0.2;
+        let mut proposal = MobileSocialProposal {
+            schema: MOBILE_SOCIAL_OBSERVER_SCHEMA.into(),
+            uncertainty: 0.1,
+            ..MobileSocialProposal::default()
+        };
+        proposal.affect_delta.insert("concern".into(), 0.1);
+        proposal.memories.push(MobileMemoryProposal {
+            text: "must fail because store is full".into(),
+            kind: "inference".into(),
+            confidence: 0.8,
+            salience: 0.8,
+            metadata: BTreeMap::new(),
+        });
+
+        let error = apply_social_proposal(
+            &mut state,
+            &mut store,
+            &mut social_drive,
+            &proposal,
+            "event-full",
+            3_000,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("memory store is full"));
+        assert_eq!(state, original_state);
+        assert_eq!(store, original_store);
+        assert_eq!(social_drive, 0.2);
+    }
+
+    #[test]
     fn validator_clamps_deltas_and_downgrades_weak_fact() {
         let mut proposal = MobileSocialProposal {
             schema: MOBILE_SOCIAL_OBSERVER_SCHEMA.into(),
