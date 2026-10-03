@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.53.0
+## Current executable milestone: Living Runtime v0.54.0
 
 The runtime now contains two very different compute scales:
 
@@ -1492,6 +1492,18 @@ The old Python-specific `repr(list)` formatting for open threads has been replac
 This does not yet claim end-to-end Android local chat. Seeded sampling parity, persistent local product state, Tauri LocalMobile wiring and emulator/device release courts remain open.
 
 See `docs/V053-PRODUCT-PAYLOAD-PARITY.md`.
+
+### v0.54 Seeded Sampling Parity
+
+v0.54 keeps the product UI unchanged and closes the stochastic decoding split between the desktop product path and the native mobile runtime.
+
+Both sides now share one frozen seeded nucleus-sampling contract: SplitMix64 RNG, millilogit quantization, Q40/Q32 probability arithmetic, deterministic token-ID tie breaking and minimal top-p nucleus semantics. Known-answer RNG vectors, top-p boundary courts, invalid-logit bounds and a cross-language sampled-generation fixture prevent “same seed” from being only a best-effort claim.
+
+With the same prompt, product payload, latent, seed, temperature and top-p, Python and Rust must reproduce the same sampled token IDs, decoded text and final recurrent state. Production desktop generation still defaults to a fresh cryptographic 64-bit seed per response.
+
+This still does not make Android product-complete: persistent local state/latent binding, Tauri LocalMobile routing, L36-authorized release assets and emulator/device courts remain open.
+
+See `docs/V054-SEEDED-SAMPLING-PARITY.md`.
 
 ## Bootstrap Qwen
 
