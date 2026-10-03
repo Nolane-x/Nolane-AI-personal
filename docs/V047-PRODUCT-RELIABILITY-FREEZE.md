@@ -86,6 +86,25 @@ before orphan recovery.
 
 Recovery cannot be used to hide unrelated metadata damage.
 
+## Threaded sidecar SQLite safety
+
+The product sidecar uses a threaded HTTP server. Core LivingStore instances
+remain same-thread by default, but ProductRuntime explicitly opts its one
+store connection into cross-thread use because every engine/store operation is
+serialized by the ProductRuntime re-entrant lock.
+
+This closes a production-only class of failure where power/status requests
+could work while the first real `/v1/chat` request failed when SQLite was
+touched from an HTTP worker thread.
+
+The product runtime court now performs authenticated:
+
+```text
+power on -> HTTP chat -> HTTP history
+```
+
+through the actual ThreadingHTTPServer.
+
 ## v1 product rule
 
 New permanent UI features are frozen unless they are required to complete a
