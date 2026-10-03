@@ -19,6 +19,10 @@ use std::{
 
 pub const LOCAL_MOBILE_BUNDLE_SCHEMA: &str =
     "NOLANE-V056-LOCALMOBILE-BUNDLE-V1";
+pub const LOCAL_MOBILE_RELEASE_SCHEMA: &str =
+    "NOLANE-V057-LOCALMOBILE-RELEASE-BUNDLE-V1";
+pub const LOCAL_MOBILE_RELEASE_AUTHORITY: &str =
+    "L36_COMPLETE_PROMOTION_BOUND_LOCALMOBILE";
 pub const LOCAL_MOBILE_META_SCHEMA: &str =
     "NOLANE-V056-LOCALMOBILE-META-V1";
 const MAX_HISTORY_MESSAGES: usize = 400;
@@ -30,6 +34,10 @@ pub struct LocalMobileBundleManifest {
     pub schema: String,
     pub source_checkpoint_sha256: String,
     pub prompt_contract_file_sha256: String,
+    #[serde(default)]
+    pub authority: Option<String>,
+    #[serde(default)]
+    pub release_manifest_sha256: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -68,6 +76,7 @@ pub struct LocalMobileProductRuntime {
     meta: LocalMobileMeta,
     history: Vec<LocalMobileMessage>,
     powered: bool,
+    release_bound: bool,
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -85,6 +94,201 @@ fn is_lower_hex_sha256(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn sha256_file(path: &Path) -> Result<String, RuntimeError> {
+    Ok(sha256_hex(&fs::read(path)?))
+}
+
+fn required_sha_field<'a>(
+    value: &'a Value,
+    key: &str,
+) -> Result<&'a str, RuntimeError> {
+    let text = value
+        .get(key)
+        .and_then(Value::as_str)
+        .ok_or_else(|| RuntimeError::Invalid(format!(
+            "LocalMobile release field missing: {key}"
+        )))?;
+    if !is_lower_hex_sha256(text) {
+        return Err(RuntimeError::Invalid(format!(
+            "LocalMobile release field is not SHA-256: {key}"
+        )));
+    }
+    Ok(text)
+}
+
+fn verify_release_manifest(
+    bundle_dir: &Path,
+    value: &Value,
+) -> Result<(), RuntimeError> {
+    if value.get("authority").and_then(Value::as_str)
+        != Some(LOCAL_MOBILE_RELEASE_AUTHORITY)
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile release authority mismatch".into(),
+        ));
+    }
+
+    let supplied = required_sha_field(value, "release_manifest_sha256")?;
+    let mut body = value.clone();
+    body.as_object_mut()
+        .ok_or_else(|| RuntimeError::Invalid(
+            "LocalMobile release manifest must be an object".into(),
+        ))?
+        .remove("release_manifest_sha256");
+    let actual = sha256_hex(&serde_json::to_vec(&body)?);
+    if actual != supplied {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile release manifest digest mismatch".into(),
+        ));
+    }
+
+    let source_sha =
+        required_sha_field(value, "source_checkpoint_sha256")?;
+    let ceremony_file_sha =
+        required_sha_field(value, "promotion_ceremony_file_sha256")?;
+    let ceremony_sha =
+        required_sha_field(value, "promotion_ceremony_sha256")?;
+    let authorization_sha =
+        required_sha_field(value, "promotion_authorization_sha256")?;
+    let package_manifest_sha =
+        required_sha_field(value, "mobile_package_manifest_sha256")?;
+    let tokenizer_sha =
+        required_sha_field(value, "tokenizer_json_sha256")?;
+    let tokenizer_config_sha =
+        required_sha_field(value, "tokenizer_config_json_sha256")?;
+    let prompt_sha =
+        required_sha_field(value, "prompt_contract_file_sha256")?;
+    let bootstrap_sha =
+        required_sha_field(value, "bootstrap_state_file_sha256")?;
+
+    let ceremony_name = value
+        .get("promotion_ceremony_file")
+        .and_then(Value::as_str)
+        .ok_or_else(|| RuntimeError::Invalid(
+            "LocalMobile promotion ceremony filename missing".into(),
+        ))?;
+    if ceremony_name != "promotion-ceremony.json" {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion ceremony filename mismatch".into(),
+        ));
+    }
+    let ceremony_path = bundle_dir.join(ceremony_name);
+    if sha256_file(&ceremony_path)? != ceremony_file_sha {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion ceremony file SHA-256 mismatch".into(),
+        ));
+    }
+    let ceremony_bytes = fs::read(&ceremony_path)?;
+    let ceremony: Value = serde_json::from_slice(&ceremony_bytes)?;
+    if ceremony.get("schema").and_then(Value::as_str)
+        != Some("NOLANE-L36-PROMOTION-CEREMONY-V1")
+        || ceremony.get("authority").and_then(Value::as_str)
+            != Some("FINAL_PROMOTION_CEREMONY_EVIDENCE")
+        || ceremony.get("status").and_then(Value::as_str) != Some("COMPLETE")
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion ceremony is not COMPLETE L36".into(),
+        ));
+    }
+    if ceremony
+        .get("candidate_checkpoint_sha256")
+        .and_then(Value::as_str)
+        != Some(source_sha)
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion ceremony checkpoint mismatch".into(),
+        ));
+    }
+    if ceremony.get("authorization_sha256").and_then(Value::as_str)
+        != Some(authorization_sha)
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion authorization mismatch".into(),
+        ));
+    }
+    if ceremony.get("ceremony_sha256").and_then(Value::as_str)
+        != Some(ceremony_sha)
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion ceremony semantic digest mismatch".into(),
+        ));
+    }
+    let mut ceremony_body = ceremony.clone();
+    ceremony_body
+        .as_object_mut()
+        .ok_or_else(|| RuntimeError::Invalid(
+            "LocalMobile ceremony must be an object".into(),
+        ))?
+        .remove("ceremony_sha256");
+    if sha256_hex(&serde_json::to_vec(&ceremony_body)?) != ceremony_sha {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile promotion ceremony digest invalid".into(),
+        ));
+    }
+
+    let package_manifest: Value = serde_json::from_slice(
+        &fs::read(bundle_dir.join("package").join("manifest.json"))?
+    )?;
+    if package_manifest
+        .get("source_checkpoint_sha256")
+        .and_then(Value::as_str)
+        != Some(source_sha)
+        || package_manifest.get("manifest_sha256").and_then(Value::as_str)
+            != Some(package_manifest_sha)
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile package release binding mismatch".into(),
+        ));
+    }
+
+    if sha256_file(&bundle_dir.join("tokenizer.json"))? != tokenizer_sha {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile tokenizer.json release digest mismatch".into(),
+        ));
+    }
+    if sha256_file(&bundle_dir.join("tokenizer_config.json"))?
+        != tokenizer_config_sha
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile tokenizer_config.json release digest mismatch".into(),
+        ));
+    }
+    if sha256_file(&bundle_dir.join("prompt-contract.json"))? != prompt_sha {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile prompt contract release digest mismatch".into(),
+        ));
+    }
+    if sha256_file(&bundle_dir.join("bootstrap-state.json"))? != bootstrap_sha {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile bootstrap state release digest mismatch".into(),
+        ));
+    }
+
+    let claims = value.get("release_claims").ok_or_else(|| {
+        RuntimeError::Invalid("LocalMobile release claims missing".into())
+    })?;
+    if claims.get("l36_complete_required").and_then(Value::as_bool)
+        != Some(true)
+        || claims
+            .get("python_required_on_android")
+            .and_then(Value::as_bool)
+            != Some(false)
+        || claims
+            .get("loopback_http_required_on_android")
+            .and_then(Value::as_bool)
+            != Some(false)
+        || claims
+            .get("device_court_complete")
+            .and_then(Value::as_bool)
+            != Some(false)
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile release claims mismatch".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), RuntimeError> {
@@ -146,12 +350,22 @@ fn fresh_identity() -> String {
 
 fn load_manifest(bundle_dir: &Path) -> Result<LocalMobileBundleManifest, RuntimeError> {
     let bytes = fs::read(bundle_dir.join("localmobile-manifest.json"))?;
-    let manifest: LocalMobileBundleManifest = serde_json::from_slice(&bytes)?;
-    if manifest.schema != LOCAL_MOBILE_BUNDLE_SCHEMA {
+    let value: Value = serde_json::from_slice(&bytes)?;
+    let schema = value
+        .get("schema")
+        .and_then(Value::as_str)
+        .ok_or_else(|| RuntimeError::Invalid(
+            "LocalMobile bundle schema missing".into(),
+        ))?;
+    if schema == LOCAL_MOBILE_RELEASE_SCHEMA {
+        verify_release_manifest(bundle_dir, &value)?;
+    } else if schema != LOCAL_MOBILE_BUNDLE_SCHEMA {
         return Err(RuntimeError::Invalid(
             "LocalMobile bundle schema mismatch".into(),
         ));
     }
+    let manifest: LocalMobileBundleManifest =
+        serde_json::from_value(value)?;
     if !is_lower_hex_sha256(&manifest.source_checkpoint_sha256) {
         return Err(RuntimeError::Invalid(
             "LocalMobile source checkpoint digest is malformed".into(),
@@ -214,11 +428,31 @@ impl LocalMobileProductRuntime {
         bundle_dir: impl AsRef<Path>,
         data_dir: impl AsRef<Path>,
     ) -> Result<Self, RuntimeError> {
-        let bundle_dir = bundle_dir.as_ref();
-        let data_dir = data_dir.as_ref().to_path_buf();
+        Self::load_internal(bundle_dir.as_ref(), data_dir.as_ref(), false)
+    }
+
+    pub fn load_release(
+        bundle_dir: impl AsRef<Path>,
+        data_dir: impl AsRef<Path>,
+    ) -> Result<Self, RuntimeError> {
+        Self::load_internal(bundle_dir.as_ref(), data_dir.as_ref(), true)
+    }
+
+    fn load_internal(
+        bundle_dir: &Path,
+        data_dir: &Path,
+        require_release: bool,
+    ) -> Result<Self, RuntimeError> {
+        let data_dir = data_dir.to_path_buf();
         fs::create_dir_all(&data_dir)?;
 
         let manifest = load_manifest(bundle_dir)?;
+        let release_bound = manifest.schema == LOCAL_MOBILE_RELEASE_SCHEMA;
+        if require_release && !release_bound {
+            return Err(RuntimeError::Invalid(
+                "Android LocalMobile requires an L36-bound release bundle".into(),
+            ));
+        }
         let state_path = data_dir.join("persistent-state.json");
         let meta_path = data_dir.join("local-mobile-meta.json");
         let history_path = data_dir.join("local-mobile-history.json");
@@ -261,6 +495,7 @@ impl LocalMobileProductRuntime {
             meta,
             history,
             powered: false,
+            release_bound,
         })
     }
 
@@ -283,6 +518,7 @@ impl LocalMobileProductRuntime {
                 "critical_failures": 0,
                 "advisory_failures": 0,
                 "target": "LocalMobile",
+                "release_bound": self.release_bound,
             })),
             ("GET", "/v1/history") => Ok(json!({
                 "messages": &self.history,
@@ -353,6 +589,7 @@ impl LocalMobileProductRuntime {
                 "status": "PASS",
                 "critical_failures": 0,
                 "advisory_failures": 0,
+                "release_bound": self.release_bound,
             },
         })
     }
