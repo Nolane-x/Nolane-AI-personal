@@ -147,6 +147,9 @@ pub fn apply_social_proposal(
         ));
     }
 
+    let mut next_state = state.clone();
+    let mut next_store = memory_store.clone();
+    let mut next_social_drive = *social_drive;
     let mut receipt = MobileMutationReceipt {
         source_event_id: source_event_id.to_string(),
         uncertainty: unit(proposal.uncertainty),
@@ -161,27 +164,27 @@ pub fn apply_social_proposal(
         let delta = bounded(*raw, MAX_AFFECT_DELTA);
         match name.as_str() {
             "valence" => {
-                state.state.affect.valence =
-                    (state.state.affect.valence + delta).clamp(-1.0, 1.0);
+                next_state.state.affect.valence =
+                    (next_state.state.affect.valence + delta).clamp(-1.0, 1.0);
             }
             "energy" => {
-                state.state.affect.energy =
-                    unit(state.state.affect.energy + delta);
+                next_state.state.affect.energy =
+                    unit(next_state.state.affect.energy + delta);
             }
             "playfulness" => {
-                state.state.affect.playfulness =
-                    unit(state.state.affect.playfulness + delta);
+                next_state.state.affect.playfulness =
+                    unit(next_state.state.affect.playfulness + delta);
             }
             "irritation" => {
-                state.state.affect.irritation =
-                    unit(state.state.affect.irritation + delta);
+                next_state.state.affect.irritation =
+                    unit(next_state.state.affect.irritation + delta);
             }
             "concern" => {
-                state.state.affect.concern =
-                    unit(state.state.affect.concern + delta);
+                next_state.state.affect.concern =
+                    unit(next_state.state.affect.concern + delta);
             }
             "social_drive" => {
-                *social_drive = unit(*social_drive + delta);
+                next_social_drive = unit(next_social_drive + delta);
             }
             _ => {
                 receipt.rejected.push(format!("affect:{name}"));
@@ -201,16 +204,16 @@ pub fn apply_social_proposal(
         let delta = bounded(*raw, MAX_RELATIONSHIP_DELTA);
         match name.as_str() {
             "closeness" => {
-                state.state.relationship.closeness =
-                    unit(state.state.relationship.closeness + delta);
+                next_state.state.relationship.closeness =
+                    unit(next_state.state.relationship.closeness + delta);
             }
             "trust" => {
-                state.state.relationship.trust =
-                    unit(state.state.relationship.trust + delta);
+                next_state.state.relationship.trust =
+                    unit(next_state.state.relationship.trust + delta);
             }
             "familiarity" => {
-                state.state.relationship.familiarity =
-                    unit(state.state.relationship.familiarity + delta);
+                next_state.state.relationship.familiarity =
+                    unit(next_state.state.relationship.familiarity + delta);
             }
             _ => {
                 receipt.rejected.push(format!("relationship:{name}"));
@@ -262,7 +265,7 @@ pub fn apply_social_proposal(
             Value::Bool(true),
         );
         let memory_id = fresh_memory_id(created_at_ms);
-        memory_store.push_record(MobileMemoryRecord {
+        next_store.push_record(MobileMemoryRecord {
             memory_id: memory_id.clone(),
             text,
             kind,
@@ -275,6 +278,9 @@ pub fn apply_social_proposal(
         receipt.stored_memory_ids.push(memory_id);
     }
 
+    *state = next_state;
+    *memory_store = next_store;
+    *social_drive = next_social_drive;
     Ok(receipt)
 }
 
