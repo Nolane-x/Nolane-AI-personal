@@ -5,7 +5,11 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::Child,
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+        Mutex,
+    },
     time::Duration,
 };
 use tauri::{Manager, RunEvent, State};
@@ -116,6 +120,7 @@ struct ProductState {
     manager: Mutex<RuntimeManager>,
     client: reqwest::Client,
     data_dir: PathBuf,
+    shutdown: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -877,12 +882,74 @@ fn clear_remote(state: State<'_, ProductState>) -> Result<RuntimeTargetView, Str
 }
 
 fn stop_child(state: &ProductState) {
+    state.shutdown.store(true, Ordering::Relaxed);
     if let Ok(mut manager) = state.manager.lock() {
         if let Some(mut child) = manager.child.take() {
             let _ = child.kill();
             let _ = child.wait();
         }
     }
+}
+
+#[cfg(target_os = "android")]
+fn start_android_lifecycle_ticker(
+    app_handle: tauri::AppHandle,
+    shutdown: Arc<AtomicBool>,
+) {
+    std::thread::spawn(move || {
+        while !shutdown.load(Ordering::Relaxed) {
+            let delay = {
+                let state = app_handle.state::<ProductState>();
+                let mut manager = match state.manager.lock() {
+                    Ok(value) => value,
+                    Err(_) => return,
+                };
+                if !matches!(manager.target, RuntimeTarget::LocalMobile) {
+                    Duration::from_secs(5)
+                } else if let Some(mobile) = manager.mobile.as_mut() {
+                    match mobile.api("GET", "/v1/profile", None) {
+                        Ok(profile) => match profile
+                            .get("initiative")
+                            .and_then(Value::as_str)
+                            .unwrap_or("gentle")
+                        {
+                            "off" => Duration::from_secs(5),
+                            "active" => Duration::from_secs(12),
+                            _ => Duration::from_secs(30),
+                        },
+                        Err(_) => Duration::from_secs(30),
+                    }
+                } else {
+                    Duration::from_secs(5)
+                }
+            };
+
+            let mut elapsed = Duration::ZERO;
+            while elapsed < delay && !shutdown.load(Ordering::Relaxed) {
+                let slice = (delay - elapsed).min(Duration::from_secs(1));
+                std::thread::sleep(slice);
+                elapsed += slice;
+            }
+            if shutdown.load(Ordering::Relaxed) {
+                return;
+            }
+
+            let state = app_handle.state::<ProductState>();
+            let mut manager = match state.manager.lock() {
+                Ok(value) => value,
+                Err(_) => return,
+            };
+            if !matches!(manager.target, RuntimeTarget::LocalMobile) {
+                continue;
+            }
+            let Some(mobile) = manager.mobile.as_mut() else {
+                continue;
+            };
+            if let Err(error) = mobile.api("POST", "/v1/tick", None) {
+                log::warn!("LocalMobile lifecycle tick failed: {error}");
+            }
+        }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -911,15 +978,34 @@ pub fn run() {
                 log::error!("NOLANE_V058_EMULATOR_COURT_FAIL {error}");
                 return Err(error.into());
             }
+            #[cfg(target_os = "android")]
+            let start_mobile_ticker = !manager.v058_court_enabled;
+
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(180))
                 .build()
                 .map_err(|e| e.to_string())?;
+            let shutdown = Arc::new(AtomicBool::new(false));
+            let ticker_shutdown = Arc::clone(&shutdown);
+            let app_handle = app.handle().clone();
             app.manage(ProductState {
                 manager: Mutex::new(manager),
                 client,
                 data_dir,
+                shutdown,
             });
+
+            #[cfg(target_os = "android")]
+            if start_mobile_ticker {
+                start_android_lifecycle_ticker(
+                    app_handle,
+                    ticker_shutdown,
+                );
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                let _ = (app_handle, ticker_shutdown);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
