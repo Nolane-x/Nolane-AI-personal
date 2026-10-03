@@ -283,3 +283,30 @@ def test_v1_closure_blocks_resource_policy_failure(tmp_path):
     )
     assert receipt["status"] == BLOCKED_STATUS
     assert "android_performance_not_pass" in receipt["reasons"]
+
+def test_v1_closure_rejects_loosened_performance_policy(tmp_path):
+    evidence = full_evidence(tmp_path)
+    loosened = performance_policy()
+    loosened["max_p95_turn_ms"] = 60000
+    write_json(evidence["android_performance_policy_path"], loosened)
+    receipt = evaluate_v1_closure(**evidence)
+    assert receipt["status"] == BLOCKED_STATUS
+    assert any(
+        reason.startswith("invalid_android_performance_policy")
+        for reason in receipt["reasons"]
+    )
+
+
+def test_v1_closure_rejects_windows_manifest_model_drift(tmp_path):
+    ceremony = promotion_ceremony()
+    evidence = full_evidence(tmp_path, ceremony=ceremony)
+    windows = windows_receipt(ceremony)
+    windows["release_manifest_model_sha256"] = "f" * 64
+    write_json(evidence["windows_receipt_path"], windows)
+    receipt = evaluate_v1_closure(**evidence)
+    assert receipt["status"] == BLOCKED_STATUS
+    assert any(
+        reason.startswith("invalid_windows_clean_install")
+        for reason in receipt["reasons"]
+    )
+
