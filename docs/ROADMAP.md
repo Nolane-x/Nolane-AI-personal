@@ -1470,8 +1470,8 @@ Scientific execution target: **5+-WINDOW REAL CORTEX LEARNING / NO SELF-PROMOTIO
 - [x] privacy-preserving longitudinal report
 - [x] training executor cannot call L40 or grant itself promotion authority
 - [x] validate-only mode before expensive training
-- [ ] Product v0.42 merge becomes the base for L43 PR
-- [ ] L43 CI PASS
+- [x] Product v0.42 merge becomes the base for L43 PR
+- [x] L43 CI PASS
 - [ ] collect at least five real approved adaptation windows
 - [ ] freeze one completely isolated real fixed panel
 - [ ] execute 5+ real L38 cycles
@@ -1508,7 +1508,7 @@ Empirical-input target: **REAL PRODUCT USE -> HUMAN REVIEW -> L43 PLAN / NO AUTO
 - [x] individual prompt hashes excluded from bridge receipt
 - [x] emitted plan is immediately revalidated by native L43 validator
 - [x] bridge cannot train, authorize or promote a checkpoint
-- [ ] L44 CI PASS
+- [x] L44 CI PASS
 - [ ] collect first real product window from actual Nolane usage
 - [ ] complete explicit local human review of that window
 - [ ] accumulate at least five distinct real adaptation windows
@@ -1547,12 +1547,71 @@ Product-consent target: **REAL CHAT -> ONE-BY-ONE LOCAL HUMAN REVIEW / NO AUTO-T
 - [x] older/unsupported remote runtime fails soft without breaking chat
 - [x] backend product-history -> review -> finalized-pack tests
 - [x] browser rendered review-flow court
-- [ ] L45 CI PASS
-- [ ] merge v0.45
+- [x] L45 CI PASS
+- [x] merge v0.45
 - [ ] collect first real reviewed window from normal Nolane usage
 - [ ] collect 5+ real adaptation windows
 - [ ] execute real L43 and obtain empirical PASS/BLOCKED result
 - [ ] only after human review issue L40 authorization if merited
 
 L45 changes the ergonomics of real evidence collection, not its authority. The system still cannot learn from a conversation merely because it happened.
+
+## L46 — Real Learning Campaign
+
+Campaign target: **REVIEWED WINDOWS -> LEAKAGE-SAFE L43 PLAN / BACKEND ONLY**.
+
+- [x] require one fixed window
+- [x] require one baseline-retention window
+- [x] require at least five adaptation windows
+- [x] require all roles to come from one chronological local registry
+- [x] block window-role reuse
+- [x] block exact cross-window prompt/pair leakage
+- [x] block near-duplicate cross-window leakage
+- [x] compose later retention from baseline/prior train+dev only
+- [x] never rehearse original held-out test examples from prior adaptation windows
+- [x] re-run L28 on composed retention pack
+- [x] immediately verify emitted native L43 plan
+- [x] campaign receipt contains aggregate lineage only
+- [x] L46 full Python 3.10/3.12 CI PASS
+- [x] L46 Product runtime/browser/Windows/Android courts PASS
+- [x] merge v0.46
+- [ ] build first L46 campaign from genuine reviewed product windows
+- [ ] run real L43 campaign
+- [ ] obtain empirical PASS/BLOCKED result
+
+## L47 — v1 Interaction Reliability Freeze
+
+Product target: **NO NEW PRIMARY SURFACE; HARDEN EXISTING CORE JOBS**.
+
+- [x] freeze v1 primary surface to chat/power/personalization/review
+- [x] no sidebar/model picker/dashboard/prompt-library scope for v1
+- [x] create-window request retry returns same pending window
+- [x] repeated create does not advance SQLite cursor twice
+- [x] exact frozen decision retry is idempotent
+- [x] conflicting decision retry fails closed
+- [x] duplicate decision retry never appends a second JSONL row
+- [x] partial review survives full ProductRuntime restart
+- [x] restart resumes exact first undecided candidate
+- [x] exact pre-restart decision retry stays idempotent
+- [x] finalize retry is idempotent
+- [ ] L47 CI PASS
+- [ ] merge v0.47
+
+### Remaining v1 empirical/release closure
+
+- [ ] collect one genuine isolated fixed window
+- [ ] collect one genuine baseline-retention window
+- [ ] collect at least five genuine reviewed adaptation windows
+- [ ] build real L46 campaign
+- [ ] run real L43 5+ recurrent-cortex cycles
+- [ ] require learned-window retention PASS for every prior adaptation window
+- [ ] human review of real longitudinal report
+- [ ] issue L40 authorization only if evidence merits it
+- [ ] commit real trained checkpoint through L33
+- [ ] converge actual serving workers through L34
+- [ ] finalize immutable L36 COMPLETE ceremony
+- [ ] stage that promoted checkpoint into Windows product release
+- [ ] clean-install Windows court with start -> chat -> restart -> chat
+- [ ] close Android production inference/pairing boundary
+- [ ] tag v1.0 only after the applicable courts above are green
 
