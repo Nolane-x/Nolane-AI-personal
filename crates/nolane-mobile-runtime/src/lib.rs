@@ -1,3 +1,15 @@
+mod persistent_state;
+
+pub use persistent_state::{
+    MobilePersistentLatent,
+    MobilePersistentProductState,
+    MobileProfile,
+    MobileStateBundle,
+    MobileStateStore,
+    MOBILE_LATENT_SCHEMA,
+    MOBILE_PRODUCT_STATE_SCHEMA,
+};
+
 use nolane_mobile_kernel::{KernelError, MobileKernel};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
