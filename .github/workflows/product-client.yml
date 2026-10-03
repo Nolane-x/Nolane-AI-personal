@@ -21,6 +21,8 @@ on:
       - "tests/test_product_version.py"
       - "src/nolane_personal/mobile_factorized.py"
       - "src/nolane_personal/mobile_prompt_contract.py"
+      - "src/nolane_personal/seeded_sampling.py"
+      - "tests/test_seeded_sampling.py"
       - "tests/test_mobile_factorized.py"
       - "tests/test_mobile_factorized_export.py"
       - "tests/test_mobile_prompt_contract.py"
@@ -53,6 +55,8 @@ on:
       - "tests/test_product_version.py"
       - "src/nolane_personal/mobile_factorized.py"
       - "src/nolane_personal/mobile_prompt_contract.py"
+      - "src/nolane_personal/seeded_sampling.py"
+      - "tests/test_seeded_sampling.py"
       - "tests/test_mobile_factorized.py"
       - "tests/test_mobile_factorized_export.py"
       - "tests/test_mobile_prompt_contract.py"
@@ -81,9 +85,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e '.[dev]'
-      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py tests/test_product_cortex_selftest.py tests/test_product_version.py tests/test_mobile_factorized.py tests/test_mobile_factorized_export.py tests/test_mobile_prompt_contract.py tests/test_product_prompt_payload.py
+      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py tests/test_product_cortex_selftest.py tests/test_product_version.py tests/test_mobile_factorized.py tests/test_mobile_factorized_export.py tests/test_mobile_prompt_contract.py tests/test_product_prompt_payload.py tests/test_seeded_sampling.py
       - run: python scripts/check_product_version.py
-      - run: python -m compileall -q src/nolane_personal/product_*.py src/nolane_personal/mobile_factorized.py src/nolane_personal/mobile_prompt_contract.py scripts/stage_product_release_assets.py scripts/check_product_version.py scripts/export_mobile_factorized.py scripts/build_real_mobile_tokenizer_fixture.py packaging/product_runtime_entry.py
+      - run: python -m compileall -q src/nolane_personal/product_*.py src/nolane_personal/mobile_factorized.py src/nolane_personal/mobile_prompt_contract.py src/nolane_personal/seeded_sampling.py scripts/stage_product_release_assets.py scripts/check_product_version.py scripts/export_mobile_factorized.py scripts/build_real_mobile_tokenizer_fixture.py packaging/product_runtime_entry.py
 
   browser:
     name: NUI browser court
@@ -160,6 +164,8 @@ jobs:
         run: cargo test --manifest-path crates/nolane-mobile-runtime/Cargo.toml
       - name: Cross-language tokenizer/greedy generation equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_generation_fixture -- artifacts/mobile-rust-fixture
+      - name: Cross-language seeded nucleus sampling equivalence
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_seeded_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Frozen prompt -> native chat generation equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_chat_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Freeze exact pinned Qwen tokenizer fixture
