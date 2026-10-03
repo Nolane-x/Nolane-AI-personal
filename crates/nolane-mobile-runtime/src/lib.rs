@@ -254,7 +254,7 @@ impl PersistentMobileState {
             state: self.state.clone(),
             mode: mode.to_string(),
             intent: intent.to_string(),
-            user_text: user_text.map(str::to_string),
+            user_text: user_text.map(|value| value.to_string()),
             memories: self.memories.clone(),
         }
     }
@@ -1266,8 +1266,6 @@ impl MobileRuntime {
 mod tests {
     use super::{
         argmax,
-        sha256_hex,
-        splitmix64_next,
         read_persistent_mobile_state,
         sha256_hex,
         splitmix64_next,
