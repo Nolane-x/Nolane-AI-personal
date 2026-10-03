@@ -79,6 +79,7 @@ def test_mobile_package_roundtrip_is_privacy_preserving_and_bound(tmp_path):
         "contains_chat_text": False,
         "contains_promotion_authority": False,
     }
+    assert manifest["weights_dtype"] == "float32"
     assert manifest["runtime"] == {
         "python_required": False,
         "pytorch_required": False,
