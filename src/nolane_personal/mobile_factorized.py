@@ -460,7 +460,10 @@ def _portable_state_dict(prefix: str, module) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for name, tensor in module.state_dict().items():
         key = f"{prefix}.{name}"
-        result[key] = tensor.detach().cpu().contiguous()
+        value = tensor.detach().cpu()
+        if value.is_floating_point():
+            value = value.float()
+        result[key] = value.contiguous()
     return result
 
 
@@ -535,6 +538,7 @@ def export_mobile_factorized_package(
             "contains_chat_text": False,
             "contains_promotion_authority": False,
         },
+        "weights_dtype": "float32",
         "runtime": {
             "python_required": False,
             "pytorch_required": False,
@@ -620,6 +624,8 @@ def verify_mobile_factorized_package(
         "contains_promotion_authority": False,
     }:
         raise ValueError("mobile package privacy declaration mismatch")
+    if manifest.get("weights_dtype") != "float32":
+        raise ValueError("mobile package weights dtype mismatch")
     if manifest.get("runtime") != {
         "python_required": False,
         "pytorch_required": False,
