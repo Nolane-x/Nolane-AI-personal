@@ -25,6 +25,8 @@ class MobileFactorizedContract:
     virtual_steps: int
     tie_word_embeddings: bool
     rms_norm_eps: float
+    hidden_norm_eps: float
+    latent_norm_eps: float
     slow_decay_floor: float
     max_abs_gate: float
     bos_token_id: int | None
@@ -429,6 +431,8 @@ def mobile_factorized_contract(model) -> MobileFactorizedContract:
         virtual_steps=int(cortex.virtual_steps),
         tie_word_embeddings=bool(boundary.tie_word_embeddings),
         rms_norm_eps=float(boundary.rms_norm_eps),
+        hidden_norm_eps=float(model.cortex.module.hidden_norm.eps),
+        latent_norm_eps=float(model.cortex.module.latent_norm.eps),
         slow_decay_floor=float(cortex.slow_decay_floor),
         max_abs_gate=float(cortex.max_abs_gate),
         bos_token_id=boundary.bos_token_id,
