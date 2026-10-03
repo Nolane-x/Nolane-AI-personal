@@ -23,7 +23,9 @@ on:
       - "tests/test_mobile_factorized_export.py"
       - "scripts/export_mobile_factorized.py"
       - "scripts/build_mobile_rust_fixture.py"
+      - "scripts/build_real_mobile_tokenizer_fixture.py"
       - "crates/nolane-mobile-kernel/**"
+      - "crates/nolane-mobile-runtime/**"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -50,7 +52,9 @@ on:
       - "tests/test_mobile_factorized_export.py"
       - "scripts/export_mobile_factorized.py"
       - "scripts/build_mobile_rust_fixture.py"
+      - "scripts/build_real_mobile_tokenizer_fixture.py"
       - "crates/nolane-mobile-kernel/**"
+      - "crates/nolane-mobile-runtime/**"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -146,8 +150,20 @@ jobs:
         run: cargo test --manifest-path crates/nolane-mobile-kernel/Cargo.toml
       - name: Cross-language logits/state equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-kernel/Cargo.toml --example verify_fixture -- artifacts/mobile-rust-fixture
+      - name: Native tokenizer/generation unit tests
+        run: cargo test --manifest-path crates/nolane-mobile-runtime/Cargo.toml
+      - name: Cross-language tokenizer/greedy generation equivalence
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_generation_fixture -- artifacts/mobile-rust-fixture
+      - name: Freeze exact pinned Qwen tokenizer fixture
+        env:
+          HF_HUB_DISABLE_TELEMETRY: "1"
+        run: python scripts/build_real_mobile_tokenizer_fixture.py --output-dir artifacts/real-qwen-tokenizer
+      - name: Exact pinned Qwen tokenizer Rust compatibility
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_real_qwen_tokenizer -- artifacts/real-qwen-tokenizer
       - name: Android target compile court
-        run: cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
+        run: |
+          cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
+          cargo check --manifest-path crates/nolane-mobile-runtime/Cargo.toml --target aarch64-linux-android
 
   android:
     name: Android APK court

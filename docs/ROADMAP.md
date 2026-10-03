@@ -1672,8 +1672,8 @@ Android neural-runtime target: **PYTHON-FREE TOKEN STEP / NATIVE EQUIVALENCE BEF
 - [x] Rust crate has no Python/PyTorch/Qwen runtime dependency
 - [x] Rust crate Android target compile gate
 - [x] Product Client Court includes mobile Python/export/native jobs
-- [ ] L50 CI PASS
-- [ ] merge v0.50
+- [x] L50 CI PASS
+- [x] merge v0.50
 - [ ] native tokenizer + product prompt construction
 - [ ] autoregressive sampling/EOS loop in Rust
 - [ ] persistent latent/profile/state bridge into Android local runtime
@@ -1681,5 +1681,36 @@ Android neural-runtime target: **PYTHON-FREE TOKEN STEP / NATIVE EQUIVALENCE BEF
 - [ ] bundle L36-authorized mobile package into Android release
 - [ ] emulator/device local-chat court
 - [ ] latency/memory/battery court
+- [ ] only then call Android local chat production-complete
+
+## L51 — Native Tokenizer & Generation Host
+
+Android text-generation target: **TOKENIZER.JSON -> RUST PREFILL -> GREEDY AUTOREGRESSIVE TOKENS**.
+
+- [x] no new primary product UI
+- [x] load frozen tokenizer.json directly in Rust
+- [x] no Python/Transformers/Qwen model object in native runtime
+- [x] tokenizer vocabulary must match mobile model vocabulary
+- [x] empty tokenized prompt fails closed
+- [x] prompt work bounded to <=8192 tokens
+- [x] generation work bounded to <=512 new tokens
+- [x] deterministic argmax with non-finite-logit rejection
+- [x] prompt prefill carries exact recurrent state through every token
+- [x] EOS stops generation before an additional recurrent step
+- [x] generated token IDs decoded by the same frozen tokenizer
+- [x] Python fixture freezes prompt IDs + generated IDs + decoded text + final state
+- [x] Rust tokenizer/generation output must match Python fixture
+- [x] native tokenizer uses pure-Rust fancy-regex backend
+- [x] exact pinned Qwen3-0.6B tokenizer.json compatibility court
+- [x] real-tokenizer Vietnamese/English/Unicode/code encode+decode parity
+- [x] native runtime crate Android target compile gate
+- [ ] L51 Product Client Court PASS
+- [ ] merge v0.51
+- [ ] exact product chat-template rendering in native host
+- [ ] seeded sampling parity with desktop product path
+- [ ] persistent latent/profile/state bridge
+- [ ] Tauri Android LocalMobile target
+- [ ] L36-authorized mobile package + tokenizer release binding
+- [ ] emulator/device end-to-end local chat court
 - [ ] only then call Android local chat production-complete
 
