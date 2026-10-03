@@ -1617,6 +1617,9 @@ v1 readiness target: **NO FALSE AI-ON / NO NEW PRIMARY UI**.
 - [x] zero-token/invalid-shape neural smoke fails closed
 - [x] failed cortex smoke closes the partially loaded cortex
 - [x] Product Client Court includes neural self-test regression tests
+- [x] Python/Tauri/package versions must match
+- [x] Windows release workflow runs version consistency court
+- [x] remove stale hard-coded v0.42 artifact label
 - [ ] L48 CI PASS
 - [ ] merge v0.48
 - [ ] clean-install release readiness court
