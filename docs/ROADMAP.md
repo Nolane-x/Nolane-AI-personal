@@ -1739,7 +1739,7 @@ Android product-prompt target: **EXACT PINNED CHAT TEMPLATE / NO JINJA IN APK**.
 - [x] merge v0.52
 - [x] dynamic product personalization/state/memory payload parity
 - [ ] seeded sampling parity with desktop product
-- [ ] persistent Android latent/profile/state bridge
+- [x] persistent Android latent/profile/state bridge
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile model/prompt/tokenizer release binding
 - [ ] emulator/device local-chat court
@@ -1837,12 +1837,51 @@ Android continuity target: **PYTHON LIVING STATE -> CHECKPOINT-BOUND LOCAL STATE
 - [x] Python deterministic fixture emits persistent-state.json
 - [x] Rust court accepts Python-authored state and round-trips it back to disk
 - [x] Android target compile remains mandatory
-- [ ] L55 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.55
+- [x] L55 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.55
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile release bundle
 - [ ] emulator/device persistent local-chat court
 - [ ] latency/memory/battery court
 - [ ] only then call Android local chat production-complete
+
+## L56 — Tauri LocalMobile Target
+
+Android app-routing target: **TAURI PRODUCT API -> NATIVE RUST LOCALMOBILE -> PERSISTED LOCAL STATE**.
+
+- [x] no new primary product UI
+- [x] frozen `NOLANE-V056-LOCALMOBILE-BUNDLE-V1` source-bundle schema
+- [x] LocalMobile host loads native model package + tokenizer + prompt contract + bootstrap state
+- [x] first launch creates a device-local unique identity instead of reusing bootstrap identity
+- [x] `/v1/status` product-compatible local status
+- [x] `/v1/readiness` local readiness view
+- [x] `/v1/power` local power state
+- [x] `/v1/chat` invokes seeded native Rust generation
+- [x] `/v1/history` bounded local conversation continuity
+- [x] `/v1/profile` get/update with prompt-relevant fields persisted into v0.55 state
+- [x] initiative + memory-enabled shell metadata persists separately from frozen v0.55 prompt-state schema
+- [x] interaction count and product state-version advance after accepted local turns
+- [x] profile/history/state survive host restart
+- [x] learning-review routes fail explicitly rather than pretending mobile learning parity
+- [x] Tauri `RuntimeTarget::LocalMobile`
+- [x] Android defaults to LocalMobile when bundled assets are valid
+- [x] `product_api` dispatches LocalMobile without loopback HTTP
+- [x] remote pairing remains explicit development/fallback route
+- [x] clearing a remote Android target returns to LocalMobile when available
+- [x] advanced remote controls hidden while LocalMobile is active
+- [x] dedicated `resources/mobile` bundle namespace
+- [x] deterministic Python fixture emits LocalMobile bundle manifest/bootstrap state
+- [x] Rust LocalMobile court covers power -> chat -> history -> profile -> restart continuity
+- [x] Android APK must compile with the native runtime path dependency
+- [ ] L56 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.56
+- [ ] L36-authorized LocalMobile release bundle
+- [ ] emulator/device persistent local-chat court
+- [ ] full mobile LivingEngine transition/initiative-learning parity
+- [ ] latency/memory/battery court
+- [ ] only then call Android local chat production-complete
+
+L56 closes the app-routing split, not the production-release authority gap. Source APKs may compile with only the resource namespace present; a release may claim working LocalMobile only after L36-bound assets and device courts close.
 

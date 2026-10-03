@@ -11,6 +11,9 @@ use std::{
 use tauri::{Manager, RunEvent, State};
 use url::Url;
 
+#[cfg(target_os = "android")]
+use nolane_mobile_runtime::product::LocalMobileProductRuntime;
+
 #[cfg(target_os = "windows")]
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
@@ -25,6 +28,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 #[derive(Clone, Debug)]
 enum RuntimeTarget {
     Local { endpoint: String, token: String },
+    LocalMobile,
     Remote { endpoint: String, token: String },
     Unconfigured { endpoint_hint: Option<String> },
     Error { message: String },
@@ -43,6 +47,11 @@ impl RuntimeTarget {
             Self::Local { endpoint, .. } => RuntimeTargetView {
                 mode: "local".into(),
                 endpoint: Some(endpoint.clone()),
+                error: None,
+            },
+            Self::LocalMobile => RuntimeTargetView {
+                mode: "local-mobile".into(),
+                endpoint: None,
                 error: None,
             },
             Self::Remote { endpoint, .. } => RuntimeTargetView {
@@ -71,6 +80,9 @@ impl RuntimeTarget {
             Self::Remote { endpoint, token } => {
                 Ok((endpoint.clone(), Some(token.clone())))
             }
+            Self::LocalMobile => {
+                Err("LocalMobile must use the native Tauri route".into())
+            }
             Self::Unconfigured { .. } => {
                 Err("Android runtime is not paired yet".into())
             }
@@ -82,6 +94,8 @@ impl RuntimeTarget {
 struct RuntimeManager {
     target: RuntimeTarget,
     child: Option<Child>,
+    #[cfg(target_os = "android")]
+    mobile: Option<LocalMobileProductRuntime>,
 }
 
 struct ProductState {
@@ -252,11 +266,30 @@ fn spawn_windows_runtime(
     ))
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
 fn initial_non_windows_target(data_dir: &Path) -> RuntimeTarget {
     RuntimeTarget::Unconfigured {
         endpoint_hint: load_endpoint_hint(data_dir),
     }
+}
+
+#[cfg(target_os = "android")]
+fn load_android_local_mobile(
+    app: &tauri::App,
+    data_dir: &Path,
+) -> Result<LocalMobileProductRuntime, String> {
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+    let bundle_dir = resource_dir
+        .join("resources")
+        .join("mobile");
+    let mobile_data = data_dir.join("local-mobile");
+    LocalMobileProductRuntime::load(&bundle_dir, &mobile_data).map_err(|error| {
+        format!(
+            "LocalMobile runtime unavailable from {}: {}",
+            bundle_dir.display(),
+            error
+        )
+    })
 }
 
 fn initial_manager(
@@ -277,7 +310,23 @@ fn initial_manager(
         };
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "android")]
+    {
+        return match load_android_local_mobile(app, data_dir) {
+            Ok(mobile) => RuntimeManager {
+                target: RuntimeTarget::LocalMobile,
+                child: None,
+                mobile: Some(mobile),
+            },
+            Err(message) => RuntimeManager {
+                target: RuntimeTarget::Error { message },
+                child: None,
+                mobile: None,
+            },
+        };
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
     {
         let _ = app;
         RuntimeManager {
@@ -304,6 +353,23 @@ async fn product_api(
     body: Option<Value>,
 ) -> Result<Value, String> {
     let path = validate_api_path(&path)?;
+
+    #[cfg(target_os = "android")]
+    {
+        let mut manager = state
+            .manager
+            .lock()
+            .map_err(|_| "Runtime state lock poisoned".to_string())?;
+        if matches!(manager.target, RuntimeTarget::LocalMobile) {
+            let mobile = manager.mobile.as_mut().ok_or_else(|| {
+                "LocalMobile target has no native runtime".to_string()
+            })?;
+            return mobile
+                .api(&method, path, body.clone())
+                .map_err(|error| error.to_string());
+        }
+    }
+
     let (endpoint, token) = {
         let manager = state
             .manager
@@ -403,9 +469,22 @@ fn clear_remote(state: State<'_, ProductState>) -> Result<RuntimeTargetView, Str
             .manager
             .lock()
             .map_err(|_| "Runtime state lock poisoned".to_string())?;
-        manager.target = RuntimeTarget::Unconfigured {
-            endpoint_hint: None,
-        };
+        #[cfg(target_os = "android")]
+        {
+            manager.target = if manager.mobile.is_some() {
+                RuntimeTarget::LocalMobile
+            } else {
+                RuntimeTarget::Error {
+                    message: "LocalMobile runtime is unavailable".into(),
+                }
+            };
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            manager.target = RuntimeTarget::Unconfigured {
+                endpoint_hint: None,
+            };
+        }
         Ok(manager.target.view())
     }
 }

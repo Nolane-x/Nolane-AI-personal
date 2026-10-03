@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.55.0
+## Current executable milestone: Living Runtime v0.56.0
 
 The runtime now contains two very different compute scales:
 
@@ -1516,6 +1516,18 @@ The deterministic mobile fixture is now a real cross-language bridge court: Pyth
 This still does not make Android product-complete: Tauri `LocalMobile` routing, L36-authorized mobile release assets and emulator/device courts remain open.
 
 See `docs/V055-PERSISTENT-MOBILE-STATE-BRIDGE.md`.
+
+### v0.56 Tauri LocalMobile Target
+
+v0.56 closes the Android app-routing split. The existing product UI can now dispatch directly through Tauri into a native Rust LocalMobile product host instead of requiring a paired HTTP runtime.
+
+The LocalMobile host owns product-compatible status, readiness, power, profile, bounded history and chat routes. First launch derives a fresh device-local identity from a checkpoint-bound bootstrap state; later launches keep the same identity, profile, interaction count, persistent state and conversation history. Chat uses the same seeded native generation path established in v0.54/v0.55.
+
+Android now has a dedicated `RuntimeTarget::LocalMobile`. Remote pairing remains an explicit development/fallback override, and clearing that override returns to LocalMobile when native assets are available. No Python process, loopback HTTP server or Transformers runtime is required by the local Android route.
+
+This is still not a production Android release claim. L36-authorized LocalMobile assets, emulator/device local-chat evidence, full mobile LivingEngine transition parity and latency/memory/battery courts remain open.
+
+See `docs/V056-TAURI-LOCALMOBILE-TARGET.md`.
 
 ## Bootstrap Qwen
 

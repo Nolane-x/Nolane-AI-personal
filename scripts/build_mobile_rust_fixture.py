@@ -279,6 +279,27 @@ def main() -> int:
         expected_source_checkpoint_sha256=SOURCE_SHA,
         expected_latent_dim=4,
     )
+    write_persistent_mobile_state(
+        root / "bootstrap-state.json",
+        persistent_payload,
+        expected_source_checkpoint_sha256=SOURCE_SHA,
+        expected_latent_dim=4,
+    )
+    (root / "localmobile-manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "NOLANE-V056-LOCALMOBILE-BUNDLE-V1",
+                "source_checkpoint_sha256": SOURCE_SHA,
+                "prompt_contract_file_sha256": sha256_file(
+                    prompt_contract_path
+                ),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     payload = {
         "schema": "NOLANE-V050-MOBILE-RUST-GOLDEN-V1",

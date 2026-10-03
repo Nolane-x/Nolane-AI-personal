@@ -379,7 +379,7 @@
       return;
     }
     target = await invoke("runtime_target");
-    els.connectionDetails.hidden = target.mode === "local";
+    els.connectionDetails.hidden = ["local", "local-mobile"].includes(target.mode);
     els.remoteEndpoint.value = target.endpoint || "";
   }
 

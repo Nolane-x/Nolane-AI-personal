@@ -1,3 +1,5 @@
+pub mod product;
+
 use nolane_mobile_kernel::{KernelError, MobileKernel};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

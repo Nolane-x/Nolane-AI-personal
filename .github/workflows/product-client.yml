@@ -172,6 +172,8 @@ jobs:
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_seeded_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Python to Rust persistent mobile state bridge
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_persistent_state_fixture -- artifacts/mobile-rust-fixture
+      - name: LocalMobile product API and restart continuity
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_localmobile_product -- artifacts/mobile-rust-fixture
       - name: Frozen prompt -> native chat generation equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_chat_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Freeze exact pinned Qwen tokenizer fixture

@@ -1,6 +1,6 @@
 [package]
 name = "nolane-product-client"
-version = "0.55.0"
+version = "0.56.0"
 description = "Minimal Windows and Android client for Nolane AI Personal"
 authors = ["Nolane"]
 license = "Apache-2.0"
@@ -26,3 +26,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 url = "2"
 portpicker = "0.1"
 rand = "0.8"
+
+[target.'cfg(target_os = "android")'.dependencies]
+nolane-mobile-runtime = { path = "../../../crates/nolane-mobile-runtime" }
