@@ -252,27 +252,12 @@ impl MobileKernel {
         if sha256_hex(&weight_bytes) != manifest.weights_sha256 {
             return Err(KernelError::Invalid("mobile weights SHA-256 mismatch".into()));
         }
+        // The Python export verifier checks safetensors __metadata__.
+        // Native loading is bound to the immutable weights file by its
+        // manifest SHA-256, then independently binds the manifest to the
+        // expected source checkpoint and exact tensor-name set. Avoid parsing
+        // private safetensors header internals here.
         let safe = SafeTensors::deserialize(&weight_bytes)?;
-        if let Some(metadata) = safe.metadata() {
-            if metadata.get("schema").map(String::as_str) != Some(PACKAGE_SCHEMA) {
-                return Err(KernelError::Invalid(
-                    "mobile weights schema metadata mismatch".into(),
-                ));
-            }
-            if metadata
-                .get("source_checkpoint_sha256")
-                .map(String::as_str)
-                != Some(manifest.source_checkpoint_sha256.as_str())
-            {
-                return Err(KernelError::Invalid(
-                    "mobile weights source checkpoint mismatch".into(),
-                ));
-            }
-        } else {
-            return Err(KernelError::Invalid(
-                "mobile weights metadata missing".into(),
-            ));
-        }
 
         let mut tensors = HashMap::new();
         for (name, view) in safe.tensors() {
