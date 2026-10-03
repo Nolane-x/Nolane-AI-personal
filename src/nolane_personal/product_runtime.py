@@ -62,6 +62,8 @@ class ProductRuntime:
         self.release_ceremony = (
             None if release_ceremony is None else Path(release_ceremony)
         )
+        self._release_checkpoint_sha256: str | None = None
+        self._release_checkpoint_stat: tuple[int, int] | None = None
         if self.release_ceremony is not None:
             if self.checkpoint is None:
                 raise ValueError(
@@ -95,6 +97,12 @@ class ProductRuntime:
                 raise ValueError(
                     "release checkpoint does not match COMPLETE ceremony"
                 )
+            stat = checkpoint_file.stat()
+            self._release_checkpoint_sha256 = actual_sha
+            self._release_checkpoint_stat = (
+                int(stat.st_size),
+                int(stat.st_mtime_ns),
+            )
         self.learning = ProductLearningWorkspace(data_dir=self.data_dir)
         self._factory = cortex_factory
         self._cortex: Cortex | None = None
@@ -168,7 +176,23 @@ class ProductRuntime:
                 ceremony,
                 require_complete=True,
             )
-            actual_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+            stat = checkpoint.stat()
+            fingerprint = (
+                int(stat.st_size),
+                int(stat.st_mtime_ns),
+            )
+            if (
+                self._release_checkpoint_sha256 is not None
+                and self._release_checkpoint_stat == fingerprint
+            ):
+                actual_sha = self._release_checkpoint_sha256
+            else:
+                actual_sha = hashlib.sha256(
+                    checkpoint.read_bytes()
+                ).hexdigest()
+                self._release_checkpoint_sha256 = actual_sha
+                self._release_checkpoint_stat = fingerprint
+
             if ceremony["candidate_checkpoint_sha256"] != actual_sha:
                 raise ValueError(
                     "release checkpoint does not match COMPLETE ceremony"
