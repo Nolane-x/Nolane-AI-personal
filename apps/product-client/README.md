@@ -130,5 +130,7 @@ v0.55 adds the native persistent state bridge without adding a new settings surf
 
 v0.56 routes Android through a native Rust LocalMobile product host. The existing UI now has local status/power/profile/history/chat semantics without a Python sidecar or loopback HTTP server, and restart continuity is courted from the same persisted mobile state.
 
-Android is still not called production-complete until L36-authorized LocalMobile assets, emulator/device courts, fuller LivingEngine parity and latency/memory/battery evidence close.
+v0.57 makes the Android local bundle authority-bound. Production LocalMobile now requires a COMPLETE L36 ceremony tied to the exact checkpoint and hashes for the native package, tokenizer, prompt contract and bootstrap state. The release workflow stages those assets and performs a strict native smoke before building the APK.
+
+Android is still not called production-complete until a real authority-bound release run, emulator/device courts, fuller LivingEngine parity and latency/memory/battery evidence close.
 
