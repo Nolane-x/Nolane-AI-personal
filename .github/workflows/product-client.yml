@@ -18,6 +18,8 @@ on:
       - "scripts/verify_windows_clean_install.ps1"
       - "tests/test_product_cortex_selftest.py"
       - "tests/test_product_version.py"
+      - "src/nolane_personal/mobile_factorized.py"
+      - "tests/test_mobile_factorized.py"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -39,6 +41,8 @@ on:
       - "scripts/verify_windows_clean_install.ps1"
       - "tests/test_product_cortex_selftest.py"
       - "tests/test_product_version.py"
+      - "src/nolane_personal/mobile_factorized.py"
+      - "tests/test_mobile_factorized.py"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -59,7 +63,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e '.[dev]'
-      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py tests/test_product_cortex_selftest.py tests/test_product_version.py
+      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py tests/test_product_cortex_selftest.py tests/test_product_version.py tests/test_mobile_factorized.py
       - run: python scripts/check_product_version.py
       - run: python -m compileall -q src/nolane_personal/product_*.py scripts/stage_product_release_assets.py scripts/check_product_version.py packaging/product_runtime_entry.py
 
