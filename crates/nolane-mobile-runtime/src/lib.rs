@@ -1,5 +1,5 @@
 use nolane_mobile_kernel::{KernelError, MobileKernel};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
 use thiserror::Error;
@@ -30,7 +30,7 @@ const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
 const SPLITMIX_MUL1: u64 = 0xBF58476D1CE4E5B9;
 const SPLITMIX_MUL2: u64 = 0x94D049BB133111EB;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProductPayloadProfile {
     pub preferred_name: String,
     pub language: String,
@@ -39,7 +39,7 @@ pub struct ProductPayloadProfile {
     pub personal_instruction: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProductPayloadRelationship {
     pub closeness: f64,
     pub trust: f64,
@@ -47,7 +47,7 @@ pub struct ProductPayloadRelationship {
     pub interaction_count: i64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProductPayloadAffect {
     pub valence: f64,
     pub energy: f64,
@@ -56,7 +56,7 @@ pub struct ProductPayloadAffect {
     pub irritation: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProductPayloadState {
     pub identity_id: String,
     pub relationship: ProductPayloadRelationship,
@@ -64,7 +64,7 @@ pub struct ProductPayloadState {
     pub open_threads: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProductPayloadInput {
     pub schema: String,
     pub profile: ProductPayloadProfile,
