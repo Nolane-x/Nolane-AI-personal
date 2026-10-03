@@ -438,7 +438,7 @@ impl MobileMemoryStore {
             metadata.insert("rest_consolidated".into(), Value::Bool(true));
             metadata.insert(
                 "source_memory_ids".into(),
-                json!(source_ids),
+                json!(source_ids.clone()),
             );
             metadata.insert(
                 "strategy".into(),
