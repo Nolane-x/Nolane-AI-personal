@@ -38,6 +38,15 @@ const HARD_MAX_WITHOUT_USER_MS: u64 = 24 * 60 * 60 * 1000;
 const REST_MIN_IDLE_MS: u64 = 30 * 60 * 1000;
 const REST_MIN_INTERVAL_MS: u64 = 45 * 60 * 1000;
 const REST_DUPLICATE_SIMILARITY: f64 = 0.72;
+
+pub fn lifecycle_tick_seconds(initiative: &str) -> u64 {
+    match initiative {
+        "off" => 5,
+        "active" => 12,
+        _ => 30,
+    }
+}
+
 const MAX_PROFILE_NAME_CHARS: usize = 80;
 const MAX_PERSONAL_INSTRUCTION_CHARS: usize = 1200;
 
