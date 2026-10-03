@@ -4,6 +4,8 @@ use crate::{
     MobileRuntime,
     PersistentMobileState,
     RuntimeError,
+    PRODUCT_SAMPLING_TEMPERATURE,
+    PRODUCT_SAMPLING_TOP_P,
 };
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -588,6 +590,27 @@ impl LocalMobileProductRuntime {
     }
 
     fn send_message(&mut self, text: &str) -> Result<Value, RuntimeError> {
+        self.send_message_with_token_limit(text, None)
+    }
+
+    pub fn synthetic_court_chat(
+        &mut self,
+        text: &str,
+        max_new_tokens: usize,
+    ) -> Result<Value, RuntimeError> {
+        if max_new_tokens == 0 || max_new_tokens > 16 {
+            return Err(RuntimeError::Invalid(
+                "synthetic court token limit must be in 1..=16".into(),
+            ));
+        }
+        self.send_message_with_token_limit(text, Some(max_new_tokens))
+    }
+
+    fn send_message_with_token_limit(
+        &mut self,
+        text: &str,
+        max_new_tokens: Option<usize>,
+    ) -> Result<Value, RuntimeError> {
         if !self.powered {
             return Err(RuntimeError::Invalid(
                 "Nolane AI is not running".into(),
@@ -603,12 +626,29 @@ impl LocalMobileProductRuntime {
 
         let mut rng = OsRng;
         let seed = rng.next_u64();
-        let generated = self.runtime.generate_persistent_product_seeded(
-            "reply",
-            "conversation",
-            Some(clean),
-            seed,
-        )?;
+        let generated = match max_new_tokens {
+            Some(limit) => {
+                let payload = self.runtime.persistent_product_payload(
+                    "reply",
+                    "conversation",
+                    Some(clean),
+                )?;
+                let prompt = self.runtime.render_product_prompt(&payload)?;
+                self.runtime.generate_seeded(
+                    &prompt,
+                    limit,
+                    seed,
+                    PRODUCT_SAMPLING_TEMPERATURE,
+                    PRODUCT_SAMPLING_TOP_P,
+                )?
+            }
+            None => self.runtime.generate_persistent_product_seeded(
+                "reply",
+                "conversation",
+                Some(clean),
+                seed,
+            )?,
+        };
         let reply = generated.text.trim().to_string();
 
         let ordinal = self.meta.state_version.saturating_add(1);
