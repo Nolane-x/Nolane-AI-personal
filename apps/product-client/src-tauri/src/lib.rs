@@ -13,6 +13,8 @@ use url::Url;
 
 #[cfg(target_os = "android")]
 use nolane_mobile_runtime::product::LocalMobileProductRuntime;
+#[cfg(target_os = "android")]
+use tauri_plugin_fs::FsExt;
 
 #[cfg(target_os = "windows")]
 use std::{
@@ -106,6 +108,8 @@ struct RuntimeManager {
     child: Option<Child>,
     #[cfg(target_os = "android")]
     mobile: Option<LocalMobileProductRuntime>,
+    #[cfg(target_os = "android")]
+    v058_court_enabled: bool,
 }
 
 struct ProductState {
@@ -284,31 +288,163 @@ fn initial_non_windows_target(data_dir: &Path) -> RuntimeTarget {
 }
 
 #[cfg(target_os = "android")]
-fn android_v058_court_enabled(app: &tauri::App) -> Result<bool, String> {
+fn android_asset_bytes(
+    app: &tauri::App,
+    relative: &str,
+) -> Result<Vec<u8>, String> {
     let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
-    let ceremony_path = resource_dir
-        .join("resources")
-        .join("mobile")
-        .join("promotion-ceremony.json");
-    if !ceremony_path.is_file() {
-        return Ok(false);
+    let path = resource_dir.join(relative);
+    app.fs().read(path).map_err(|error| {
+        format!("Could not read packaged Android asset {relative}: {error}")
+    })
+}
+
+#[cfg(target_os = "android")]
+fn safe_bundle_filename(value: &str, label: &str) -> Result<String, String> {
+    if value.is_empty()
+        || value.contains('/')
+        || value.contains('\\')
+        || value == "."
+        || value == ".."
+    {
+        return Err(format!("Invalid LocalMobile {label} filename"));
     }
-    let ceremony: Value = serde_json::from_slice(
-        &fs::read(&ceremony_path).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())?;
-    let transaction_id = ceremony
+    Ok(value.to_string())
+}
+
+#[cfg(target_os = "android")]
+fn write_android_asset(
+    app: &tauri::App,
+    relative: &str,
+    destination: &Path,
+) -> Result<(), String> {
+    let bytes = android_asset_bytes(app, relative)?;
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(destination, bytes).map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "android")]
+fn materialize_android_mobile_bundle(
+    app: &tauri::App,
+    data_dir: &Path,
+) -> Result<(PathBuf, bool), String> {
+    const ROOT: &str = "resources/mobile";
+
+    let manifest_bytes = android_asset_bytes(
+        app,
+        &format!("{ROOT}/localmobile-manifest.json"),
+    )?;
+    let manifest: Value =
+        serde_json::from_slice(&manifest_bytes).map_err(|e| e.to_string())?;
+    let checkpoint = manifest
+        .get("source_checkpoint_sha256")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Packaged LocalMobile manifest lacks checkpoint".to_string())?;
+    let ceremony_sha = manifest
+        .get("promotion_ceremony_sha256")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Packaged LocalMobile manifest lacks ceremony digest".to_string())?;
+    if checkpoint.len() != 64
+        || ceremony_sha.len() != 64
+        || !checkpoint.bytes().all(|b| b.is_ascii_hexdigit())
+        || !ceremony_sha.bytes().all(|b| b.is_ascii_hexdigit())
+    {
+        return Err("Packaged LocalMobile bundle digest is malformed".into());
+    }
+
+    let ceremony_bytes = android_asset_bytes(
+        app,
+        &format!("{ROOT}/promotion-ceremony.json"),
+    )?;
+    let ceremony: Value =
+        serde_json::from_slice(&ceremony_bytes).map_err(|e| e.to_string())?;
+    let court_enabled = ceremony
         .get("transaction_id")
         .and_then(Value::as_str)
-        .unwrap_or("");
-    let checkpoint = ceremony
-        .get("candidate_checkpoint_sha256")
-        .and_then(Value::as_str)
-        .unwrap_or("");
-    Ok(
-        transaction_id == V058_COURT_TRANSACTION_ID
-            && checkpoint == V058_COURT_CHECKPOINT_SHA256,
+        == Some(V058_COURT_TRANSACTION_ID)
+        && ceremony
+            .get("candidate_checkpoint_sha256")
+            .and_then(Value::as_str)
+            == Some(V058_COURT_CHECKPOINT_SHA256);
+
+    let key = format!(
+        "{}-{}",
+        &checkpoint[..16],
+        &ceremony_sha[..16],
+    );
+    let cache_root = data_dir.join("packaged-localmobile");
+    let destination = cache_root.join(&key);
+    if destination.join("localmobile-manifest.json").is_file() {
+        return Ok((destination, court_enabled));
+    }
+
+    fs::create_dir_all(&cache_root).map_err(|e| e.to_string())?;
+    let staging = cache_root.join(format!(".{key}.staging"));
+    if staging.exists() {
+        fs::remove_dir_all(&staging).map_err(|e| e.to_string())?;
+    }
+    fs::create_dir_all(staging.join("package")).map_err(|e| e.to_string())?;
+
+    fs::write(staging.join("localmobile-manifest.json"), manifest_bytes)
+        .map_err(|e| e.to_string())?;
+    fs::write(staging.join("promotion-ceremony.json"), ceremony_bytes)
+        .map_err(|e| e.to_string())?;
+
+    for name in [
+        "bootstrap-state.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "prompt-contract.json",
+    ] {
+        write_android_asset(
+            app,
+            &format!("{ROOT}/{name}"),
+            &staging.join(name),
+        )?;
+    }
+
+    let package_manifest_bytes = android_asset_bytes(
+        app,
+        &format!("{ROOT}/package/manifest.json"),
+    )?;
+    let package_manifest: Value = serde_json::from_slice(
+        &package_manifest_bytes,
     )
+    .map_err(|e| e.to_string())?;
+    let contract_filename = safe_bundle_filename(
+        package_manifest
+            .get("contract_filename")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Mobile package lacks contract filename".to_string())?,
+        "contract",
+    )?;
+    let weights_filename = safe_bundle_filename(
+        package_manifest
+            .get("weights_filename")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Mobile package lacks weights filename".to_string())?,
+        "weights",
+    )?;
+    fs::write(
+        staging.join("package").join("manifest.json"),
+        package_manifest_bytes,
+    )
+    .map_err(|e| e.to_string())?;
+    for name in [&contract_filename, &weights_filename] {
+        write_android_asset(
+            app,
+            &format!("{ROOT}/package/{name}"),
+            &staging.join("package").join(name),
+        )?;
+    }
+
+    if destination.exists() {
+        fs::remove_dir_all(&destination).map_err(|e| e.to_string())?;
+    }
+    fs::rename(&staging, &destination).map_err(|e| e.to_string())?;
+    Ok((destination, court_enabled))
 }
 
 #[cfg(target_os = "android")]
@@ -350,11 +486,10 @@ fn write_v058_court_receipt(
 
 #[cfg(target_os = "android")]
 fn run_v058_android_emulator_court(
-    app: &tauri::App,
     manager: &mut RuntimeManager,
     data_dir: &Path,
 ) -> Result<(), String> {
-    if !android_v058_court_enabled(app)? {
+    if !manager.v058_court_enabled {
         return Ok(());
     }
     if !matches!(manager.target, RuntimeTarget::LocalMobile) {
@@ -511,19 +646,35 @@ fn run_v058_android_emulator_court(
 fn load_android_local_mobile(
     app: &tauri::App,
     data_dir: &Path,
-) -> Result<LocalMobileProductRuntime, String> {
-    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
-    let bundle_dir = resource_dir
-        .join("resources")
-        .join("mobile");
+) -> Result<(LocalMobileProductRuntime, bool), String> {
+    let (bundle_dir, court_enabled) =
+        materialize_android_mobile_bundle(app, data_dir)?;
     let mobile_data = data_dir.join("local-mobile");
-    LocalMobileProductRuntime::load(&bundle_dir, &mobile_data).map_err(|error| {
-        format!(
-            "LocalMobile runtime unavailable from {}: {}",
-            bundle_dir.display(),
-            error
-        )
-    })
+
+    let load = || {
+        LocalMobileProductRuntime::load(&bundle_dir, &mobile_data).map_err(|error| {
+            format!(
+                "LocalMobile runtime unavailable from {}: {}",
+                bundle_dir.display(),
+                error
+            )
+        })
+    };
+    match load() {
+        Ok(mobile) => Ok((mobile, court_enabled)),
+        Err(first_error) => {
+            // Cached APK assets are derived, not user state. If the cache was
+            // interrupted or corrupted, rebuild it once from immutable assets.
+            let _ = fs::remove_dir_all(&bundle_dir);
+            let (rebuilt_dir, rebuilt_court_enabled) =
+                materialize_android_mobile_bundle(app, data_dir)?;
+            LocalMobileProductRuntime::load(&rebuilt_dir, &mobile_data)
+                .map(|mobile| (mobile, rebuilt_court_enabled))
+                .map_err(|second| {
+                    format!("{first_error}; rebuild failed: {second}")
+                })
+        }
+    }
 }
 
 fn initial_manager(
@@ -547,15 +698,17 @@ fn initial_manager(
     #[cfg(target_os = "android")]
     {
         return match load_android_local_mobile(app, data_dir) {
-            Ok(mobile) => RuntimeManager {
+            Ok((mobile, v058_court_enabled)) => RuntimeManager {
                 target: RuntimeTarget::LocalMobile,
                 child: None,
                 mobile: Some(mobile),
+                v058_court_enabled,
             },
             Err(message) => RuntimeManager {
                 target: RuntimeTarget::Error { message },
                 child: None,
                 mobile: None,
+                v058_court_enabled: false,
             },
         };
     }
@@ -741,14 +894,17 @@ pub fn run() {
             .with_max_level(log::LevelFilter::Info),
     );
 
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_fs::init());
+
+    let app = builder
         .setup(|app| {
             let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
             let mut manager = initial_manager(app, &data_dir);
             #[cfg(target_os = "android")]
             if let Err(error) = run_v058_android_emulator_court(
-                app,
                 &mut manager,
                 &data_dir,
             ) {
