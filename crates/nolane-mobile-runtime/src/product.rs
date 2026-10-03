@@ -285,7 +285,7 @@ impl LocalMobileProductRuntime {
                 "target": "LocalMobile",
             })),
             ("GET", "/v1/history") => Ok(json!({
-                "messages": self.history,
+                "messages": &self.history,
             })),
             ("GET", "/v1/profile") => self.profile_json(),
             ("PUT", "/v1/profile") => {
@@ -346,7 +346,7 @@ impl LocalMobileProductRuntime {
             "interactions": interactions,
             "open_threads": open_threads,
             "memory_enabled": self.meta.memory_enabled,
-            "initiative": self.meta.initiative,
+            "initiative": &self.meta.initiative,
             "model_checkpoint_sha256": self.runtime.source_checkpoint_sha256(),
             "device": "android-local-rust",
             "readiness": {
@@ -365,13 +365,13 @@ impl LocalMobileProductRuntime {
         })?;
         let profile = &state.profile;
         let body = json!({
-            "preferred_name": profile.preferred_name,
-            "language": profile.language,
-            "response_length": profile.response_length,
-            "conversation_style": profile.conversation_style,
-            "initiative": self.meta.initiative,
+            "preferred_name": &profile.preferred_name,
+            "language": &profile.language,
+            "response_length": &profile.response_length,
+            "conversation_style": &profile.conversation_style,
+            "initiative": &self.meta.initiative,
             "memory_enabled": self.meta.memory_enabled,
-            "personal_instruction": profile.personal_instruction,
+            "personal_instruction": &profile.personal_instruction,
         });
         let digest = sha256_hex(&serde_json::to_vec(&body)?);
         let mut output = body;
@@ -446,7 +446,8 @@ impl LocalMobileProductRuntime {
             return Err(RuntimeError::Invalid("message is too long".into()));
         }
 
-        let seed = OsRng.next_u64();
+        let mut rng = OsRng;
+        let seed = rng.next_u64();
         let generated = self.runtime.generate_persistent_product_seeded(
             "reply",
             "conversation",
