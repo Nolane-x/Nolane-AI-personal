@@ -123,6 +123,7 @@ jobs:
         run: |
           tauri icon icon-source.svg
           tauri android init --ci --skip-targets-install
+          python ../../scripts/patch_tauri_android_cli_bridge.py src-tauri/gen/android
           tauri icon icon-source.svg
           tauri android build --apk --target aarch64
       - name: Verify APK exists
