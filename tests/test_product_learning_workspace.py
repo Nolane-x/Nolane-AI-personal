@@ -260,6 +260,54 @@ def test_registry_recovers_exact_next_orphan_after_atomic_window_install(tmp_pat
         runtime.close()
 
 
+def test_read_only_registry_verification_does_not_adopt_recoverable_orphan(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="first")
+        first = runtime.create_learning_window()
+        approve_all(runtime, first["window_id"])
+        runtime.finalize_learning_window(first["window_id"])
+
+        fill_runtime(runtime, prefix="second")
+        second = runtime.create_learning_window()
+        assert second["window_id"] == "window-0002"
+
+        registry_path = runtime.learning.registry_path
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        registry["windows"] = registry["windows"][:1]
+        registry["last_exported_rowid"] = registry["windows"][0][
+            "through_rowid_inclusive"
+        ]
+        registry["next_window_index"] = 2
+        registry.pop("registry_sha256", None)
+        from nolane_personal.store import payload_digest
+        registry["registry_sha256"] = payload_digest(registry)
+        registry_path.write_text(
+            json.dumps(registry, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        before = registry_path.read_bytes()
+
+        with pytest.raises(
+            ValueError,
+            match="unregistered evidence window gap/conflict",
+        ):
+            runtime.learning.verify_registry(recover_orphans=False)
+
+        assert registry_path.read_bytes() == before
+
+        recovered = runtime.learning.verify_registry()
+        assert [row["window_id"] for row in recovered["windows"]] == [
+            "window-0001",
+            "window-0002",
+        ]
+        assert recovered["last_exported_rowid"] == second[
+            "through_rowid_inclusive"
+        ]
+    finally:
+        runtime.close()
+
+
 def test_registry_refuses_cursor_corruption_before_orphan_recovery(tmp_path):
     runtime = ProductRuntime(tmp_path, cortex_factory=factory)
     try:
