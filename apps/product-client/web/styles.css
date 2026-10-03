@@ -960,6 +960,33 @@ summary:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.review-target-editor {
+  display: block;
+  width: 100%;
+  min-height: 118px;
+  padding: 0;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.review-target-editor:focus {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--orange) 56%, transparent);
+  padding-left: 10px;
+}
+
+.review-edit-hint {
+  display: block;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .review-language {
   margin: 2px 0 0;
 }
