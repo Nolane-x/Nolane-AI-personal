@@ -80,6 +80,14 @@ def make_plan(tmp_path: Path, *, cycles=5):
     latent.write_text('{"values":[0.0]}', encoding="utf-8")
     tokenizer = tmp_path / "tokenizer"
     tokenizer.mkdir()
+    (tokenizer / "tokenizer.json").write_text(
+        '{"version":"1.0","model":{"type":"fixture"}}',
+        encoding="utf-8",
+    )
+    (tokenizer / "tokenizer_config.json").write_text(
+        '{"chat_template":"fixture"}',
+        encoding="utf-8",
+    )
 
     fixed = pack(tmp_path, "fixed")
     cycle_rows = []
@@ -117,6 +125,20 @@ def test_real_longitudinal_plan_requires_five_isolated_approved_cycles(tmp_path)
     assert plan.receipt["privacy"]["contains_raw_prompt_target"] is False
     assert plan.receipt["privacy"]["contains_raw_source_group_hash_values"] is False
     assert plan.receipt["privacy"]["contains_local_paths"] is False
+    assert len(plan.receipt["initial_factorized_sha256"]) == 64
+    assert len(plan.receipt["latent_sha256"]) == 64
+    assert len(plan.receipt["tokenizer_assets_sha256"]) == 64
+    assert plan.receipt["cycle_bindings"][0]["training"] == {
+        "epochs": 1,
+        "learning_rate": 0.0002,
+        "adaptation_task_weight": 1.0,
+        "retention_task_weight": 0.5,
+        "retention_distill_weight": 1.0,
+        "cortex_anchor_weight": 0.01,
+        "temperature": 2.0,
+        "max_grad_norm": 1.0,
+        "max_length": 128,
+    }
 
     rendered = json.dumps(plan.receipt, sort_keys=True)
     for group in plan.fixed_panel.source_groups:
@@ -306,3 +328,28 @@ def test_longitudinal_report_requires_exactly_cycles_minus_one_future_courts():
                 "chain_sha256": "b" * 64,
             },
         )
+
+
+
+def test_longitudinal_plan_rejects_unknown_training_fields(tmp_path):
+    path, payload = make_plan(tmp_path, cycles=5)
+    payload["cycles"][0]["training"]["mystery_knob"] = 3
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="unsupported longitudinal training fields"):
+        validate_longitudinal_plan(path)
+
+
+def test_longitudinal_plan_identity_changes_when_tokenizer_changes(tmp_path):
+    path, payload = make_plan(tmp_path, cycles=5)
+    first = validate_longitudinal_plan(path)
+    tokenizer = Path(payload["tokenizer"])
+    (tokenizer / "tokenizer.json").write_text(
+        '{"version":"2.0","model":{"type":"fixture"}}',
+        encoding="utf-8",
+    )
+    second = validate_longitudinal_plan(path)
+    assert (
+        first.receipt["tokenizer_assets_sha256"]
+        != second.receipt["tokenizer_assets_sha256"]
+    )
+    assert first.receipt["plan_sha256"] != second.receipt["plan_sha256"]
