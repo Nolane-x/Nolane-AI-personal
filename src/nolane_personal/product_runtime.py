@@ -283,7 +283,9 @@ class ProductRuntime:
 
     def _learning_registry_advisory(self) -> dict[str, Any]:
         try:
-            registry = self.learning.verify_registry()
+            registry = self.learning.verify_registry(
+                recover_orphans=False,
+            )
             return self._check_row(
                 "learning_registry",
                 True,

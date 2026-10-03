@@ -1439,6 +1439,16 @@ The detailed readiness report is available only through authenticated `GET /v1/r
 
 See `docs/V048-STARTUP-READINESS-SELFTEST.md`.
 
+### v0.49 Windows Clean-Install Court
+
+v0.49 keeps the product surface frozen and upgrades Windows release evidence from “installer built” to “installed product works”.
+
+The manual Windows release workflow now installs the generated NSIS package into an empty directory, verifies the installed model/runtime/tokenizer/ceremony/manifest hashes, runs the installed sidecar through authenticated readiness -> AI ON -> real local chat/history, then launches the installed Tauri app and requires it to spawn its bundled runtime.
+
+The clean-install receipt contains hashes/status only, not chat text, auth tokens or user data paths. The court still requires a real promoted checkpoint; source CI cannot fake that evidence.
+
+See `docs/V049-WINDOWS-CLEAN-INSTALL-COURT.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.

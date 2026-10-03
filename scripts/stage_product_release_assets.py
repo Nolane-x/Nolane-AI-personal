@@ -131,8 +131,17 @@ def main() -> int:
         "qwen_model_object_required": False,
     }
     resources.mkdir(parents=True, exist_ok=True)
+    rendered_manifest = json.dumps(
+        manifest,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
     (resources / "release-assets.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        rendered_manifest,
+        encoding="utf-8",
+    )
+    (model_dest / "release-assets.json").write_text(
+        rendered_manifest,
         encoding="utf-8",
     )
     print(json.dumps(manifest, sort_keys=True))

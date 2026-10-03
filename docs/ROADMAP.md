@@ -1620,7 +1620,33 @@ v1 readiness target: **NO FALSE AI-ON / NO NEW PRIMARY UI**.
 - [x] Python/Tauri/package versions must match
 - [x] Windows release workflow runs version consistency court
 - [x] remove stale hard-coded v0.42 artifact label
-- [ ] L48 CI PASS
-- [ ] merge v0.48
+- [x] L48 CI PASS
+- [x] merge v0.48
 - [ ] clean-install release readiness court
+
+## L49 — Windows Clean-Install Court
+
+v1 Windows distribution target: **BUILT INSTALLER -> CLEAN INSTALL -> INSTALLED AI CHAT**.
+
+- [x] no new primary product UI
+- [x] startup readiness inspection is read-only for learning evidence
+- [x] normal learning flow still retains explicit orphan recovery
+- [x] embedded installed copy of release-assets manifest
+- [x] installed model hash checked against installed manifest
+- [x] installed runtime hash checked against installed manifest
+- [x] installed tokenizer hashes checked against installed manifest
+- [x] installed ceremony digest checked against installed manifest
+- [x] installed ceremony must authorize installed model
+- [x] installed app file version must match product version
+- [x] installed sidecar readiness PASS required
+- [x] installed sidecar AI ON required
+- [x] installed sidecar real chat + history required
+- [x] installed Tauri app must remain alive and spawn bundled runtime
+- [x] clean-install receipt excludes chat text/auth token/user path
+- [x] PR Windows job parses release PowerShell with native AST parser
+- [x] staging test proves external and embedded release manifests match
+- [ ] L49 source CI PASS
+- [ ] merge v0.49 release-court tooling
+- [ ] run manual Windows release with real promoted checkpoint
+- [ ] clean-install receipt PASS on real release artifact
 
