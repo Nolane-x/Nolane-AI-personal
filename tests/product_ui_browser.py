@@ -98,6 +98,55 @@ def run_desktop(browser, base_url):
     page.locator("#profileButton").click()
     assert page.locator("#preferredName").input_value() == "Tài"
     assert not page.locator("#memoryEnabled").is_checked()
+
+    learning = page.locator("#learningDetails")
+    learning.locator("summary").click()
+    assert learning.evaluate("(el) => el.open")
+    assert page.locator("#openLearningReview").is_disabled()
+
+    page.locator("#prepareLearningWindow").click()
+    learning_dialog = page.locator("#learningDialog")
+    page.wait_for_function(
+        "() => document.querySelector('#learningDialog').open"
+    )
+    assert learning_dialog.evaluate("(el) => el.open")
+    assert page.locator("#reviewCandidate").is_visible()
+    assert page.locator("#reviewPrompt").inner_text()
+    assert page.locator("#reviewTarget").inner_text()
+    assert page.locator("#finalizeLearning").is_hidden()
+    page.screenshot(
+        path=str(EVIDENCE / "desktop-learning-review.png"),
+        full_page=True,
+    )
+
+    page.locator("#approveLearning").click()
+    page.wait_for_function(
+        "() => document.querySelector('#learningProgress').textContent.startsWith('1/3')"
+    )
+    page.locator("#rejectLearning").click()
+    page.wait_for_function(
+        "() => document.querySelector('#learningProgress').textContent.startsWith('2/3')"
+    )
+    page.locator("#markSensitive").click()
+    page.wait_for_function(
+        "() => !document.querySelector('#finalizeLearning').hidden"
+    )
+    assert page.locator("#reviewComplete").is_visible()
+    assert page.locator("#reviewActions").is_hidden()
+    assert page.locator("#finalizeLearning").is_visible()
+    page.screenshot(
+        path=str(EVIDENCE / "desktop-learning-complete.png"),
+        full_page=True,
+    )
+
+    page.locator("#finalizeLearning").click()
+    page.wait_for_function(
+        "() => !document.querySelector('#learningDialog').open"
+    )
+    assert dialog.evaluate("(el) => el.open")
+    assert "1 " in page.locator("#learningSummary").inner_text()
+    assert page.locator("#openLearningReview").is_disabled()
+
     page.keyboard.press("Escape")
     assert not dialog.evaluate("(el) => el.open")
 
