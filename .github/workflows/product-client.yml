@@ -289,6 +289,14 @@ jobs:
         with:
           name: v058-emulator-apk
           path: artifacts/v058-emulator-apk
+      - name: Enable KVM group permissions
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          ls -l /dev/kvm
       - name: Emulator boot + packaged LocalMobile restart court
         uses: reactivecircus/android-emulator-runner@v2
         with:
