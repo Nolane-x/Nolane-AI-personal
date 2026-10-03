@@ -93,13 +93,6 @@ pub struct PersistentMobileState {
     pub memories: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct PersistentMobileStateEnvelope {
-    schema: String,
-    state_sha256: String,
-    state: PersistentMobileState,
-}
-
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("kernel error: {0}")]
@@ -341,12 +334,16 @@ pub fn write_persistent_mobile_state(
         expected_source_checkpoint_sha256,
         expected_latent_dim,
     )?;
-    let state_sha256 = persistent_state_digest(state)?;
-    let envelope = PersistentMobileStateEnvelope {
-        schema: PERSISTENT_MOBILE_STATE_SCHEMA.to_string(),
-        state_sha256: state_sha256.clone(),
-        state: state.clone(),
-    };
+    let state_value = serde_json::to_value(state)?;
+    let state_sha256 =
+        sha256_hex(&serde_json::to_vec(&state_value)?);
+    // Write the exact semantic value that was hashed. Serializing the typed
+    // f32 struct a second time can choose a different decimal spelling.
+    let envelope = serde_json::json!({
+        "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
+        "state_sha256": state_sha256,
+        "state": state_value,
+    });
     let bytes = serde_json::to_vec(&envelope)?;
     if bytes.len() as u64 > MAX_PERSISTENT_MOBILE_STATE_BYTES {
         return Err(RuntimeError::Invalid(format!(
