@@ -1520,3 +1520,39 @@ Empirical-input target: **REAL PRODUCT USE -> HUMAN REVIEW -> L43 PLAN / NO AUTO
 
 L44 does not make synthetic evidence more authoritative. Its job is to make genuine product experience usable without weakening consent, privacy or held-out isolation.
 
+## L45 — In-App Explicit Evidence Review
+
+Product-consent target: **REAL CHAT -> ONE-BY-ONE LOCAL HUMAN REVIEW / NO AUTO-TRAINING AUTHORITY**.
+
+- [x] local self-digested product learning-window registry
+- [x] contiguous SQLite high-water chain across evidence windows
+- [x] failed/too-small window does not advance registry cursor
+- [x] atomic temporary-window preparation before registry commit
+- [x] no raw prompt/target or candidate IDs in registry
+- [x] authenticated product API for evidence window metadata
+- [x] authenticated pending-candidate endpoint for local review UI
+- [x] explicit Approve / Reject / Sensitive decisions only
+- [x] approved target is editable by the user before learning
+- [x] corrected target is valid only for approved non-sensitive evidence
+- [x] corrected target is hash-bound through immutable local decision evidence
+- [x] corrected target reaches reviewed source + approved training dataset
+- [x] corrected raw text excluded from registry/progress metadata
+- [x] sensitive decisions excluded from approved count
+- [x] no approve-all path
+- [x] no auto-training path
+- [x] no cloud-upload path
+- [x] finalization reuses L25/L27/L28 courts
+- [x] hidden Advanced settings entry; primary chat remains unchanged
+- [x] one-candidate-at-a-time review dialog
+- [x] older/unsupported remote runtime fails soft without breaking chat
+- [x] backend product-history -> review -> finalized-pack tests
+- [x] browser rendered review-flow court
+- [ ] L45 CI PASS
+- [ ] merge v0.45
+- [ ] collect first real reviewed window from normal Nolane usage
+- [ ] collect 5+ real adaptation windows
+- [ ] execute real L43 and obtain empirical PASS/BLOCKED result
+- [ ] only after human review issue L40 authorization if merited
+
+L45 changes the ergonomics of real evidence collection, not its authority. The system still cannot learn from a conversation merely because it happened.
+

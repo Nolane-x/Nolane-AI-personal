@@ -119,6 +119,58 @@ def test_record_decisions_persists_immediately_and_resume_is_exact(tmp_path):
     assert len(load_jsonl(decisions))==3
 
 
+def test_explicit_corrected_target_is_frozen_and_feeds_reviewed_source(tmp_path):
+    review,queued,decisions,_progress=session(tmp_path)
+    candidate=review.pending_candidates()[0]
+    corrected="Câu trả lời do người dùng sửa để Nolane học."
+    review.record_decision(
+        candidate["candidate_id"],
+        approved=True,
+        sensitive=False,
+        corrected_target=corrected,
+    )
+
+    rows=load_jsonl(decisions)
+    assert rows[0]["corrected_target"]==corrected
+
+    resumed=LocalReviewSession(
+        queued["manifest_path"],
+        decisions,
+        tmp_path/"progress.json",
+    )
+    assert resumed.decisions[candidate["candidate_id"]][
+        "corrected_target"
+    ]==corrected
+
+    reviewed=apply_review_decisions(
+        queued["manifest_path"],
+        decisions,
+        tmp_path/"reviewed-corrected",
+    )
+    evidence=load_jsonl(reviewed["reviewed_source_path"])
+    assert evidence[0]["target"]==corrected
+    assert evidence[0]["target"]!=candidate["target"]
+
+
+def test_corrected_target_is_rejected_for_non_approved_or_sensitive_decision(tmp_path):
+    review,_queued,_decisions,_progress=session(tmp_path)
+    candidates=review.pending_candidates()
+    with pytest.raises(ValueError,match="only valid for approved non-sensitive"):
+        review.record_decision(
+            candidates[0]["candidate_id"],
+            approved=False,
+            sensitive=False,
+            corrected_target="should not be accepted",
+        )
+    with pytest.raises(ValueError,match="only valid for approved non-sensitive"):
+        review.record_decision(
+            candidates[1]["candidate_id"],
+            approved=True,
+            sensitive=True,
+            corrected_target="should not be accepted",
+        )
+
+
 def test_frozen_decision_cannot_be_silently_replaced(tmp_path):
     review,_queued,_decisions,_progress=session(tmp_path)
     candidate=review.pending_candidates()[0]

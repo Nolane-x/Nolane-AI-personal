@@ -12,6 +12,7 @@ from .store import canonical_json, payload_digest
 
 
 SCHEMA = "NOLANE-L26-INTERACTIVE-LOCAL-REVIEW-V1"
+MAX_CORRECTED_TARGET_CHARS = 8000
 
 
 @dataclass(slots=True)
@@ -52,12 +53,27 @@ def _validate_decision_payload(payload: dict[str, Any], *, source: str) -> dict[
         raise ValueError(f"{source}: weight outside allowed range")
     if payload["approved"] and not payload["sensitive"] and language not in {"vi", "en"}:
         raise ValueError(f"{source}: approved non-sensitive decision requires vi/en language")
+
+    corrected_raw = payload.get("corrected_target")
+    corrected_target: str | None = None
+    if corrected_raw is not None:
+        corrected_target = str(corrected_raw).strip()
+        if not corrected_target:
+            raise ValueError(f"{source}: corrected_target cannot be empty")
+        if len(corrected_target) > MAX_CORRECTED_TARGET_CHARS:
+            raise ValueError(f"{source}: corrected_target exceeds character limit")
+        if not payload["approved"] or payload["sensitive"]:
+            raise ValueError(
+                f"{source}: corrected_target is only valid for approved non-sensitive decisions"
+            )
+
     return {
         "candidate_id": candidate_id,
         "approved": bool(payload["approved"]),
         "sensitive": bool(payload["sensitive"]),
         "language": language,
         "weight": weight,
+        "corrected_target": corrected_target,
     }
 
 
@@ -176,6 +192,7 @@ class LocalReviewSession:
         sensitive: bool,
         language: str | None = None,
         weight: float = 1.0,
+        corrected_target: str | None = None,
     ) -> dict[str, Any]:
         candidate_id = str(candidate_id).strip()
         if candidate_id not in self.by_id:
@@ -197,6 +214,7 @@ class LocalReviewSession:
                 "sensitive": sensitive,
                 "language": final_language,
                 "weight": weight,
+                "corrected_target": corrected_target,
             },
             source="interactive review",
         )
@@ -233,6 +251,7 @@ class LocalReviewSession:
                 "manifest_contains_raw_prompt_target": False,
                 "manifest_contains_candidate_ids": False,
                 "review_happens_locally": True,
+                "decision_file_may_contain_user_corrected_target": True,
             },
         }
         manifest["manifest_sha256"] = payload_digest(manifest)

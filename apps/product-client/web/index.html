@@ -177,6 +177,36 @@
           ></textarea>
         </label>
 
+        <details class="advanced" id="learningDetails">
+          <summary id="learningAdvancedLabel">Học từ cuộc trò chuyện</summary>
+          <div class="advanced-body">
+            <p id="learningHint">
+              Chỉ những đoạn bạn tự duyệt mới có thể trở thành dữ liệu học. Mọi thứ được giữ cục bộ.
+            </p>
+            <div class="learning-status-row">
+              <span class="learning-status-dot" aria-hidden="true"></span>
+              <span id="learningSummary">Chưa có lượt duyệt.</span>
+            </div>
+            <div class="inline-actions">
+              <button
+                class="secondary-button"
+                type="button"
+                id="prepareLearningWindow"
+              >
+                Chuẩn bị lượt duyệt
+              </button>
+              <button
+                class="text-button"
+                type="button"
+                id="openLearningReview"
+                disabled
+              >
+                Duyệt
+              </button>
+            </div>
+          </div>
+        </details>
+
         <details class="advanced" id="connectionDetails">
           <summary id="advancedLabel">Nâng cao</summary>
           <div class="advanced-body">
@@ -219,6 +249,97 @@
         </button>
       </footer>
     </form>
+  </dialog>
+
+  <dialog class="learning-dialog" id="learningDialog">
+    <div class="learning-sheet">
+      <header class="sheet-header">
+        <div>
+          <p class="eyebrow" id="learningEyebrow">Học có kiểm duyệt</p>
+          <h2 id="learningDialogTitle">Bạn quyết định Nolane được học gì</h2>
+        </div>
+        <button
+          class="icon-button"
+          type="button"
+          id="closeLearningButton"
+          aria-label="Đóng"
+        >×</button>
+      </header>
+
+      <div class="learning-body">
+        <div class="learning-progress" id="learningProgress" role="status"></div>
+
+        <div class="review-turn" id="reviewCandidate" hidden>
+          <div class="review-block">
+            <span class="review-role">Bạn</span>
+            <p id="reviewPrompt"></p>
+          </div>
+          <div class="review-block assistant-review">
+            <label class="review-role" for="reviewTarget">Nolane nên học</label>
+            <textarea
+              id="reviewTarget"
+              class="review-target-editor"
+              rows="5"
+              maxlength="8000"
+              aria-describedby="reviewEditHint"
+            ></textarea>
+            <small class="review-edit-hint" id="reviewEditHint">
+              Bạn có thể sửa câu trả lời thành phiên bản bạn thật sự muốn Nolane học.
+            </small>
+          </div>
+
+          <label class="field review-language">
+            <span id="reviewLanguageLabel">Ngôn ngữ của đoạn này</span>
+            <select id="reviewLanguage">
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="review-complete" id="reviewComplete" hidden>
+          <div class="empty-ember" aria-hidden="true"></div>
+          <strong id="reviewCompleteTitle">Đã duyệt hết lượt này.</strong>
+          <span id="reviewCompleteBody">
+            Bạn có thể đóng gói những đoạn đã duyệt thành evidence local.
+          </span>
+        </div>
+      </div>
+
+      <footer class="learning-footer">
+        <div class="review-actions" id="reviewActions">
+          <button
+            class="text-button danger-text"
+            type="button"
+            id="markSensitive"
+          >
+            Nhạy cảm
+          </button>
+          <button
+            class="secondary-button"
+            type="button"
+            id="rejectLearning"
+          >
+            Bỏ
+          </button>
+          <button
+            class="primary-button"
+            type="button"
+            id="approveLearning"
+          >
+            Duyệt
+          </button>
+        </div>
+        <button
+          class="primary-button"
+          type="button"
+          id="finalizeLearning"
+          hidden
+        >
+          Đóng gói dữ liệu đã duyệt
+        </button>
+      </footer>
+    </div>
   </dialog>
 
   <template id="messageTemplate">

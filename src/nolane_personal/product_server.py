@@ -10,6 +10,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from .product_runtime import ProductRuntime
 
@@ -107,7 +108,10 @@ class ProductHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         try:
-            if self.path == "/v1/health":
+            parsed = urlparse(self.path)
+            path = parsed.path
+            query = parse_qs(parsed.query)
+            if path == "/v1/health":
                 self._json(
                     HTTPStatus.OK,
                     {
@@ -118,13 +122,13 @@ class ProductHandler(BaseHTTPRequestHandler):
                 return
             if not self._require_auth():
                 return
-            if self.path == "/v1/status":
+            if path == "/v1/status":
                 self._json(
                     HTTPStatus.OK,
                     self.server.runtime.status(),
                 )
                 return
-            if self.path.startswith("/v1/history"):
+            if path == "/v1/history":
                 self._json(
                     HTTPStatus.OK,
                     {
@@ -132,10 +136,29 @@ class ProductHandler(BaseHTTPRequestHandler):
                     },
                 )
                 return
-            if self.path == "/v1/profile":
+            if path == "/v1/profile":
                 self._json(
                     HTTPStatus.OK,
                     self.server.runtime.get_profile(),
+                )
+                return
+            if path == "/v1/learning/windows":
+                self._json(
+                    HTTPStatus.OK,
+                    {"windows": self.server.runtime.learning_windows()},
+                )
+                return
+            if path == "/v1/learning/pending":
+                values = query.get("window_id", [])
+                if len(values) != 1 or not values[0]:
+                    raise ValueError("window_id query parameter is required")
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "candidate": self.server.runtime.next_learning_candidate(
+                            values[0]
+                        )
+                    },
                 )
                 return
             self._json(
@@ -171,6 +194,33 @@ class ProductHandler(BaseHTTPRequestHandler):
                 self._json(
                     HTTPStatus.OK,
                     self.server.runtime.tick(),
+                )
+                return
+            if self.path == "/v1/learning/windows":
+                self._json(
+                    HTTPStatus.OK,
+                    self.server.runtime.create_learning_window(),
+                )
+                return
+            if self.path == "/v1/learning/decision":
+                self._json(
+                    HTTPStatus.OK,
+                    self.server.runtime.record_learning_decision(
+                        str(payload.get("window_id", "")),
+                        str(payload.get("candidate_id", "")),
+                        decision=str(payload.get("decision", "")),
+                        language=payload.get("language"),
+                        weight=float(payload.get("weight", 1.0)),
+                        corrected_target=payload.get("corrected_target"),
+                    ),
+                )
+                return
+            if self.path == "/v1/learning/finalize":
+                self._json(
+                    HTTPStatus.OK,
+                    self.server.runtime.finalize_learning_window(
+                        str(payload.get("window_id", ""))
+                    ),
                 )
                 return
             self._json(

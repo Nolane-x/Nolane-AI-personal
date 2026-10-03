@@ -35,6 +35,24 @@
     saveConnection: $("saveConnection"),
     clearConnection: $("clearConnection"),
     identitySubline: $("identitySubline"),
+    learningDetails: $("learningDetails"),
+    learningSummary: $("learningSummary"),
+    prepareLearningWindow: $("prepareLearningWindow"),
+    openLearningReview: $("openLearningReview"),
+    learningDialog: $("learningDialog"),
+    learningBody: document.querySelector(".learning-body"),
+    closeLearning: $("closeLearningButton"),
+    learningProgress: $("learningProgress"),
+    reviewCandidate: $("reviewCandidate"),
+    reviewPrompt: $("reviewPrompt"),
+    reviewTarget: $("reviewTarget"),
+    reviewLanguage: $("reviewLanguage"),
+    reviewComplete: $("reviewComplete"),
+    reviewActions: $("reviewActions"),
+    approveLearning: $("approveLearning"),
+    rejectLearning: $("rejectLearning"),
+    markSensitive: $("markSensitive"),
+    finalizeLearning: $("finalizeLearning"),
   };
 
   const strings = {
@@ -61,6 +79,13 @@
       connectionSaved: "Đã lưu kết nối",
       connectionCleared: "Đã xóa kết nối",
       settingsSubline: "của riêng bạn",
+      learningNone: "Chưa có lượt duyệt.",
+      learningUnavailable: "Chưa khả dụng trên runtime này.",
+      learningReady: "lượt đã sẵn sàng",
+      learningReviewed: "đã duyệt",
+      learningPreparing: "Đang chuẩn bị lượt duyệt…",
+      learningNeedMore: "Chưa đủ đoạn chat mới để tạo một lượt duyệt sạch.",
+      learningDone: "Đã duyệt hết lượt này.",
     },
     en: {
       off: "Off",
@@ -85,6 +110,13 @@
       connectionSaved: "Connection saved",
       connectionCleared: "Connection cleared",
       settingsSubline: "yours",
+      learningNone: "No review window yet.",
+      learningUnavailable: "Not available on this runtime.",
+      learningReady: "windows ready",
+      learningReviewed: "reviewed",
+      learningPreparing: "Preparing a review window…",
+      learningNeedMore: "Not enough new chat yet for a clean review window.",
+      learningDone: "This review window is complete.",
     },
   };
 
@@ -107,6 +139,10 @@
   let sending = false;
   let renderedEventIds = new Set();
   let firstRender = true;
+  let learningWindows = [];
+  let learningAvailable = true;
+  let activeLearningWindow = null;
+  let learningCandidate = null;
 
   const locale = () => {
     if (profile.language === "vi" || profile.language === "en") {
@@ -144,6 +180,8 @@
     },
     profile: { ...profile, digest: "preview" },
     messages: [],
+    learningWindows: [],
+    learningCandidates: {},
   };
 
   async function mockApi(method, path, body) {
@@ -188,6 +226,133 @@
             : "I'm here. This browser preview only verifies the interface; in the app, replies come from the real Nolane runtime.",
       });
       return { reply: mock.messages.at(-1).text };
+    }
+    if (method === "GET" && path === "/v1/learning/windows") {
+      return { windows: mock.learningWindows.map((row) => ({ ...row })) };
+    }
+    if (method === "POST" && path === "/v1/learning/windows") {
+      const pending = mock.learningWindows.find((row) => !row.intake_ready);
+      if (pending) {
+        throw new Error("A review window is already pending");
+      }
+      const index = mock.learningWindows.length + 1;
+      const windowId = "window-" + String(index).padStart(4, "0");
+      const candidates = [
+        {
+          candidate_id: windowId + "-c1",
+          prompt: "Mình thích câu trả lời ngắn và thẳng hơn.",
+          target: "Được, mình sẽ ưu tiên trả lời gọn và đi thẳng vào ý chính.",
+          language: "vi",
+        },
+        {
+          candidate_id: windowId + "-c2",
+          prompt: "Khi mình hỏi code, hãy đưa ví dụ cụ thể.",
+          target: "Ừ, mình sẽ kèm ví dụ chạy được khi nó giúp câu trả lời rõ hơn.",
+          language: "vi",
+        },
+        {
+          candidate_id: windowId + "-c3",
+          prompt: "Remind me to avoid generic filler.",
+          target: "I will keep answers concrete and avoid generic filler.",
+          language: "en",
+        },
+      ];
+      mock.learningCandidates[windowId] = candidates;
+      const row = {
+        window_id: windowId,
+        phase: "QUEUE_READY",
+        review_progress: {
+          total: candidates.length,
+          decided: 0,
+          approved_non_sensitive: 0,
+          rejected: 0,
+          sensitive: 0,
+          remaining: candidates.length,
+        },
+        intake_ready: false,
+        approved_manifest_sha256: null,
+        quality_status: null,
+        quality_court_sha256: null,
+        through_rowid_inclusive: index * 100,
+        authority: "BROWSER_PREVIEW_ONLY",
+      };
+      mock.learningWindows.push(row);
+      return { ...row };
+    }
+    if (
+      method === "GET" &&
+      path.startsWith("/v1/learning/pending?window_id=")
+    ) {
+      const parsed = new URL(path, "http://mock.local");
+      const windowId = parsed.searchParams.get("window_id");
+      const row = mock.learningWindows.find((item) => item.window_id === windowId);
+      if (!row) throw new Error("unknown product evidence window");
+      const candidates = mock.learningCandidates[windowId] || [];
+      const candidate = candidates[row.review_progress.decided] || null;
+      return {
+        candidate: candidate
+          ? {
+              window_id: windowId,
+              ...candidate,
+              progress: { ...row.review_progress },
+              privacy: {
+                raw_text_returned_to_local_authenticated_ui: true,
+                network_model_call: false,
+              },
+            }
+          : null,
+      };
+    }
+    if (method === "POST" && path === "/v1/learning/decision") {
+      const row = mock.learningWindows.find(
+        (item) => item.window_id === body.window_id,
+      );
+      if (!row) throw new Error("unknown product evidence window");
+      const candidates = mock.learningCandidates[row.window_id] || [];
+      const expected = candidates[row.review_progress.decided];
+      if (!expected || expected.candidate_id !== body.candidate_id) {
+        throw new Error("candidate already decided or out of order");
+      }
+      row.review_progress.decided += 1;
+      row.review_progress.remaining -= 1;
+      if (body.decision === "approve") {
+        row.review_progress.approved_non_sensitive += 1;
+      } else {
+        row.review_progress.rejected += 1;
+        if (body.decision === "sensitive") {
+          row.review_progress.sensitive += 1;
+        }
+      }
+      row.phase =
+        row.review_progress.remaining === 0
+          ? "REVIEW_COMPLETE"
+          : "REVIEW_IN_PROGRESS";
+      const next = candidates[row.review_progress.decided] || null;
+      return {
+        window: { ...row, review_progress: { ...row.review_progress } },
+        next_candidate: next
+          ? {
+              window_id: row.window_id,
+              ...next,
+              progress: { ...row.review_progress },
+            }
+          : null,
+      };
+    }
+    if (method === "POST" && path === "/v1/learning/finalize") {
+      const row = mock.learningWindows.find(
+        (item) => item.window_id === body.window_id,
+      );
+      if (!row) throw new Error("unknown product evidence window");
+      if (row.review_progress.remaining !== 0) {
+        throw new Error("review candidates remain undecided");
+      }
+      row.phase = "INTAKE_READY";
+      row.intake_ready = true;
+      row.approved_manifest_sha256 = "a".repeat(64);
+      row.quality_status = "PASS";
+      row.quality_court_sha256 = "b".repeat(64);
+      return { ...row, review_progress: { ...row.review_progress } };
     }
     throw new Error("Unsupported mock route " + method + " " + path);
   }
@@ -423,6 +588,211 @@
     }
   }
 
+  function pendingLearningWindow() {
+    return [...learningWindows]
+      .reverse()
+      .find((row) => !row.intake_ready) || null;
+  }
+
+  function renderLearningSummary() {
+    if (!learningAvailable) {
+      els.learningSummary.textContent = t("learningUnavailable");
+      els.prepareLearningWindow.disabled = true;
+      els.openLearningReview.disabled = true;
+      return;
+    }
+
+    const pending = pendingLearningWindow();
+    const ready = learningWindows.filter((row) => row.intake_ready).length;
+    if (pending) {
+      const progress = pending.review_progress || {};
+      els.learningSummary.textContent =
+        String(progress.decided || 0) +
+        "/" +
+        String(progress.total || 0) +
+        " " +
+        t("learningReviewed");
+      els.prepareLearningWindow.disabled = true;
+      els.openLearningReview.disabled = false;
+      return;
+    }
+
+    els.prepareLearningWindow.disabled = false;
+    els.openLearningReview.disabled = true;
+    els.learningSummary.textContent =
+      ready > 0
+        ? String(ready) + " " + t("learningReady")
+        : t("learningNone");
+  }
+
+  async function refreshLearning() {
+    if (target.mode === "unconfigured") {
+      learningAvailable = false;
+      learningWindows = [];
+      renderLearningSummary();
+      return;
+    }
+    try {
+      const result = await api("GET", "/v1/learning/windows");
+      learningWindows = Array.isArray(result.windows) ? result.windows : [];
+      learningAvailable = true;
+    } catch (_error) {
+      learningAvailable = false;
+      learningWindows = [];
+    }
+    renderLearningSummary();
+  }
+
+  function updateLearningApprovalState() {
+    els.approveLearning.disabled =
+      !learningCandidate || !els.reviewTarget.value.trim();
+  }
+
+  function renderLearningCandidate(candidate) {
+    learningCandidate = candidate || null;
+    if (els.learningBody) {
+      els.learningBody.scrollTop = 0;
+    }
+    const window = activeLearningWindow;
+    const progress = candidate?.progress || window?.review_progress || {};
+    els.learningProgress.textContent =
+      String(progress.decided || 0) +
+      "/" +
+      String(progress.total || 0) +
+      " " +
+      t("learningReviewed");
+
+    if (!candidate) {
+      els.reviewCandidate.hidden = true;
+      els.reviewComplete.hidden = false;
+      els.reviewActions.hidden = true;
+      els.finalizeLearning.hidden = false;
+      updateLearningApprovalState();
+      return;
+    }
+
+    els.reviewCandidate.hidden = false;
+    els.reviewComplete.hidden = true;
+    els.reviewActions.hidden = false;
+    els.finalizeLearning.hidden = true;
+    els.reviewPrompt.textContent = candidate.prompt || "";
+    els.reviewTarget.value = candidate.target || "";
+    updateLearningApprovalState();
+    const language =
+      candidate.language === "vi" || candidate.language === "en"
+        ? candidate.language
+        : profile.language === "vi" || profile.language === "en"
+          ? profile.language
+          : locale();
+    els.reviewLanguage.value = language === "en" ? "en" : "vi";
+  }
+
+  async function fetchLearningCandidate(windowId) {
+    const result = await api(
+      "GET",
+      "/v1/learning/pending?window_id=" + encodeURIComponent(windowId),
+    );
+    renderLearningCandidate(result.candidate || null);
+  }
+
+  async function openLearningDialog() {
+    const pending = pendingLearningWindow();
+    if (!pending) return;
+    activeLearningWindow = pending;
+    els.dialog.close();
+    els.learningDialog.showModal();
+    try {
+      await fetchLearningCandidate(pending.window_id);
+    } catch (error) {
+      els.learningDialog.close();
+      showBanner(String(error?.message || error), false);
+    }
+  }
+
+  async function prepareLearningReview() {
+    if (!learningAvailable || pendingLearningWindow()) return;
+    els.learningSummary.textContent = t("learningPreparing");
+    els.prepareLearningWindow.disabled = true;
+    try {
+      const window = await api("POST", "/v1/learning/windows", {});
+      await refreshLearning();
+      activeLearningWindow =
+        learningWindows.find((row) => row.window_id === window.window_id) ||
+        pendingLearningWindow();
+      if (activeLearningWindow) {
+        els.dialog.close();
+        els.learningDialog.showModal();
+        await fetchLearningCandidate(activeLearningWindow.window_id);
+      }
+    } catch (error) {
+      await refreshLearning();
+      const message = String(error?.message || error);
+      showBanner(
+        message.includes("3 leakage-safe")
+          ? t("learningNeedMore")
+          : message,
+        false,
+      );
+    }
+  }
+
+  async function submitLearningDecision(decision) {
+    if (!activeLearningWindow || !learningCandidate) return;
+    for (const button of [
+      els.approveLearning,
+      els.rejectLearning,
+      els.markSensitive,
+    ]) {
+      button.disabled = true;
+    }
+    try {
+      const result = await api("POST", "/v1/learning/decision", {
+        window_id: activeLearningWindow.window_id,
+        candidate_id: learningCandidate.candidate_id,
+        decision,
+        language: els.reviewLanguage.value,
+        weight: 1.0,
+        corrected_target:
+          decision === "approve" &&
+          els.reviewTarget.value.trim() !==
+            String(learningCandidate.target || "").trim()
+            ? els.reviewTarget.value.trim()
+            : null,
+      });
+      activeLearningWindow = result.window;
+      learningWindows = learningWindows.map((row) =>
+        row.window_id === result.window.window_id ? result.window : row,
+      );
+      renderLearningCandidate(result.next_candidate || null);
+      renderLearningSummary();
+    } catch (error) {
+      showBanner(String(error?.message || error), false);
+    } finally {
+      els.rejectLearning.disabled = false;
+      els.markSensitive.disabled = false;
+      updateLearningApprovalState();
+    }
+  }
+
+  async function finalizeLearningWindow() {
+    if (!activeLearningWindow) return;
+    els.finalizeLearning.disabled = true;
+    try {
+      await api("POST", "/v1/learning/finalize", {
+        window_id: activeLearningWindow.window_id,
+      });
+      await refreshLearning();
+      activeLearningWindow = null;
+      learningCandidate = null;
+      els.learningDialog.close();
+      els.dialog.showModal();
+    } catch (error) {
+      showBanner(String(error?.message || error), false);
+    } finally {
+      els.finalizeLearning.disabled = false;
+    }
+  }
+
   async function togglePower() {
     const next = runtime.phase !== "on";
     runtime = { ...runtime, phase: next ? "starting" : "off", error: null };
@@ -564,6 +934,7 @@
       refreshStatus(),
       refreshHistory(),
       refreshProfile(),
+      refreshLearning(),
     ]);
   }
 
@@ -605,6 +976,39 @@
   els.saveConnection.addEventListener("click", () => void saveConnection());
   els.clearConnection.addEventListener("click", () => void clearConnection());
 
+  els.prepareLearningWindow.addEventListener(
+    "click",
+    () => void prepareLearningReview(),
+  );
+  els.openLearningReview.addEventListener(
+    "click",
+    () => void openLearningDialog(),
+  );
+  els.closeLearning.addEventListener(
+    "click",
+    () => els.learningDialog.close(),
+  );
+  els.approveLearning.addEventListener(
+    "click",
+    () => void submitLearningDecision("approve"),
+  );
+  els.rejectLearning.addEventListener(
+    "click",
+    () => void submitLearningDecision("reject"),
+  );
+  els.markSensitive.addEventListener(
+    "click",
+    () => void submitLearningDecision("sensitive"),
+  );
+  els.finalizeLearning.addEventListener(
+    "click",
+    () => void finalizeLearningWindow(),
+  );
+  els.reviewTarget.addEventListener(
+    "input",
+    updateLearningApprovalState,
+  );
+
   els.dialog.addEventListener("click", (event) => {
     const rect = els.dialog.getBoundingClientRect();
     const outside =
@@ -614,6 +1018,7 @@
       event.clientY > rect.bottom;
     if (outside) els.dialog.close();
   });
+
 
   window.addEventListener("focus", () => void refreshAll());
 

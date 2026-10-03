@@ -10,6 +10,7 @@ from .cortex import Cortex, NullCortex
 from .engine import LivingEngine
 from .product_cortex import FactorizedProductCortex
 from .product_profile import ProductProfile, ProductProfileStore
+from .product_learning_workspace import ProductLearningWorkspace
 from .promotion_ceremony import verify_promotion_ceremony_receipt
 from .store import LivingStore
 
@@ -86,6 +87,7 @@ class ProductRuntime:
                 raise ValueError(
                     "release checkpoint does not match COMPLETE ceremony"
                 )
+        self.learning = ProductLearningWorkspace(data_dir=self.data_dir)
         self._factory = cortex_factory
         self._cortex: Cortex | None = None
         self._phase = "off"
@@ -227,6 +229,48 @@ class ProductRuntime:
                 self._rest_allowed and self.profile.memory_enabled
             )
             return self.profile.to_dict()
+
+    def learning_windows(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return self.learning.list_windows()
+
+    def create_learning_window(self) -> dict[str, Any]:
+        with self._lock:
+            return self.learning.create_window()
+
+    def next_learning_candidate(
+        self,
+        window_id: str,
+    ) -> dict[str, Any] | None:
+        with self._lock:
+            return self.learning.next_candidate(window_id)
+
+    def record_learning_decision(
+        self,
+        window_id: str,
+        candidate_id: str,
+        *,
+        decision: str,
+        language: str | None = None,
+        weight: float = 1.0,
+        corrected_target: str | None = None,
+    ) -> dict[str, Any]:
+        with self._lock:
+            return self.learning.record_decision(
+                window_id,
+                candidate_id,
+                decision=decision,
+                language=language,
+                weight=weight,
+                corrected_target=corrected_target,
+            )
+
+    def finalize_learning_window(
+        self,
+        window_id: str,
+    ) -> dict[str, Any]:
+        with self._lock:
+            return self.learning.finalize_window(window_id)
 
     def close(self) -> None:
         with self._lock:
