@@ -257,6 +257,29 @@ def test_registry_recovers_exact_next_orphan_after_atomic_window_install(tmp_pat
         runtime.close()
 
 
+def test_registry_refuses_cursor_corruption_before_orphan_recovery(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="cursor")
+        first = runtime.create_learning_window()
+        registry_path = runtime.learning.registry_path
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        registry["last_exported_rowid"] = 0
+        registry.pop("registry_sha256", None)
+        from nolane_personal.store import payload_digest
+        registry["registry_sha256"] = payload_digest(registry)
+        registry_path.write_text(
+            json.dumps(registry, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="final cursor mismatch"):
+            runtime.learning.verify_registry()
+        assert first["through_rowid_inclusive"] > 0
+    finally:
+        runtime.close()
+
+
 def test_registry_blocks_unregistered_window_gap(tmp_path):
     runtime = ProductRuntime(tmp_path, cortex_factory=factory)
     try:
