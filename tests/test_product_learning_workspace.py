@@ -251,6 +251,7 @@ def test_learning_review_api_is_authenticated_and_explicit(tmp_path):
         candidate = pending["candidate"]
         assert candidate is not None
 
+        corrected = "API-explicit corrected target for learning."
         status, decision = request(
             server,
             "POST",
@@ -260,6 +261,7 @@ def test_learning_review_api_is_authenticated_and_explicit(tmp_path):
                 "candidate_id": candidate["candidate_id"],
                 "decision": "approve",
                 "language": "en",
+                "corrected_target": corrected,
             },
             token="learning-secret",
         )
@@ -268,6 +270,27 @@ def test_learning_review_api_is_authenticated_and_explicit(tmp_path):
         assert decision["window"]["review_progress"][
             "approved_non_sensitive"
         ] == 1
+
+        decisions = (
+            tmp_path
+            / "learning-evidence"
+            / "windows"
+            / "window-0001"
+            / "workbench"
+            / "review-decisions.jsonl"
+        )
+        assert corrected in decisions.read_text(encoding="utf-8")
+        registry = runtime.learning.registry_path.read_text(encoding="utf-8")
+        progress = (
+            tmp_path
+            / "learning-evidence"
+            / "windows"
+            / "window-0001"
+            / "workbench"
+            / "review-progress-manifest.json"
+        ).read_text(encoding="utf-8")
+        assert corrected not in registry
+        assert corrected not in progress
     finally:
         server.shutdown()
         server.server_close()
