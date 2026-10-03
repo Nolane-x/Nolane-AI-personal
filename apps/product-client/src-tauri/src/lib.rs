@@ -448,12 +448,11 @@ fn run_v058_android_emulator_court(
     } else {
         "v058 emulator restart local chat"
     };
+    // Exercise the same native product prompt/kernel/sampler/state path as
+    // /v1/chat, but keep this synthetic emulator proof bounded so CI measures
+    // packaged correctness rather than spending minutes generating 96 tokens.
     let reply = mobile
-        .api(
-            "POST",
-            "/v1/chat",
-            Some(json!({"text": prompt})),
-        )
+        .synthetic_court_chat(prompt, 8)
         .map_err(|e| e.to_string())?;
     if reply.get("reply").and_then(Value::as_str).is_none() {
         return Err("v0.58 local chat did not return a reply field".into());
