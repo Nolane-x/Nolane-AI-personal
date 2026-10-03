@@ -49,6 +49,30 @@ impl Default for MobileProfile {
 }
 
 impl MobileProfile {
+    pub fn normalize(&mut self) {
+        self.preferred_name = trim_to_chars(&self.preferred_name, 80);
+        if !matches!(self.language.as_str(), "auto" | "vi" | "en") {
+            self.language = "auto".into();
+        }
+        if !matches!(
+            self.response_length.as_str(),
+            "compact" | "balanced" | "expansive"
+        ) {
+            self.response_length = "balanced".into();
+        }
+        if !matches!(
+            self.conversation_style.as_str(),
+            "natural" | "warm" | "direct" | "playful"
+        ) {
+            self.conversation_style = "natural".into();
+        }
+        if !matches!(self.initiative.as_str(), "off" | "gentle" | "active") {
+            self.initiative = "gentle".into();
+        }
+        self.personal_instruction =
+            trim_to_chars(&self.personal_instruction, 1200);
+    }
+
     pub fn validate(&self) -> Result<(), RuntimeError> {
         if self.preferred_name.chars().count() > 80 {
             return Err(RuntimeError::Invalid(
@@ -427,6 +451,11 @@ impl MobileStateStore {
                     )
                     .is_ok()
                 {
+                    if value.source_state_version > product.version {
+                        return Err(RuntimeError::Invalid(
+                            "mobile latent source state version is in the future".into(),
+                        ));
+                    }
                     value
                 } else {
                     let archive = self.archive_bound_latent(&value)?;
@@ -462,8 +491,9 @@ impl MobileStateStore {
 
     pub fn update_profile(
         &self,
-        profile: MobileProfile,
+        mut profile: MobileProfile,
     ) -> Result<MobilePersistentProductState, RuntimeError> {
+        profile.normalize();
         profile.validate()?;
         let mut current = self.load_product_state()?.ok_or_else(|| {
             RuntimeError::Invalid(
@@ -516,6 +546,22 @@ impl MobileStateStore {
                 "mobile latent is not initialized".into(),
             )
         })?;
+        let product = self.load_product_state()?.ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile product state is not initialized".into(),
+            )
+        })?;
+        if source_state_version != product.version {
+            return Err(RuntimeError::Invalid(
+                "mobile latent update must bind the current product state version".into(),
+            ));
+        }
+        if current.identity_id != product.state.identity_id {
+            return Err(RuntimeError::Invalid(
+                "mobile latent/product identity mismatch".into(),
+            ));
+        }
+
         if values.len() != current.latent_dim {
             return Err(RuntimeError::Invalid(
                 "mobile latent update dimension mismatch".into(),
@@ -600,6 +646,10 @@ impl MobileStateStore {
         fs::rename(&path, &archive)?;
         Ok(archive)
     }
+}
+
+fn trim_to_chars(value: &str, limit: usize) -> String {
+    value.trim().chars().take(limit).collect()
 }
 
 fn unit(value: f64) -> bool {
