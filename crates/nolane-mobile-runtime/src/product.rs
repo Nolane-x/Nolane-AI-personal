@@ -1131,6 +1131,14 @@ impl LocalMobileProductRuntime {
             return Err(RuntimeError::Invalid("message is too long".into()));
         }
 
+        let at_ms = now_millis();
+        self.apply_user_lifecycle(clean, at_ms)?;
+        // Desktop LivingEngine commits the user event before cortex generation.
+        // Persist that same causal ordering so a generation failure never
+        // erases a real user interaction.
+        self.runtime.save_persistent_state(&self.state_path)?;
+        write_json(&self.meta_path, &self.meta)?;
+
         let mut rng = OsRng;
         let seed = rng.next_u64();
         let generated = match max_new_tokens {
@@ -1159,7 +1167,7 @@ impl LocalMobileProductRuntime {
         let reply = generated.text.trim().to_string();
 
         let ordinal = self.meta.state_version.saturating_add(1);
-        let marker = now_marker();
+        let marker = at_ms.to_string();
         self.history.push(LocalMobileMessage {
             event_id: format!("local-mobile-u-{ordinal}"),
             at: marker.clone(),
@@ -1176,22 +1184,11 @@ impl LocalMobileProductRuntime {
             let excess = self.history.len() - MAX_HISTORY_MESSAGES;
             self.history.drain(0..excess);
         }
+        if !reply.is_empty() {
+            self.record_ai_lifecycle(at_ms);
+        }
 
-        let mut state: PersistentMobileState = self
-            .runtime
-            .persistent_state()
-            .cloned()
-            .ok_or_else(|| RuntimeError::Invalid(
-                "LocalMobile persistent state disappeared".into(),
-            ))?;
-        state.state.relationship.interaction_count = state
-            .state
-            .relationship
-            .interaction_count
-            .saturating_add(1);
-        self.runtime.set_persistent_state(state)?;
         self.runtime.save_persistent_state(&self.state_path)?;
-
         self.meta.state_version = ordinal;
         write_json(&self.meta_path, &self.meta)?;
         write_json(&self.history_path, &self.history)?;
