@@ -40,6 +40,7 @@
     prepareLearningWindow: $("prepareLearningWindow"),
     openLearningReview: $("openLearningReview"),
     learningDialog: $("learningDialog"),
+    learningBody: document.querySelector(".learning-body"),
     closeLearning: $("closeLearningButton"),
     learningProgress: $("learningProgress"),
     reviewCandidate: $("reviewCandidate"),
@@ -649,6 +650,9 @@
 
   function renderLearningCandidate(candidate) {
     learningCandidate = candidate || null;
+    if (els.learningBody) {
+      els.learningBody.scrollTop = 0;
+    }
     const window = activeLearningWindow;
     const progress = candidate?.progress || window?.review_progress || {};
     els.learningProgress.textContent =
