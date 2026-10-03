@@ -74,7 +74,9 @@ jobs:
 
       - name: Verify product version consistency
         shell: pwsh
-        run: python scripts/check_product_version.py
+        run: |
+          $versions = python scripts/check_product_version.py | ConvertFrom-Json
+          "PRODUCT_VERSION=$($versions.python)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install product runtime build dependencies
         shell: pwsh
@@ -205,6 +207,20 @@ jobs:
             throw "release-assets.json missing"
           }
 
+      - name: Clean-install packaged product court
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem `
+            "apps/product-client/src-tauri/target/release/bundle/nsis/*.exe" `
+            | Select-Object -First 1
+          $installDir = Join-Path $env:RUNNER_TEMP "nolane-clean-install"
+          $receipt = Join-Path $env:RUNNER_TEMP "nolane-clean-install-receipt.json"
+          & scripts/verify_windows_clean_install.ps1 `
+            -Installer $installer.FullName `
+            -InstallDir $installDir `
+            -ExpectedVersion $env:PRODUCT_VERSION `
+            -ReceiptPath $receipt
+
       - uses: actions/upload-artifact@v4
         with:
           name: nolane-windows-release
@@ -212,3 +228,4 @@ jobs:
           path: |
             apps/product-client/src-tauri/target/release/bundle/nsis/*.exe
             apps/product-client/src-tauri/resources/release-assets.json
+            ${{ runner.temp }}/nolane-clean-install-receipt.json
