@@ -253,6 +253,7 @@ class ProductRuntime:
         decision: str,
         language: str | None = None,
         weight: float = 1.0,
+        corrected_target: str | None = None,
     ) -> dict[str, Any]:
         with self._lock:
             return self.learning.record_decision(
@@ -261,6 +262,7 @@ class ProductRuntime:
                 decision=decision,
                 language=language,
                 weight=weight,
+                corrected_target=corrected_target,
             )
 
     def finalize_learning_window(
