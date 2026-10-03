@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
 import re
 import shutil
@@ -518,6 +517,10 @@ def build_real_learning_campaign(
         fixed_root,
         ordinal_by_window=ordinal_by_window,
     )
+    if baseline_root.parent.parent.resolve() != learning_root.resolve():
+        raise ValueError(
+            "all campaign windows must come from one product learning registry"
+        )
     baseline = _window_binding(
         baseline_root,
         ordinal_by_window=ordinal_by_window,
