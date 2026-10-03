@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.57.0
+## Current executable milestone: Living Runtime v0.58.0
 
 The runtime now contains two very different compute scales:
 
@@ -1540,6 +1540,16 @@ The new Android Product Release workflow takes the promoted checkpoint, COMPLETE
 This still does not claim Android production completion: a real L36-authorized release run, emulator/device install + persistent local-chat court, fuller LivingEngine parity and latency/RAM/battery evidence remain open.
 
 See `docs/V057-L36-AUTHORIZED-LOCALMOBILE-BUNDLE.md`.
+
+### v0.58 Android Emulator Native-Boot + Persistent Local-Chat Court
+
+v0.58 moves Android evidence into a real packaged Tauri process. CI now embeds the deterministic authority-bound LocalMobile fixture into an x86_64 court APK, installs it in an Android emulator, boots the app, runs native local chat, force-stops the Android package and launches it again.
+
+The second process must recover the same device-local identity, exact state version, interaction count and conversation history before another local turn is accepted. The probe is compiled into Android only and activates solely for the exact synthetic court transaction plus deterministic fixture checkpoint, so real release bundles do not auto-run it.
+
+The arm64 APK court remains separate. This wave proves packaged emulator boot/restart continuity, not a real L36 release or physical-device performance campaign.
+
+See `docs/V058-ANDROID-EMULATOR-LOCALCHAT-COURT.md`.
 
 ## Bootstrap Qwen
 
