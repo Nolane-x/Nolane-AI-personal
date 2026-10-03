@@ -1949,12 +1949,12 @@ Packaged-app target: **AUTHORITY-BOUND BUNDLE -> X86_64 APK -> ANDROID EMULATOR 
 - [x] arm64 APK court remains independent
 - [x] emulator verifies installed product version is exactly 0.58.0
 - [x] explicit failure marker and timeout log capture
-- [ ] L58 packaged x86_64 APK build PASS
-- [ ] L58 Android emulator first-boot marker PASS
-- [ ] L58 Android emulator force-stop/restart marker PASS
-- [ ] L58 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.58
+- [x] L58 packaged x86_64 APK build PASS
+- [x] L58 Android emulator first-boot marker PASS
+- [x] L58 Android emulator force-stop/restart marker PASS
+- [x] L58 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.58
 - [ ] run the same install/restart court on an APK built from **real** COMPLETE L36 evidence
 - [ ] physical Android device court
 - [ ] full mobile LivingEngine transition/initiative-learning parity
@@ -1962,5 +1962,50 @@ Packaged-app target: **AUTHORITY-BOUND BUNDLE -> X86_64 APK -> ANDROID EMULATOR 
 - [ ] only then call Android local chat production-complete
 
 L58 proves that the packaged Tauri process can boot and execute LocalMobile inside an Android emulator with persistence across an OS-level force-stop. The CI APK deliberately uses deterministic synthetic authority evidence, so this is stronger than a Rust-only host court but still not a substitute for a real L36 release/device campaign.
+
+
+## L59 — Mobile Lifecycle Parity
+
+Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERVATIVE REST**.
+
+- [x] preserve frozen v0.55 persistent neural/product state
+- [x] introduce migratable `NOLANE-V059-LOCALMOBILE-LIFECYCLE-META-V1`
+- [x] accept/migrate v0.56 LocalMobile metadata
+- [x] persist lifecycle tick + last event/user/speech timestamps
+- [x] float-stable typed persistent-state integrity with legacy v0.55 read compatibility
+- [x] Python/Rust share the same typed integrity projection
+- [x] persist social-drive + curiosity controls
+- [x] port desktop valence/energy/playfulness/irritation/concern half-life dynamics
+- [x] port bounded seven-day time advance
+- [x] user event updates interaction/familiarity/closeness before cortex generation
+- [x] port bilingual positive/negative/anger cue effects available in the frozen mobile state
+- [x] port 15m user-silence initiative guard
+- [x] port 30m AI-speech cooldown
+- [x] port 24h no-thread hard silence
+- [x] port 0.66 initiative threshold and component weights
+- [x] use desktop default thread importance 0.5 when frozen mobile state has topic-only threads
+- [x] add LocalMobile `POST /v1/tick`
+- [x] production tick time is host-clock authoritative; request bodies cannot time-travel lifecycle
+- [x] Android native heartbeat matches desktop off/gentle/active cadence (5s/30s/12s)
+- [x] heartbeat lives in Tauri Rust host rather than web UI
+- [x] initiative generation uses normal native product prompt/sampler/kernel path
+- [x] port 30m REST idle threshold
+- [x] port 45m REST cooldown
+- [x] conservative >=0.72 lexical near-duplicate memory compaction
+- [x] explicitly refuse to claim provenance-rich consolidation parity
+- [x] lifecycle metadata survives product-host restart
+- [x] integrated lifecycle court covers recent-user silence -> idle initiative -> REST -> restart -> cooldown
+- [ ] L59 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.59
+- [ ] provenance-rich mobile MemoryRecord/consolidation parity
+- [ ] social-observer mutation parity
+- [ ] continual-learning/review parity
+- [ ] real COMPLETE-L36 release APK install/restart campaign
+- [ ] physical Android device court
+- [ ] latency/RAM/thermal/battery acceptance
+- [ ] only then call Android LocalMobile production-complete
+
+L59 deliberately separates **lifecycle parity** from **learning/provenance parity**. The mobile runtime may become proactive and time-aware without pretending that its bounded memory projection is already the desktop evidence graph.
 
 

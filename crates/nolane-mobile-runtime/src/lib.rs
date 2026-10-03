@@ -31,6 +31,8 @@ pub const PRODUCT_SAMPLING_TOP_P: f64 = 0.90;
 
 pub const PERSISTENT_MOBILE_STATE_SCHEMA: &str =
     "NOLANE-V055-MOBILE-PERSISTENT-STATE-V1";
+pub const PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1: &str =
+    "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V1";
 pub const MAX_PERSISTENT_MOBILE_STATE_BYTES: u64 = 4 * 1024 * 1024;
 
 const SAMPLER_LOGIT_SCALE: f64 = 1_000.0;
@@ -255,13 +257,76 @@ impl PersistentMobileState {
     }
 }
 
-fn persistent_state_digest(
+fn canonicalize_json_value(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut rows: Vec<_> = map.into_iter().collect();
+            rows.sort_by(|left, right| left.0.cmp(&right.0));
+            let mut out = serde_json::Map::new();
+            for (key, value) in rows {
+                out.insert(key, canonicalize_json_value(value));
+            }
+            serde_json::Value::Object(out)
+        }
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .into_iter()
+                .map(canonicalize_json_value)
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
+fn canonical_json_bytes(
+    value: serde_json::Value,
+) -> Result<Vec<u8>, RuntimeError> {
+    Ok(serde_json::to_vec(&canonicalize_json_value(value))?)
+}
+
+fn persistent_state_typed_projection(
+    state: &PersistentMobileState,
+) -> serde_json::Value {
+    serde_json::json!({
+        "source_checkpoint_sha256": &state.source_checkpoint_sha256,
+        "latent_f32_bits": state
+            .latent
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<u32>>(),
+        "profile": {
+            "preferred_name": &state.profile.preferred_name,
+            "language": &state.profile.language,
+            "response_length": &state.profile.response_length,
+            "conversation_style": &state.profile.conversation_style,
+            "personal_instruction": &state.profile.personal_instruction,
+        },
+        "state": {
+            "identity_id": &state.state.identity_id,
+            "relationship": {
+                "closeness_f64_bits": state.state.relationship.closeness.to_bits(),
+                "trust_f64_bits": state.state.relationship.trust.to_bits(),
+                "familiarity_f64_bits": state.state.relationship.familiarity.to_bits(),
+                "interaction_count": state.state.relationship.interaction_count,
+            },
+            "affect": {
+                "valence_f64_bits": state.state.affect.valence.to_bits(),
+                "energy_f64_bits": state.state.affect.energy.to_bits(),
+                "playfulness_f64_bits": state.state.affect.playfulness.to_bits(),
+                "concern_f64_bits": state.state.affect.concern.to_bits(),
+                "irritation_f64_bits": state.state.affect.irritation.to_bits(),
+            },
+            "open_threads": &state.state.open_threads,
+        },
+        "memories": &state.memories,
+    })
+}
+
+fn persistent_state_typed_digest(
     state: &PersistentMobileState,
 ) -> Result<String, RuntimeError> {
-    // Digest the semantic JSON object through serde_json::Value so object
-    // keys have one deterministic ordering across Python and Rust.
-    let value = serde_json::to_value(state)?;
-    Ok(sha256_hex(&serde_json::to_vec(&value)?))
+    let projection = persistent_state_typed_projection(state);
+    Ok(sha256_hex(&canonical_json_bytes(projection)?))
 }
 
 pub fn read_persistent_mobile_state(
@@ -309,16 +374,31 @@ pub fn read_persistent_mobile_state(
         .ok_or_else(|| RuntimeError::Invalid(
             "persistent mobile state payload is missing".into(),
         ))?;
-    // Verify the original semantic JSON before narrowing latent values to f32.
-    // This keeps Python-authored state files stable across the bridge.
-    let actual = sha256_hex(&serde_json::to_vec(&state_value)?);
+    let integrity = envelope_value
+        .get("integrity")
+        .and_then(serde_json::Value::as_str);
+    let state: PersistentMobileState =
+        serde_json::from_value(state_value.clone())?;
+
+    let actual = match integrity {
+        None => {
+            // Legacy v0.55/Python-authored files hash sorted semantic JSON.
+            sha256_hex(&canonical_json_bytes(state_value)?)
+        }
+        Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1) => {
+            persistent_state_typed_digest(&state)?
+        }
+        Some(other) => {
+            return Err(RuntimeError::Invalid(format!(
+                "unsupported persistent mobile state integrity mode: {other}"
+            )));
+        }
+    };
     if actual != state_sha256 {
         return Err(RuntimeError::Invalid(
             "persistent mobile state integrity mismatch".into(),
         ));
     }
-    let state: PersistentMobileState =
-        serde_json::from_value(state_value)?;
     state.validate(
         expected_source_checkpoint_sha256,
         expected_latent_dim,
@@ -337,12 +417,17 @@ pub fn write_persistent_mobile_state(
         expected_latent_dim,
     )?;
     let state_value = serde_json::to_value(state)?;
-    let state_sha256 =
-        sha256_hex(&serde_json::to_vec(&state_value)?);
-    // Write the exact semantic value that was hashed. Serializing the typed
-    // f32 struct a second time can choose a different decimal spelling.
+    // Integrity must bind the exact semantics that can be reconstructed from
+    // the persisted JSON, not an in-memory float representation that JSON may
+    // normalize while materializing. Reparse the exact Value we will write and
+    // hash that typed state. This keeps lifecycle-generated non-binary f64
+    // values stable across write -> restart -> read.
+    let persisted_state: PersistentMobileState =
+        serde_json::from_value(state_value.clone())?;
+    let state_sha256 = persistent_state_typed_digest(&persisted_state)?;
     let envelope = serde_json::json!({
         "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
+        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
         "state_sha256": state_sha256,
         "state": state_value,
     });
@@ -1290,6 +1375,7 @@ impl MobileRuntime {
 mod tests {
     use super::{
         argmax,
+        canonical_json_bytes,
         read_persistent_mobile_state,
         sha256_hex,
         splitmix64_next,
@@ -1301,6 +1387,7 @@ mod tests {
         ProductPayloadRelationship,
         ProductPayloadState,
         SeededNucleusSampler,
+        PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
         PERSISTENT_MOBILE_STATE_SCHEMA,
     };
     use serde_json::{json, Value};
@@ -1377,6 +1464,10 @@ mod tests {
             raw["schema"].as_str(),
             Some(PERSISTENT_MOBILE_STATE_SCHEMA)
         );
+        assert_eq!(
+            raw["integrity"].as_str(),
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+        );
         assert!(raw["state_sha256"].as_str().unwrap().len() == 64);
         assert!(
             root.path()
@@ -1384,6 +1475,59 @@ mod tests {
                 .read_dir()
                 .unwrap()
                 .all(|entry| !entry.unwrap().file_name().to_string_lossy().ends_with(".tmp"))
+        );
+    }
+
+    #[test]
+    fn persistent_mobile_state_lifecycle_floats_are_restart_idempotent() {
+        let root = tempdir().unwrap();
+        let first_path = root.path().join("lifecycle-state-1.json");
+        let second_path = root.path().join("lifecycle-state-2.json");
+        let mut state = persistent_fixture();
+
+        // Values intentionally mirror non-binary decimal results produced by
+        // v0.59 relationship/affect dynamics rather than tidy fixture floats.
+        state.state.relationship.closeness = 0.71116;
+        state.state.relationship.familiarity = 0.63444;
+        state.state.affect.energy = 0.42000000000000004;
+        state.state.affect.playfulness = 0.12345678901234568;
+        state.state.affect.concern = 0.03765432109876543;
+        state.latent = vec![0.1, -0.2, 0.33333334, -0.7777778];
+
+        write_persistent_mobile_state(
+            &first_path,
+            &state,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        let once = read_persistent_mobile_state(
+            &first_path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+
+        write_persistent_mobile_state(
+            &second_path,
+            &once,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        let twice = read_persistent_mobile_state(
+            &second_path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+
+        assert_eq!(twice, once);
+        let raw: Value =
+            serde_json::from_slice(&fs::read(&second_path).unwrap()).unwrap();
+        assert_eq!(
+            raw["integrity"].as_str(),
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
         );
     }
 
@@ -1420,6 +1564,31 @@ mod tests {
         )
         .unwrap_err();
         assert!(tamper.to_string().contains("integrity mismatch"));
+    }
+
+    #[test]
+    fn persistent_mobile_state_reads_legacy_v055_integrity() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("legacy-state.json");
+        let state = persistent_fixture();
+        let state_value = serde_json::to_value(&state).unwrap();
+        let legacy_sha = sha256_hex(
+            &canonical_json_bytes(state_value.clone()).unwrap(),
+        );
+        let envelope = json!({
+            "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
+            "state_sha256": legacy_sha,
+            "state": state_value,
+        });
+        fs::write(&path, serde_json::to_vec(&envelope).unwrap()).unwrap();
+
+        let loaded = read_persistent_mobile_state(
+            &path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        assert_eq!(loaded, state);
     }
 
     #[test]

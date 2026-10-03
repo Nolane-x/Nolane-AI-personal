@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.58.0
+## Current executable milestone: Living Runtime v0.59.0
 
 The runtime now contains two very different compute scales:
 
@@ -1550,6 +1550,16 @@ The second process must recover the same device-local identity, exact state vers
 The arm64 APK court remains separate. This wave proves packaged emulator boot/restart continuity, not a real L36 release or physical-device performance campaign.
 
 See `docs/V058-ANDROID-EMULATOR-LOCALCHAT-COURT.md`.
+
+### v0.59 Mobile Lifecycle Parity
+
+v0.59 makes Android LocalMobile time-aware and proactive instead of only persistent. The native product host now carries a migratable lifecycle sidecar for event timestamps, social drive, curiosity and REST scheduling while leaving the frozen v0.55 identity/latent/product-state contract intact.
+
+User messages update relationship/affect/lifecycle controls before native cortex generation, matching desktop causal ordering. `POST /v1/tick` ports the desktop 15-minute user-silence guard, 30-minute speech cooldown, 24-hour hard-silence rule and 0.66 initiative threshold, and initiative speech uses the normal native product prompt/sampler/kernel path. Android Tauri now drives that lifecycle from a native 5s/30s/12s heartbeat instead of relying on browser focus. Persistent-state integrity also moved to an IEEE-bit typed digest while retaining legacy v0.55 read compatibility.
+
+The 30-minute REST idle window and 45-minute cooldown are also ported. Mobile still has only a bounded string memory projection, so REST is deliberately conservative near-duplicate compaction rather than a fake provenance-rich ConsolidationReceipt.
+
+See `docs/V059-MOBILE-LIFECYCLE-PARITY.md`.
 
 ## Bootstrap Qwen
 

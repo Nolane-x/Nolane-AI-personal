@@ -10,7 +10,7 @@ description = "Native tokenizer and autoregressive host for Nolane mobile infere
 nolane-mobile-kernel = { path = "../nolane-mobile-kernel" }
 tokenizers = { version = "0.23.2", default-features = false, features = ["fancy-regex"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
 sha2 = "0.10"
 thiserror = "2"
 rand = "0.8"

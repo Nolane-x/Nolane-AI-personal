@@ -1,6 +1,6 @@
 [package]
 name = "nolane-product-client"
-version = "0.58.0"
+version = "0.59.0"
 description = "Minimal Windows and Android client for Nolane AI Personal"
 authors = ["Nolane"]
 license = "Apache-2.0"

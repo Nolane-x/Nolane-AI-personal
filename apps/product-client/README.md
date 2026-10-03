@@ -134,5 +134,7 @@ v0.57 makes the Android local bundle authority-bound. Production LocalMobile now
 
 v0.58 adds a packaged Android emulator court. CI builds an x86_64 APK with the deterministic authority-bound fixture, launches the real Tauri package, executes native LocalMobile chat, force-stops the package and requires identity/state/history continuity after process restart.
 
-Android is still not called production-complete until the same court passes on a real authority-bound release APK, a physical device, fuller LivingEngine parity and latency/memory/thermal/battery evidence.
+v0.59 ports the mobile lifecycle baseline: persisted time/event state, desktop-style affect relaxation, user-event relationship dynamics, initiative guards/scoring and conservative REST scheduling. LocalMobile now exposes `POST /v1/tick` and can initiate through the same native product generation path.
+
+Android is still not called production-complete until the same court passes on a real authority-bound release APK and physical device, and provenance-rich memory/learning plus latency/RAM/thermal/battery gates close.
 
