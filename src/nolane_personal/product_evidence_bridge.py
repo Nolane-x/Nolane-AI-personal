@@ -116,7 +116,7 @@ def _read_product_turns(
     if through_rowid is not None and through_rowid <= after_rowid:
         raise ValueError("through_rowid must be greater than after_rowid")
 
-    uri = path.as_uri().replace("file://", "file:") + "?mode=ro"
+    uri = path.as_uri() + "?mode=ro"
     connection = sqlite3.connect(uri, uri=True)
     connection.row_factory = sqlite3.Row
     try:
