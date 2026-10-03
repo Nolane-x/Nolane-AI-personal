@@ -284,29 +284,51 @@ pub fn read_persistent_mobile_state(
         )));
     }
     let bytes = fs::read(path)?;
-    let envelope: PersistentMobileStateEnvelope =
+    let envelope_value: serde_json::Value =
         serde_json::from_slice(&bytes)?;
-    if envelope.schema != PERSISTENT_MOBILE_STATE_SCHEMA {
+    let schema = envelope_value
+        .get("schema")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| RuntimeError::Invalid(
+            "persistent mobile state schema is missing".into(),
+        ))?;
+    if schema != PERSISTENT_MOBILE_STATE_SCHEMA {
         return Err(RuntimeError::Invalid(
             "persistent mobile state schema mismatch".into(),
         ));
     }
-    if !is_lower_hex_sha256(&envelope.state_sha256) {
+    let state_sha256 = envelope_value
+        .get("state_sha256")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| RuntimeError::Invalid(
+            "persistent mobile state integrity digest is missing".into(),
+        ))?;
+    if !is_lower_hex_sha256(state_sha256) {
         return Err(RuntimeError::Invalid(
             "persistent mobile state integrity digest is malformed".into(),
         ));
     }
-    let actual = persistent_state_digest(&envelope.state)?;
-    if actual != envelope.state_sha256 {
+    let state_value = envelope_value
+        .get("state")
+        .cloned()
+        .ok_or_else(|| RuntimeError::Invalid(
+            "persistent mobile state payload is missing".into(),
+        ))?;
+    // Verify the original semantic JSON before narrowing latent values to f32.
+    // This keeps Python-authored state files stable across the bridge.
+    let actual = sha256_hex(&serde_json::to_vec(&state_value)?);
+    if actual != state_sha256 {
         return Err(RuntimeError::Invalid(
             "persistent mobile state integrity mismatch".into(),
         ));
     }
-    envelope.state.validate(
+    let state: PersistentMobileState =
+        serde_json::from_value(state_value)?;
+    state.validate(
         expected_source_checkpoint_sha256,
         expected_latent_dim,
     )?;
-    Ok(envelope.state)
+    Ok(state)
 }
 
 pub fn write_persistent_mobile_state(
