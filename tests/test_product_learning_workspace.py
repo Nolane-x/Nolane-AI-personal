@@ -11,6 +11,7 @@ from nolane_personal.product_evidence_bridge import ProductEvidenceExportPolicy
 from nolane_personal.product_learning_workspace import ProductLearningWorkspace
 from nolane_personal.product_runtime import ProductRuntime
 from nolane_personal.product_server import ProductHTTPServer
+from nolane_personal.local_evidence_workbench import paths_for
 
 
 PROMPTS = [
@@ -113,6 +114,52 @@ def test_inapp_workspace_never_auto_approves_and_can_finalize(tmp_path):
         assert finalized["intake_ready"] is True
         assert finalized["quality_status"] == "PASS"
         assert len(finalized["approved_manifest_sha256"]) == 64
+    finally:
+        runtime.close()
+
+
+def test_user_correction_becomes_the_approved_training_target(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    corrected = "This is the exact answer I want Nolane to learn."
+    try:
+        fill_runtime(runtime, prefix="correct")
+        runtime.create_learning_window()
+        first = runtime.next_learning_candidate("window-0001")
+        assert first is not None
+        original = first["target"]
+        runtime.record_learning_decision(
+            "window-0001",
+            first["candidate_id"],
+            decision="approve",
+            language="en",
+            corrected_target=corrected,
+        )
+        approve_all(runtime, "window-0001")
+        finalized = runtime.finalize_learning_window("window-0001")
+        assert finalized["quality_status"] == "PASS"
+
+        root = (
+            tmp_path
+            / "learning-evidence"
+            / "windows"
+            / "window-0001"
+            / "workbench"
+        )
+        wb = paths_for(root)
+        approved_manifest = json.loads(
+            wb.approved_manifest.read_text(encoding="utf-8")
+        )
+        dataset = (
+            wb.approved_manifest.parent
+            / approved_manifest["dataset_filename"]
+        )
+        rows = [
+            json.loads(line)
+            for line in dataset.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        assert rows[0]["target"] == corrected
+        assert rows[0]["target"] != original
     finally:
         runtime.close()
 
