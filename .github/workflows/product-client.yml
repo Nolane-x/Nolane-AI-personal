@@ -22,6 +22,8 @@ on:
       - "tests/test_mobile_factorized.py"
       - "tests/test_mobile_factorized_export.py"
       - "scripts/export_mobile_factorized.py"
+      - "scripts/build_mobile_rust_fixture.py"
+      - "crates/nolane-mobile-kernel/**"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -47,6 +49,8 @@ on:
       - "tests/test_mobile_factorized.py"
       - "tests/test_mobile_factorized_export.py"
       - "scripts/export_mobile_factorized.py"
+      - "scripts/build_mobile_rust_fixture.py"
+      - "crates/nolane-mobile-kernel/**"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -122,6 +126,28 @@ jobs:
         working-directory: apps/product-client
         shell: pwsh
         run: tauri build --no-bundle
+
+  mobile-native:
+    name: Android native kernel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - name: Install neural export dependencies
+        run: python -m pip install -e '.[product]'
+      - name: Build deterministic Python mobile golden
+        run: python scripts/build_mobile_rust_fixture.py --output-dir artifacts/mobile-rust-fixture
+      - name: Rust mobile kernel unit tests
+        run: cargo test --manifest-path crates/nolane-mobile-kernel/Cargo.toml
+      - name: Cross-language logits/state equivalence
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-kernel/Cargo.toml --example verify_fixture -- artifacts/mobile-rust-fixture
+      - name: Android target compile court
+        run: cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
 
   android:
     name: Android APK court
