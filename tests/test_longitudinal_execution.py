@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import nolane_personal.longitudinal_execution as le
 from nolane_personal.approved_evidence import build_approved_evidence_pack
 from nolane_personal.longitudinal_execution import (
     PLAN_SCHEMA,
@@ -208,10 +209,39 @@ def fake_cycle(i: int):
     }
 
 
-def fake_window(i: int, *, status="PASS"):
+def fake_plan_receipt(cycles):
+    return {
+        "cycles": len(cycles),
+        "plan_sha256": "d" * 64,
+        "fixed_panel": {
+            "protocol_sha256": "f" * 64,
+        },
+        "cycle_bindings": [
+            {
+                "adaptation": {
+                    "protocol_sha256": cycle["training"]["lineage"][
+                        "adaptation_protocol_sha256"
+                    ],
+                }
+            }
+            for cycle in cycles
+        ],
+    }
+
+
+def fake_window(i: int, cycles, *, status="PASS"):
     return {
         "status": status,
         "court_sha256": f"{200 + i:064x}",
+        "protocol_sha256": cycles[i]["training"]["lineage"][
+            "adaptation_protocol_sha256"
+        ],
+        "initial_checkpoint_sha256": cycles[i]["artifact"][
+            "checkpoint_sha256"
+        ],
+        "final_checkpoint_sha256": cycles[-1]["artifact"][
+            "checkpoint_sha256"
+        ],
         "group_robustness": {
             "summary": {
                 "overall_regression": 0.004,
@@ -221,22 +251,67 @@ def fake_window(i: int, *, status="PASS"):
     }
 
 
-def test_longitudinal_report_requires_every_learned_window_to_survive():
-    cycles = [fake_cycle(i) for i in range(5)]
-    windows = [fake_window(i) for i in range(4)]
-    unified = {
+def fake_fixed():
+    return {
         "status": "PASS",
+        "court_sha256": "c" * 64,
+        "protocol_sha256": "f" * 64,
+    }
+
+
+def fake_unified(cycles):
+    return {
+        "status": "PASS",
+        "policy": {
+            "min_cycles": 5,
+            "min_cortex_cycles": 5,
+            "require_unique_adaptation_protocols": True,
+        },
         "first_parent_checkpoint_sha256": "a" * 64,
         "final_artifact_checkpoint_sha256": cycles[-1]["artifact"][
             "checkpoint_sha256"
         ],
         "chain_sha256": "b" * 64,
     }
-    fixed = {
-        "status": "PASS",
-        "court_sha256": "c" * 64,
-    }
-    plan_receipt = {"plan_sha256": "d" * 64}
+
+
+def patch_report_primitives(monkeypatch, unified):
+    monkeypatch.setattr(
+        le,
+        "verify_longitudinal_plan_receipt",
+        lambda receipt: receipt,
+    )
+    monkeypatch.setattr(
+        le,
+        "verify_l38_run_receipt",
+        lambda receipt: receipt,
+    )
+    monkeypatch.setattr(
+        le,
+        "verify_long_horizon_retention_digest",
+        lambda receipt: receipt,
+    )
+    monkeypatch.setattr(
+        le,
+        "verify_unified_continual_chain_digest",
+        lambda receipt: receipt,
+    )
+    monkeypatch.setattr(
+        le,
+        "assess_unified_continual_chain",
+        lambda cycles, long_horizon_retention, policy: unified,
+    )
+
+
+def test_longitudinal_report_requires_every_learned_window_to_survive(
+    monkeypatch,
+):
+    cycles = [fake_cycle(i) for i in range(5)]
+    windows = [fake_window(i, cycles) for i in range(4)]
+    unified = fake_unified(cycles)
+    fixed = fake_fixed()
+    plan_receipt = fake_plan_receipt(cycles)
+    patch_report_primitives(monkeypatch, unified)
 
     report = build_longitudinal_report(
         plan_receipt=plan_receipt,
@@ -254,7 +329,7 @@ def test_longitudinal_report_requires_every_learned_window_to_survive():
     assert report["cycle_rows"][-1]["learned_window_court_sha256"] is None
     verify_longitudinal_report_digest(report)
 
-    windows[1] = fake_window(1, status="BLOCKED")
+    windows[1] = fake_window(1, cycles, status="BLOCKED")
     blocked = build_longitudinal_report(
         plan_receipt=plan_receipt,
         cycle_receipts=cycles,
@@ -266,26 +341,64 @@ def test_longitudinal_report_requires_every_learned_window_to_survive():
     assert "learned_window_002_forgotten" in blocked["reasons"]
 
 
-def test_longitudinal_report_digest_tamper_is_detected():
+def test_longitudinal_report_digest_tamper_is_detected(monkeypatch):
     cycles = [fake_cycle(i) for i in range(5)]
+    unified = fake_unified(cycles)
+    patch_report_primitives(monkeypatch, unified)
     report = build_longitudinal_report(
-        plan_receipt={"plan_sha256": "d" * 64},
+        plan_receipt=fake_plan_receipt(cycles),
         cycle_receipts=cycles,
-        fixed_panel_receipt={"status": "PASS", "court_sha256": "c" * 64},
-        learned_window_receipts=[fake_window(i) for i in range(4)],
-        unified_chain={
-            "status": "PASS",
-            "first_parent_checkpoint_sha256": "a" * 64,
-            "final_artifact_checkpoint_sha256": cycles[-1]["artifact"][
-                "checkpoint_sha256"
-            ],
-            "chain_sha256": "b" * 64,
-        },
+        fixed_panel_receipt=fake_fixed(),
+        learned_window_receipts=[
+            fake_window(i, cycles) for i in range(4)
+        ],
+        unified_chain=unified,
     )
     report["cycles"] = 99
     with pytest.raises(ValueError, match="digest mismatch"):
         verify_longitudinal_report_digest(report)
 
+
+def test_longitudinal_report_rejects_recomputed_chain_mismatch(monkeypatch):
+    cycles = [fake_cycle(i) for i in range(5)]
+    unified = fake_unified(cycles)
+    patch_report_primitives(monkeypatch, unified)
+    monkeypatch.setattr(
+        le,
+        "assess_unified_continual_chain",
+        lambda cycles, long_horizon_retention, policy: {
+            **unified,
+            "chain_sha256": "e" * 64,
+        },
+    )
+    with pytest.raises(ValueError, match="does not match longitudinal raw evidence"):
+        build_longitudinal_report(
+            plan_receipt=fake_plan_receipt(cycles),
+            cycle_receipts=cycles,
+            fixed_panel_receipt=fake_fixed(),
+            learned_window_receipts=[
+                fake_window(i, cycles) for i in range(4)
+            ],
+            unified_chain=unified,
+        )
+
+
+def test_longitudinal_report_requires_exactly_cycles_minus_one_future_courts(
+    monkeypatch,
+):
+    cycles = [fake_cycle(i) for i in range(5)]
+    unified = fake_unified(cycles)
+    patch_report_primitives(monkeypatch, unified)
+    with pytest.raises(ValueError, match="cycles - 1"):
+        build_longitudinal_report(
+            plan_receipt=fake_plan_receipt(cycles),
+            cycle_receipts=cycles,
+            fixed_panel_receipt=fake_fixed(),
+            learned_window_receipts=[
+                fake_window(i % 4, cycles) for i in range(5)
+            ],
+            unified_chain=unified,
+        )
 
 
 def test_longitudinal_policy_rejects_looser_evidence_thresholds(tmp_path):
@@ -306,29 +419,6 @@ def test_longitudinal_policy_cannot_disable_fixed_panel_isolation(tmp_path):
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="cannot be disabled"):
         validate_longitudinal_plan(path)
-
-
-def test_longitudinal_report_requires_exactly_cycles_minus_one_future_courts():
-    cycles = [fake_cycle(i) for i in range(5)]
-    with pytest.raises(ValueError, match="cycles - 1"):
-        build_longitudinal_report(
-            plan_receipt={"plan_sha256": "d" * 64},
-            cycle_receipts=cycles,
-            fixed_panel_receipt={
-                "status": "PASS",
-                "court_sha256": "c" * 64,
-            },
-            learned_window_receipts=[fake_window(i) for i in range(5)],
-            unified_chain={
-                "status": "PASS",
-                "first_parent_checkpoint_sha256": "a" * 64,
-                "final_artifact_checkpoint_sha256": cycles[-1][
-                    "artifact"
-                ]["checkpoint_sha256"],
-                "chain_sha256": "b" * 64,
-            },
-        )
-
 
 
 def test_longitudinal_plan_rejects_unknown_training_fields(tmp_path):
