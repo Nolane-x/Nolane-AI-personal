@@ -17,6 +17,18 @@ pub const PRODUCT_SYSTEM_PROMPT: &str = "You are the language cortex of Nolane A
 pub const MAX_PRODUCT_OPEN_THREADS: usize = 4;
 pub const MAX_PRODUCT_MEMORIES: usize = 8;
 
+pub const SEEDED_SAMPLER_SCHEMA: &str =
+    "NOLANE-V054-SEEDED-Q32-NUCLEUS-V1";
+pub const PRODUCT_SAMPLING_TEMPERATURE: f64 = 0.78;
+pub const PRODUCT_SAMPLING_TOP_P: f64 = 0.90;
+
+const SAMPLER_LOGIT_SCALE: f64 = 1_000.0;
+const SAMPLER_EXP_WEIGHT_SCALE: u64 = 1u64 << 40;
+const SAMPLER_PROBABILITY_SCALE: u64 = 1u64 << 32;
+const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
+const SPLITMIX_MUL1: u64 = 0xBF58476D1CE4E5B9;
+const SPLITMIX_MUL2: u64 = 0x94D049BB133111EB;
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct ProductPayloadProfile {
     pub preferred_name: String,
@@ -377,6 +389,202 @@ impl ProductPayloadInput {
     }
 }
 
+fn round_half_up_positive(value: f64) -> Result<u64, RuntimeError> {
+    if !value.is_finite() || value < 0.0 {
+        return Err(RuntimeError::Invalid(
+            "sampler quantization input must be finite and non-negative".into(),
+        ));
+    }
+    Ok((value + 0.5).floor() as u64)
+}
+
+fn round_half_away_from_zero(value: f64) -> Result<i64, RuntimeError> {
+    if !value.is_finite() {
+        return Err(RuntimeError::Invalid(
+            "sampler logit must be finite".into(),
+        ));
+    }
+    if value >= 0.0 {
+        Ok((value + 0.5).floor() as i64)
+    } else {
+        Ok((value - 0.5).ceil() as i64)
+    }
+}
+
+fn splitmix64_next(state: u64) -> (u64, u64) {
+    let state = state.wrapping_add(SPLITMIX_GAMMA);
+    let mut value = state;
+    value = (value ^ (value >> 30)).wrapping_mul(SPLITMIX_MUL1);
+    value = (value ^ (value >> 27)).wrapping_mul(SPLITMIX_MUL2);
+    value ^= value >> 31;
+    (state, value)
+}
+
+#[derive(Clone, Debug)]
+pub struct SeededNucleusSampler {
+    state: u64,
+    temperature: f64,
+    top_p: f64,
+}
+
+impl SeededNucleusSampler {
+    pub fn new(
+        seed: u64,
+        temperature: f64,
+        top_p: f64,
+    ) -> Result<Self, RuntimeError> {
+        if !temperature.is_finite() || temperature <= 0.0 {
+            return Err(RuntimeError::Invalid(
+                "temperature must be finite and positive".into(),
+            ));
+        }
+        if !top_p.is_finite() || !(0.0 < top_p && top_p <= 1.0) {
+            return Err(RuntimeError::Invalid(
+                "top_p must be finite and in (0, 1]".into(),
+            ));
+        }
+        Ok(Self {
+            state: seed,
+            temperature,
+            top_p,
+        })
+    }
+
+    pub fn state(&self) -> u64 {
+        self.state
+    }
+
+    pub fn sample(&mut self, logits: &[f32]) -> Result<usize, RuntimeError> {
+        if logits.is_empty() {
+            return Err(RuntimeError::Invalid(
+                "seeded sampler requires non-empty logits".into(),
+            ));
+        }
+        if logits.iter().any(|value| !value.is_finite()) {
+            return Err(RuntimeError::Invalid(
+                "logits contain non-finite value".into(),
+            ));
+        }
+
+        let mut quantized_logits = Vec::with_capacity(logits.len());
+        for value in logits {
+            quantized_logits.push(round_half_away_from_zero(
+                *value as f64 * SAMPLER_LOGIT_SCALE,
+            )?);
+        }
+        let maximum = *quantized_logits.iter().max().ok_or_else(|| {
+            RuntimeError::Invalid("seeded sampler has no logits".into())
+        })?;
+
+        let mut exp_weights = Vec::with_capacity(logits.len());
+        let mut total_exp: u64 = 0;
+        for value in quantized_logits {
+            let delta = ((value - maximum) as f64 / SAMPLER_LOGIT_SCALE)
+                / self.temperature;
+            let weight = round_half_up_positive(
+                delta.exp() * SAMPLER_EXP_WEIGHT_SCALE as f64,
+            )?;
+            total_exp = total_exp.checked_add(weight).ok_or_else(|| {
+                RuntimeError::Invalid(
+                    "sampler exponential mass overflow".into(),
+                )
+            })?;
+            exp_weights.push(weight);
+        }
+        if total_exp == 0 {
+            return Err(RuntimeError::Invalid(
+                "softmax normalization failed".into(),
+            ));
+        }
+
+        let mut weights = Vec::with_capacity(exp_weights.len());
+        for value in exp_weights {
+            let numerator = value as u128
+                * SAMPLER_PROBABILITY_SCALE as u128
+                + (total_exp / 2) as u128;
+            weights.push(
+                (numerator / total_exp as u128) as u64
+            );
+        }
+        if !weights.iter().any(|value| *value > 0) {
+            return Err(RuntimeError::Invalid(
+                "quantized probability mass is empty".into(),
+            ));
+        }
+
+        let mut ranked: Vec<usize> = (0..weights.len()).collect();
+        ranked.sort_by(|left, right| {
+            weights[*right]
+                .cmp(&weights[*left])
+                .then_with(|| left.cmp(right))
+        });
+
+        let total: u64 = weights.iter().try_fold(
+            0u64,
+            |acc, value| acc.checked_add(*value),
+        ).ok_or_else(|| {
+            RuntimeError::Invalid(
+                "quantized probability mass overflow".into(),
+            )
+        })?;
+        let top_p_q32 = round_half_up_positive(
+            self.top_p * SAMPLER_PROBABILITY_SCALE as f64,
+        )?.min(SAMPLER_PROBABILITY_SCALE);
+        let threshold = (
+            total as u128 * top_p_q32 as u128
+            / SAMPLER_PROBABILITY_SCALE as u128
+        ) as u64;
+
+        let mut retained = Vec::new();
+        let mut cumulative_before = 0u64;
+        for token_id in ranked {
+            let weight = weights[token_id];
+            if weight == 0 {
+                continue;
+            }
+            if cumulative_before > threshold {
+                break;
+            }
+            retained.push((token_id, weight));
+            cumulative_before = cumulative_before
+                .checked_add(weight)
+                .ok_or_else(|| RuntimeError::Invalid(
+                    "top-p cumulative mass overflow".into(),
+                ))?;
+        }
+        if retained.is_empty() {
+            return Err(RuntimeError::Invalid(
+                "top-p filter removed all probability mass".into(),
+            ));
+        }
+
+        let retained_total: u64 = retained.iter().try_fold(
+            0u64,
+            |acc, (_, weight)| acc.checked_add(*weight),
+        ).ok_or_else(|| RuntimeError::Invalid(
+            "retained probability mass overflow".into(),
+        ))?;
+        let (state, random_value) = splitmix64_next(self.state);
+        self.state = state;
+        let draw = random_value % retained_total;
+
+        let mut cumulative = 0u64;
+        for (token_id, weight) in retained {
+            cumulative = cumulative.checked_add(weight).ok_or_else(|| {
+                RuntimeError::Invalid(
+                    "sampler draw cumulative overflow".into(),
+                )
+            })?;
+            if draw < cumulative {
+                return Ok(token_id);
+            }
+        }
+        Err(RuntimeError::Invalid(
+            "seeded sampler draw escaped cumulative mass".into(),
+        ))
+    }
+}
+
 fn argmax(values: &[f32]) -> Result<usize, RuntimeError> {
     if values.is_empty() {
         return Err(RuntimeError::Invalid("cannot argmax empty logits".into()));
@@ -524,6 +732,22 @@ impl MobileRuntime {
         self.generate_greedy(&prompt, max_new_tokens)
     }
 
+    pub fn generate_product_seeded(
+        &self,
+        payload: &ProductPayloadInput,
+        seed: u64,
+    ) -> Result<GenerationResult, RuntimeError> {
+        let max_new_tokens = payload.max_new_tokens()?;
+        let prompt = self.render_product_prompt(payload)?;
+        self.generate_seeded(
+            &prompt,
+            max_new_tokens,
+            seed,
+            PRODUCT_SAMPLING_TEMPERATURE,
+            PRODUCT_SAMPLING_TOP_P,
+        )
+    }
+
     pub fn generate_chat_greedy(
         &self,
         system_text: &str,
@@ -532,6 +756,87 @@ impl MobileRuntime {
     ) -> Result<GenerationResult, RuntimeError> {
         let prompt = self.render_chat_prompt(system_text, user_text)?;
         self.generate_greedy(&prompt, max_new_tokens)
+    }
+
+    pub fn generate_seeded(
+        &self,
+        prompt: &str,
+        max_new_tokens: usize,
+        seed: u64,
+        temperature: f64,
+        top_p: f64,
+    ) -> Result<GenerationResult, RuntimeError> {
+        if max_new_tokens == 0 {
+            return Err(RuntimeError::Invalid(
+                "max_new_tokens must be positive".into(),
+            ));
+        }
+        if max_new_tokens > MAX_NEW_TOKENS {
+            return Err(RuntimeError::Invalid(format!(
+                "max_new_tokens exceeds native limit: {} > {}",
+                max_new_tokens,
+                MAX_NEW_TOKENS,
+            )));
+        }
+        let prompt_token_ids = self.encode(prompt)?;
+        let mut state = self.kernel.init_state(&self.latent)?;
+        let mut next_logits = None;
+
+        for token_id in &prompt_token_ids {
+            let output = self.kernel.step(
+                *token_id as usize,
+                &state,
+                &self.latent,
+            )?;
+            state = output.state;
+            next_logits = Some(output.logits);
+        }
+
+        let eos = self
+            .kernel
+            .contract()
+            .eos_token_id
+            .and_then(|value| usize::try_from(value).ok());
+        let mut logits = next_logits.ok_or_else(|| {
+            RuntimeError::Invalid("prompt produced no logits".into())
+        })?;
+        let mut sampler = SeededNucleusSampler::new(
+            seed,
+            temperature,
+            top_p,
+        )?;
+        let mut generated_token_ids = Vec::with_capacity(max_new_tokens);
+        let mut stopped_on_eos = false;
+
+        for _ in 0..max_new_tokens {
+            let token = sampler.sample(&logits)?;
+            if token > u32::MAX as usize {
+                return Err(RuntimeError::Invalid(
+                    "generated token id exceeds u32".into(),
+                ));
+            }
+            generated_token_ids.push(token as u32);
+            if eos == Some(token) {
+                stopped_on_eos = true;
+                break;
+            }
+            let output = self.kernel.step(
+                token,
+                &state,
+                &self.latent,
+            )?;
+            state = output.state;
+            logits = output.logits;
+        }
+
+        let text = self.decode(&generated_token_ids)?;
+        Ok(GenerationResult {
+            prompt_token_ids,
+            generated_token_ids,
+            text,
+            stopped_on_eos,
+            final_state: state,
+        })
     }
 
     pub fn generate_greedy(
