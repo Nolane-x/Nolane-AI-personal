@@ -1,0 +1,10 @@
+{
+  "schema": "NOLANE-V060-ANDROID-PERFORMANCE-POLICY-V1",
+  "minimum_samples": 5,
+  "max_cold_boot_ms": 30000,
+  "max_p95_turn_ms": 30000,
+  "max_peak_pss_mb": 2048,
+  "max_battery_drain_pct_per_hour": 25.0,
+  "max_thermal_status": 3,
+  "max_crash_count": 0
+}

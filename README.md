@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.59.0
+## Current executable milestone: Living Runtime v0.60.0
 
 The runtime now contains two very different compute scales:
 
@@ -1560,6 +1560,24 @@ User messages update relationship/affect/lifecycle controls before native cortex
 The 30-minute REST idle window and 45-minute cooldown are also ported. Mobile still has only a bounded string memory projection, so REST is deliberately conservative near-duplicate compaction rather than a fake provenance-rich ConsolidationReceipt.
 
 See `docs/V059-MOBILE-LIFECYCLE-PARITY.md`.
+
+### v0.60 V1 Closure Gate
+
+v0.60 stops adding behavior and turns the remaining v1 requirements into one fail-closed evidence chain.
+
+A release can reach `READY_FOR_V1_0` only when the evaluator binds all of the following to one candidate:
+
+- a PASS L43 real longitudinal report with at least five cycles;
+- a COMPLETE L36 promotion ceremony for that exact L43 final checkpoint;
+- a PASS Windows clean-install receipt for the same promoted model/ceremony;
+- a real physical-Android-device receipt for the same release APK/checkpoint;
+- Android performance evidence for the same device/APK under the frozen v1 policy.
+
+Known synthetic promotion transactions and synthetic device receipts are rejected for production closure. Missing evidence, checkpoint mixing, ceremony mixing, APK mixing or resource-policy failure all produce `BLOCKED`.
+
+The closure receipt itself has no promotion authority. CI proves only the gate mechanics; it cannot fabricate the real L43/L36/device/battery evidence required for v1.0.
+
+See `docs/V060-V1-CLOSURE-GATE.md`.
 
 ## Bootstrap Qwen
 

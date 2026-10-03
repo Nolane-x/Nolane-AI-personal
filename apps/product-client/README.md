@@ -136,5 +136,7 @@ v0.58 adds a packaged Android emulator court. CI builds an x86_64 APK with the d
 
 v0.59 ports the mobile lifecycle baseline: persisted time/event state, desktop-style affect relaxation, user-event relationship dynamics, initiative guards/scoring and conservative REST scheduling. LocalMobile now exposes `POST /v1/tick` and can initiate through the same native product generation path.
 
-Android is still not called production-complete until the same court passes on a real authority-bound release APK and physical device, and provenance-rich memory/learning plus latency/RAM/thermal/battery gates close.
+v0.60 adds the final release-readiness gate. It binds L43 longitudinal evidence, the exact COMPLETE L36 promoted checkpoint, Windows clean-install evidence, real physical-device Android evidence and Android performance evidence into one privacy-preserving closure receipt. Synthetic device/candidate evidence is never sufficient for v1 production closure.
+
+Android is still not called production-complete until the gate receives real authority-bound release/device/performance evidence and the resulting closure receipt says `READY_FOR_V1_0`.
 

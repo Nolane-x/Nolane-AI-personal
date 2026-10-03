@@ -1995,9 +1995,9 @@ Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERV
 - [x] explicitly refuse to claim provenance-rich consolidation parity
 - [x] lifecycle metadata survives product-host restart
 - [x] integrated lifecycle court covers recent-user silence -> idle initiative -> REST -> restart -> cooldown
-- [ ] L59 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.59
+- [x] L59 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.59
 - [ ] provenance-rich mobile MemoryRecord/consolidation parity
 - [ ] social-observer mutation parity
 - [ ] continual-learning/review parity
@@ -2007,5 +2007,45 @@ Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERV
 - [ ] only then call Android LocalMobile production-complete
 
 L59 deliberately separates **lifecycle parity** from **learning/provenance parity**. The mobile runtime may become proactive and time-aware without pretending that its bounded memory projection is already the desktop evidence graph.
+
+
+## L60 — V1 Closure Gate
+
+Release-readiness target: **ONE CANDIDATE / ONE CEREMONY / BOTH PLATFORMS / REAL DEVICE FITNESS**.
+
+- [x] freeze `NOLANE-V060-V1-CLOSURE-RECEIPT-V1`
+- [x] closure authority cannot grant promotion authority
+- [x] require L43 real longitudinal report with PASS + >=5 cycles
+- [x] require COMPLETE L36 promotion ceremony
+- [x] block known synthetic promotion transaction IDs
+- [x] require L43 final checkpoint == L36 promoted candidate checkpoint
+- [x] require Windows v0.49 clean-install PASS receipt
+- [x] bind Windows installed model + ceremony to the same promoted candidate
+- [x] require real physical Android device receipt
+- [x] synthetic Android device receipts are structurally rejected for v1 closure
+- [x] bind Android APK/device evidence to the same promoted checkpoint + ceremony
+- [x] require Android install/version/first-boot/local-chat/force-stop/restart/identity/history checks
+- [x] privacy-preserving device fingerprint hashing; raw fingerprint never enters the receipt
+- [x] freeze Android v1 performance policy
+- [x] require >=5 performance samples
+- [x] require zero crashes
+- [x] require cold-boot, p95-turn, peak-PSS, battery-drain and thermal limits
+- [x] bind performance evidence to the exact device receipt + APK + checkpoint
+- [x] missing evidence yields BLOCKED rather than partial readiness
+- [x] checkpoint mixing across L43/L36/Windows/Android yields BLOCKED
+- [x] Product Client CI courts missing/synthetic/mismatched/slow-evidence paths
+- [ ] L60 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.60
+- [ ] real L43 longitudinal report PASS
+- [ ] real COMPLETE L36 ceremony for the same L43 final checkpoint
+- [ ] real Windows clean-install PASS on that ceremony/checkpoint
+- [ ] real physical Android device PASS on the release APK
+- [ ] real Android performance PASS under the frozen v1 policy
+- [ ] closure receipt status == `READY_FOR_V1_0`
+- [ ] only then bump product version to v1.0.0
+
+L60 is the **software closure wave**, not fabricated production evidence. CI proves the gate mechanics using test fixtures; it cannot manufacture a real L43 campaign, a real promotion ceremony, a physical-device result or battery/thermal measurements. v1.0 remains blocked until the evaluator binds those real receipts into one `READY_FOR_V1_0` closure receipt.
+
 
 
