@@ -16,7 +16,10 @@ use tauri::{Manager, RunEvent, State};
 use url::Url;
 
 #[cfg(target_os = "android")]
-use nolane_mobile_runtime::product::LocalMobileProductRuntime;
+use nolane_mobile_runtime::product::{
+    lifecycle_tick_seconds,
+    LocalMobileProductRuntime,
+};
 #[cfg(target_os = "android")]
 use tauri_plugin_fs::FsExt;
 
@@ -908,16 +911,17 @@ fn start_android_lifecycle_ticker(
                     Duration::from_secs(5)
                 } else if let Some(mobile) = manager.mobile.as_mut() {
                     match mobile.api("GET", "/v1/profile", None) {
-                        Ok(profile) => match profile
-                            .get("initiative")
-                            .and_then(Value::as_str)
-                            .unwrap_or("gentle")
-                        {
-                            "off" => Duration::from_secs(5),
-                            "active" => Duration::from_secs(12),
-                            _ => Duration::from_secs(30),
-                        },
-                        Err(_) => Duration::from_secs(30),
+                        Ok(profile) => Duration::from_secs(
+                            lifecycle_tick_seconds(
+                                profile
+                                    .get("initiative")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or("gentle"),
+                            ),
+                        ),
+                        Err(_) => Duration::from_secs(
+                            lifecycle_tick_seconds("gentle"),
+                        ),
                     }
                 } else {
                     Duration::from_secs(5)
