@@ -119,6 +119,9 @@ def run_desktop(browser, base_url):
         full_page=True,
     )
 
+    corrected_target = "Câu trả lời đã được người dùng sửa trước khi Nolane học."
+    page.locator("#reviewTarget").fill(corrected_target)
+    assert page.locator("#reviewTarget").input_value() == corrected_target
     page.locator("#approveLearning").click()
     page.wait_for_function(
         "() => document.querySelector('#learningProgress').textContent.startsWith('1/3')"
