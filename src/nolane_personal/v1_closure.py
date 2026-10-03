@@ -598,3 +598,173 @@ def verify_v1_closure_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
     )):
         raise ValueError("v1 closure receipt privacy invalid")
     return receipt
+
+CI_CLOSURE_SCHEMA = "NOLANE-V060-CI-SOFTWARE-CLOSURE-V1"
+CI_CLOSURE_AUTHORITY = "CI_SOFTWARE_RELEASE_READINESS_NO_HARDWARE_CERTIFICATION"
+CI_READY_STATUS = "READY_FOR_V1_0_CI_VERIFIED"
+CI_REQUIRED_WORKFLOWS = (
+    "Product Client Court",
+    "Living Runtime CI",
+    "Neural Shadow CI",
+    "Platform Crash Court",
+)
+CI_REQUIRED_PRODUCT_JOBS = (
+    "Product runtime court",
+    "Android APK court",
+    "NUI browser court",
+    "Android native kernel",
+    "Windows native host",
+    "Android x86_64 emulator APK",
+    "Android emulator local-chat restart court",
+)
+
+
+def _git_sha(value: Any, *, field: str = "commit_sha") -> str:
+    if not isinstance(value, str) or len(value) != 40:
+        raise ValueError(f"{field} must be a 40-character Git SHA")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ValueError(f"{field} must be a 40-character Git SHA") from exc
+    return value.lower()
+
+
+def build_ci_v1_closure_receipt(
+    *,
+    repository: str,
+    branch: str,
+    commit_sha: str,
+    product_version: str,
+    workflows: dict[str, str],
+    product_jobs: dict[str, str],
+) -> dict[str, Any]:
+    reasons: list[str] = []
+    normalized_sha = _git_sha(commit_sha)
+
+    if branch != "main":
+        reasons.append("not_main_branch")
+
+    for name in CI_REQUIRED_WORKFLOWS:
+        conclusion = str(workflows.get(name, "missing"))
+        if conclusion != "success":
+            reasons.append(
+                f"workflow_not_success:{name}:{conclusion}"
+            )
+
+    for name in CI_REQUIRED_PRODUCT_JOBS:
+        conclusion = str(product_jobs.get(name, "missing"))
+        if conclusion != "success":
+            reasons.append(
+                f"product_job_not_success:{name}:{conclusion}"
+            )
+
+    reasons = sorted(set(reasons))
+    receipt: dict[str, Any] = {
+        "schema": CI_CLOSURE_SCHEMA,
+        "authority": CI_CLOSURE_AUTHORITY,
+        "status": CI_READY_STATUS if not reasons else BLOCKED_STATUS,
+        "reasons": reasons,
+        "repository": str(repository),
+        "branch": str(branch),
+        "commit_sha": normalized_sha,
+        "product_version": str(product_version),
+        "workflows": {
+            name: str(workflows.get(name, "missing"))
+            for name in CI_REQUIRED_WORKFLOWS
+        },
+        "product_jobs": {
+            name: str(product_jobs.get(name, "missing"))
+            for name in CI_REQUIRED_PRODUCT_JOBS
+        },
+        "verified_scope": [
+            "python_runtime_contracts",
+            "neural_shadow_contracts",
+            "platform_crash_recovery",
+            "windows_native_packaging",
+            "android_arm64_packaging",
+            "android_x86_64_packaging",
+            "android_emulator_native_boot",
+            "android_force_stop_restart_continuity",
+            "localmobile_native_inference",
+            "persistent_identity_state_history",
+            "mobile_lifecycle_parity",
+            "authority_bound_release_mechanics",
+        ],
+        "excluded_claims": [
+            "physical_device_certification",
+            "field_battery_runtime",
+            "field_thermal_behavior",
+            "field_radio_or_oem_compatibility",
+            "real_world_performance_distribution",
+        ],
+        "privacy": {
+            "contains_chat_text": False,
+            "contains_auth_token": False,
+            "contains_device_fingerprint": False,
+            "contains_local_paths": False,
+        },
+    }
+    receipt["closure_sha256"] = payload_digest(receipt)
+    return verify_ci_v1_closure_receipt(receipt)
+
+
+def verify_ci_v1_closure_receipt(
+    receipt: dict[str, Any],
+) -> dict[str, Any]:
+    if receipt.get("schema") != CI_CLOSURE_SCHEMA:
+        raise ValueError("unsupported CI v1 closure receipt schema")
+    if receipt.get("authority") != CI_CLOSURE_AUTHORITY:
+        raise ValueError("CI v1 closure authority mismatch")
+    _verify_self_digest(
+        receipt,
+        digest_field="closure_sha256",
+        label="CI v1 closure receipt",
+    )
+    if receipt.get("status") not in {CI_READY_STATUS, BLOCKED_STATUS}:
+        raise ValueError("CI v1 closure status invalid")
+    _git_sha(receipt.get("commit_sha"))
+    reasons = receipt.get("reasons")
+    if not isinstance(reasons, list):
+        raise ValueError("CI v1 closure reasons invalid")
+    if receipt.get("status") == CI_READY_STATUS and reasons:
+        raise ValueError("READY CI closure has blocking reasons")
+    if receipt.get("branch") != "main" and receipt.get("status") == CI_READY_STATUS:
+        raise ValueError("CI v1 closure cannot be READY off main")
+
+    workflows = receipt.get("workflows")
+    jobs = receipt.get("product_jobs")
+    if not isinstance(workflows, dict) or not isinstance(jobs, dict):
+        raise ValueError("CI v1 closure evidence maps missing")
+
+    if receipt.get("status") == CI_READY_STATUS:
+        if any(workflows.get(name) != "success" for name in CI_REQUIRED_WORKFLOWS):
+            raise ValueError("READY CI closure has failed workflow")
+        if any(jobs.get(name) != "success" for name in CI_REQUIRED_PRODUCT_JOBS):
+            raise ValueError("READY CI closure has failed product job")
+
+    excluded = receipt.get("excluded_claims")
+    if not isinstance(excluded, list):
+        raise ValueError("CI v1 closure excluded_claims missing")
+    required_exclusions = {
+        "physical_device_certification",
+        "field_battery_runtime",
+        "field_thermal_behavior",
+        "field_radio_or_oem_compatibility",
+        "real_world_performance_distribution",
+    }
+    if not required_exclusions.issubset(set(excluded)):
+        raise ValueError("CI v1 closure overclaims hardware evidence")
+
+    privacy = receipt.get("privacy")
+    if not isinstance(privacy, dict) or any(
+        bool(privacy.get(key, True))
+        for key in (
+            "contains_chat_text",
+            "contains_auth_token",
+            "contains_device_fingerprint",
+            "contains_local_paths",
+        )
+    ):
+        raise ValueError("CI v1 closure privacy invalid")
+    return receipt
+

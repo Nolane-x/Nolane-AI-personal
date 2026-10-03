@@ -140,3 +140,6 @@ v0.60 adds the final release-readiness gate. It binds L43 longitudinal evidence,
 
 Android is still not called production-complete until the gate receives real authority-bound release/device/performance evidence and the resulting closure receipt says `READY_FOR_V1_0`.
 
+## CI-verified v1 release policy
+
+For v1.0 software release, the required gate is the same-SHA CI closure across Product Client, Living Runtime, Neural Shadow and Platform Crash, including Windows packaging, Android arm64/x86_64 packaging, native LocalMobile and emulator force-stop/restart continuity. Physical-device battery, thermal and OEM certification remain optional and are not claimed by the CI receipt.

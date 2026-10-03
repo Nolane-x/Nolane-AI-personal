@@ -16,9 +16,12 @@ from nolane_personal.v1_closure import (
     DEVICE_SCHEMA,
     PERFORMANCE_POLICY_SCHEMA,
     READY_STATUS,
+    CI_READY_STATUS,
     build_android_device_receipt,
     build_android_performance_receipt,
+    build_ci_v1_closure_receipt,
     evaluate_v1_closure,
+    verify_ci_v1_closure_receipt,
     verify_v1_closure_receipt,
 )
 
@@ -307,6 +310,93 @@ def test_v1_closure_rejects_windows_manifest_model_drift(tmp_path):
     assert receipt["status"] == BLOCKED_STATUS
     assert any(
         reason.startswith("invalid_windows_clean_install")
+        for reason in receipt["reasons"]
+    )
+
+def successful_ci_workflows():
+    return {
+        "Product Client Court": "success",
+        "Living Runtime CI": "success",
+        "Neural Shadow CI": "success",
+        "Platform Crash Court": "success",
+    }
+
+
+def successful_product_jobs():
+    return {
+        "Product runtime court": "success",
+        "Android APK court": "success",
+        "NUI browser court": "success",
+        "Android native kernel": "success",
+        "Windows native host": "success",
+        "Android x86_64 emulator APK": "success",
+        "Android emulator local-chat restart court": "success",
+    }
+
+
+def test_ci_v1_closure_ready_on_main_when_all_required_courts_pass():
+    receipt = build_ci_v1_closure_receipt(
+        repository="Nolane-x/Nolane-AI-personal",
+        branch="main",
+        commit_sha="1" * 40,
+        product_version=VERSION,
+        workflows=successful_ci_workflows(),
+        product_jobs=successful_product_jobs(),
+    )
+    assert receipt["status"] == CI_READY_STATUS
+    assert receipt["reasons"] == []
+    assert "physical_device_certification" in receipt["excluded_claims"]
+    assert "field_battery_runtime" in receipt["excluded_claims"]
+    verify_ci_v1_closure_receipt(receipt)
+
+
+def test_ci_v1_closure_blocks_off_main():
+    receipt = build_ci_v1_closure_receipt(
+        repository="Nolane-x/Nolane-AI-personal",
+        branch="feature",
+        commit_sha="2" * 40,
+        product_version=VERSION,
+        workflows=successful_ci_workflows(),
+        product_jobs=successful_product_jobs(),
+    )
+    assert receipt["status"] == BLOCKED_STATUS
+    assert "not_main_branch" in receipt["reasons"]
+
+
+def test_ci_v1_closure_blocks_any_required_workflow_failure():
+    workflows = successful_ci_workflows()
+    workflows["Neural Shadow CI"] = "failure"
+    receipt = build_ci_v1_closure_receipt(
+        repository="Nolane-x/Nolane-AI-personal",
+        branch="main",
+        commit_sha="3" * 40,
+        product_version=VERSION,
+        workflows=workflows,
+        product_jobs=successful_product_jobs(),
+    )
+    assert receipt["status"] == BLOCKED_STATUS
+    assert any(
+        reason.startswith("workflow_not_success:Neural Shadow CI")
+        for reason in receipt["reasons"]
+    )
+
+
+def test_ci_v1_closure_blocks_any_required_packaging_job_failure():
+    jobs = successful_product_jobs()
+    jobs["Android emulator local-chat restart court"] = "failure"
+    receipt = build_ci_v1_closure_receipt(
+        repository="Nolane-x/Nolane-AI-personal",
+        branch="main",
+        commit_sha="4" * 40,
+        product_version=VERSION,
+        workflows=successful_ci_workflows(),
+        product_jobs=jobs,
+    )
+    assert receipt["status"] == BLOCKED_STATUS
+    assert any(
+        reason.startswith(
+            "product_job_not_success:Android emulator local-chat restart court"
+        )
         for reason in receipt["reasons"]
     )
 

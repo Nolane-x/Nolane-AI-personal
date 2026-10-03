@@ -1579,6 +1579,14 @@ The closure receipt itself has no promotion authority. CI proves only the gate m
 
 See `docs/V060-V1-CLOSURE-GATE.md`.
 
+### v1 release policy: CI-verified software closure
+
+Physical-device/battery/thermal certification is no longer a blocker for the v1.0 **software release**. The strict v0.60 real-evidence gate remains available as an optional certification mode.
+
+The release blocker is now a same-SHA `READY_FOR_V1_0_CI_VERIFIED` receipt generated only on `main` after Product Client, Living Runtime, Neural Shadow and Platform Crash all succeed for the exact same commit. The Product Client run must also prove Windows native packaging, Android arm64 packaging, Android x86_64 packaging, native LocalMobile execution, emulator boot and OS-level force-stop/restart continuity.
+
+The CI receipt explicitly does **not** claim physical-device battery life, thermal behavior, OEM compatibility or real-world performance distribution.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.

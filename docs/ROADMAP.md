@@ -2047,5 +2047,49 @@ Release-readiness target: **ONE CANDIDATE / ONE CEREMONY / BOTH PLATFORMS / REAL
 
 L60 is the **software closure wave**, not fabricated production evidence. CI proves the gate mechanics using test fixtures; it cannot manufacture a real L43 campaign, a real promotion ceremony, a physical-device result or battery/thermal measurements. v1.0 remains blocked until the evaluator binds those real receipts into one `READY_FOR_V1_0` closure receipt.
 
+## L60A — CI-Verified V1 Release Policy
 
+The product release policy now distinguishes **software release readiness** from optional **hardware certification**.
+
+For v1.0 software release, the blocking authority is a same-SHA CI receipt:
+
+`NOLANE-V060-CI-SOFTWARE-CLOSURE-V1`
+
+with status:
+
+`READY_FOR_V1_0_CI_VERIFIED`
+
+The receipt may be issued only on `main` when all of these workflows succeed for the exact same Git commit:
+
+- Product Client Court
+- Living Runtime CI
+- Neural Shadow CI
+- Platform Crash Court
+
+The Product Client run must also contain PASS results for:
+
+- Product runtime court
+- Android APK court
+- NUI browser court
+- Android native kernel
+- Windows native host
+- Android x86_64 emulator APK
+- Android emulator local-chat restart court
+
+- [x] freeze CI software-closure schema and authority
+- [x] require exact 40-character main commit SHA
+- [x] require all four independent workflows on the same SHA
+- [x] require all seven Product Client jobs
+- [x] block readiness on any missing/queued/failed/cancelled required court
+- [x] closure receipt explicitly excludes physical-device certification claims
+- [x] closure receipt explicitly excludes field battery/thermal/OEM/performance claims
+- [x] retain strict L43/L36/device/performance closure as optional certification mode
+- [x] add GitHub workflow-run collector for same-SHA evidence
+- [x] re-run v1 closure semantics inside the final CI-closure workflow
+- [ ] CI software closure PASS on merged `main`
+- [ ] closure receipt status == `READY_FOR_V1_0_CI_VERIFIED`
+- [ ] bump product version to v1.0.0
+- [ ] full v1.0 CI PASS on the bumped version
+
+This policy intentionally does **not** claim that CI emulation proves physical-device battery life, thermal behavior, OEM compatibility, or field performance. Those remain optional certification campaigns rather than blockers for the v1.0 software release.
 
