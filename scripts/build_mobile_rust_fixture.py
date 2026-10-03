@@ -21,10 +21,35 @@ from nolane_personal.mobile_factorized import (
     build_mobile_factorized_modules,
     export_mobile_factorized_package,
 )
+from nolane_personal.mobile_prompt_contract import (
+    freeze_product_prompt_contract,
+    render_product_prompt,
+    sha256_file,
+    write_product_prompt_contract,
+)
 from nolane_personal.standalone_model import StandaloneNolaneLM
 
 
 SOURCE_SHA = "7" * 64
+
+
+class FixtureChatTokenizer:
+    def apply_chat_template(
+        self,
+        messages,
+        *,
+        tokenize,
+        add_generation_prompt,
+        enable_thinking=False,
+    ):
+        assert tokenize is False
+        assert add_generation_prompt is True
+        assert enable_thinking is False
+        return (
+            str(messages[0]["content"])
+            + " "
+            + str(messages[1]["content"])
+        )
 
 
 def fixture_model() -> StandaloneNolaneLM:
@@ -87,8 +112,30 @@ def main() -> int:
     tokenizer.pre_tokenizer = Whitespace()
     tokenizer_path = root / "tokenizer.json"
     tokenizer.save(str(tokenizer_path))
+    tokenizer_config_path = root / "tokenizer_config.json"
+    tokenizer_config_path.write_text(
+        json.dumps({"chat_template": "fixture-system-space-user"}) + "\n",
+        encoding="utf-8",
+    )
+
+    prompt_contract = freeze_product_prompt_contract(
+        FixtureChatTokenizer(),
+        tokenizer_json=tokenizer_path,
+        tokenizer_config_json=tokenizer_config_path,
+    )
+    prompt_contract_path = write_product_prompt_contract(
+        prompt_contract,
+        root / "prompt-contract.json",
+    )
+    system_prompt = "tok1 tok6"
+    user_prompt = "tok11 tok4 tok17"
 
     prompt = "tok1 tok6 tok11 tok4 tok17"
+    assert render_product_prompt(
+        prompt_contract,
+        system_prompt,
+        user_prompt,
+    ) == prompt
     tokens = tokenizer.encode(prompt).ids
     assert tokens == [1, 6, 11, 4, 17]
 
@@ -133,6 +180,9 @@ def main() -> int:
         "latent": latent[0].tolist(),
         "tokens": tokens,
         "prompt": prompt,
+        "system_prompt": system_prompt,
+        "user_prompt": user_prompt,
+        "prompt_contract_file_sha256": sha256_file(prompt_contract_path),
         "prompt_token_ids": tokens,
         "max_new_tokens": 4,
         "generated_token_ids": generated,
