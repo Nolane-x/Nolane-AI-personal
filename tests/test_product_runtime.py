@@ -201,6 +201,54 @@ def test_product_http_server_requires_configured_auth_token(tmp_path):
         runtime.close()
 
 
+def test_authenticated_http_chat_and_history_are_cross_thread_safe(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
+    server = ProductHTTPServer(
+        ("127.0.0.1", 0),
+        runtime,
+        auth_token="thread-safe-secret",
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, powered = request(
+            server,
+            "POST",
+            "/v1/power",
+            {"enabled": True},
+            token="thread-safe-secret",
+        )
+        assert status == 200
+        assert powered["phase"] == "on"
+
+        status, reply = request(
+            server,
+            "POST",
+            "/v1/chat",
+            {"text": "hello through HTTP worker"},
+            token="thread-safe-secret",
+        )
+        assert status == 200
+        assert reply["reply"] == "reply:hello through HTTP worker"
+
+        status, history = request(
+            server,
+            "GET",
+            "/v1/history",
+            token="thread-safe-secret",
+        )
+        assert status == 200
+        assert [row["role"] for row in history["messages"]] == [
+            "user",
+            "assistant",
+        ]
+        assert history["messages"][0]["text"] == "hello through HTTP worker"
+    finally:
+        server.shutdown()
+        server.server_close()
+        runtime.close()
+
+
 def test_conversation_history_is_separate_from_memory_policy(tmp_path):
     runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
     try:
