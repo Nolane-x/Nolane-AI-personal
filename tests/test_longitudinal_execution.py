@@ -196,7 +196,12 @@ def test_longitudinal_report_requires_every_learned_window_to_survive():
     )
     assert report["status"] == "PASS"
     assert report["cycles"] == 5
-    assert report["cycle_rows"][0][\n        "final_learned_window_overall_regression"\n    ] == 0.004\n    assert report["cycle_rows"][-1]["future_cycles_observed"] == 0\n    assert report["cycle_rows"][-1]["learned_window_court_sha256"] is None\n    verify_longitudinal_report_digest(report)
+    assert report["cycle_rows"][0][
+        "final_learned_window_overall_regression"
+    ] == 0.004
+    assert report["cycle_rows"][-1]["future_cycles_observed"] == 0
+    assert report["cycle_rows"][-1]["learned_window_court_sha256"] is None
+    verify_longitudinal_report_digest(report)
 
     windows[1] = fake_window(1, status="BLOCKED")
     blocked = build_longitudinal_report(
