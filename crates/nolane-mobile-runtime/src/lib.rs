@@ -403,7 +403,10 @@ impl MobileRuntime {
 
 #[cfg(test)]
 mod tests {
-    use super::argmax;
+    use super::{argmax, sha256_hex, FrozenPromptContract};
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn argmax_is_deterministic_and_first_wins_ties() {
@@ -413,5 +416,88 @@ mod tests {
     #[test]
     fn argmax_rejects_non_finite_logits() {
         assert!(argmax(&[1.0, f32::NAN]).is_err());
+    }
+
+    #[test]
+    fn frozen_prompt_contract_binds_file_and_tokenizer_assets() {
+        let root = tempdir().unwrap();
+        let tokenizer = root.path().join("tokenizer.json");
+        let tokenizer_config = root.path().join("tokenizer_config.json");
+        let contract_path = root.path().join("prompt-contract.json");
+
+        fs::write(&tokenizer, b"{\"tokenizer\":\"fixture\"}\n").unwrap();
+        fs::write(
+            &tokenizer_config,
+            b"{\"chat_template\":\"fixture\"}\n",
+        )
+        .unwrap();
+
+        let system_sentinel = "__SYS__";
+        let user_sentinel = "__USR__";
+        let rendered_probe =
+            format!("<s>{system_sentinel}</s><u>{user_sentinel}</u><a>");
+        let payload = json!({
+            "schema": "NOLANE-V052-FROZEN-PRODUCT-PROMPT-CONTRACT-V1",
+            "authority": "PROMPT_RENDER_CONTRACT_ONLY_NO_MODEL_AUTHORITY",
+            "tokenizer_json_sha256": sha256_hex(
+                &fs::read(&tokenizer).unwrap()
+            ),
+            "tokenizer_config_json_sha256": sha256_hex(
+                &fs::read(&tokenizer_config).unwrap()
+            ),
+            "roles": ["system", "user"],
+            "add_generation_prompt": true,
+            "enable_thinking": false,
+            "segments": {
+                "prefix": "<s>",
+                "between": "</s><u>",
+                "suffix": "</u><a>"
+            },
+            "probe": {
+                "system_sentinel": system_sentinel,
+                "user_sentinel": user_sentinel,
+                "rendered_sha256": sha256_hex(rendered_probe.as_bytes())
+            },
+            "contract_sha256": "0".repeat(64)
+        });
+        let bytes = serde_json::to_vec(&payload).unwrap();
+        fs::write(&contract_path, &bytes).unwrap();
+        let file_sha = sha256_hex(&bytes);
+
+        let contract = FrozenPromptContract::load(
+            &contract_path,
+            &tokenizer,
+            &tokenizer_config,
+            &file_sha,
+        )
+        .unwrap();
+        assert_eq!(
+            contract.render("hello", "world"),
+            "<s>hello</s><u>world</u><a>"
+        );
+
+        let wrong_sha = "f".repeat(64);
+        let error = FrozenPromptContract::load(
+            &contract_path,
+            &tokenizer,
+            &tokenizer_config,
+            &wrong_sha,
+        )
+        .unwrap_err();
+        assert!(
+            error.to_string().contains("contract file SHA-256 mismatch")
+        );
+
+        fs::write(&tokenizer, b"{\"tokenizer\":\"tampered\"}\n").unwrap();
+        let error = FrozenPromptContract::load(
+            &contract_path,
+            &tokenizer,
+            &tokenizer_config,
+            &file_sha,
+        )
+        .unwrap_err();
+        assert!(
+            error.to_string().contains("tokenizer.json SHA-256 mismatch")
+        );
     }
 }
