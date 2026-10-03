@@ -24,6 +24,7 @@ on:
       - "scripts/export_mobile_factorized.py"
       - "scripts/build_mobile_rust_fixture.py"
       - "crates/nolane-mobile-kernel/**"
+      - "crates/nolane-mobile-runtime/**"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -51,6 +52,7 @@ on:
       - "scripts/export_mobile_factorized.py"
       - "scripts/build_mobile_rust_fixture.py"
       - "crates/nolane-mobile-kernel/**"
+      - "crates/nolane-mobile-runtime/**"
       - "tests/product_ui_browser.py"
       - "tests/test_product_runtime.py"
       - "tests/test_product_release_assets.py"
@@ -146,8 +148,14 @@ jobs:
         run: cargo test --manifest-path crates/nolane-mobile-kernel/Cargo.toml
       - name: Cross-language logits/state equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-kernel/Cargo.toml --example verify_fixture -- artifacts/mobile-rust-fixture
+      - name: Native tokenizer/generation unit tests
+        run: cargo test --manifest-path crates/nolane-mobile-runtime/Cargo.toml
+      - name: Cross-language tokenizer/greedy generation equivalence
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Android target compile court
-        run: cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
+        run: |
+          cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
+          cargo check --manifest-path crates/nolane-mobile-runtime/Cargo.toml --target aarch64-linux-android
 
   android:
     name: Android APK court
