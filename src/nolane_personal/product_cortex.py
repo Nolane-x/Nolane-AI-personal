@@ -8,7 +8,11 @@ from .cortex import CortexReply, CortexRequest
 from .factorized_artifact import load_factorized_model
 from .latent import LatentBindingError, LatentStore
 from .product_profile import ProductProfile
-from .qwen import SYSTEM_PROMPT
+from .product_prompt_payload import (
+    build_product_messages,
+    product_profile_summary,
+    product_state_summary,
+)
 
 
 _LENGTH_TOKENS = {
@@ -16,20 +20,6 @@ _LENGTH_TOKENS = {
     "balanced": 160,
     "expansive": 256,
 }
-
-_STYLE_GUIDANCE = {
-    "natural": "Speak naturally. Avoid canned assistant phrasing.",
-    "warm": "Be warm and attentive without becoming sentimental or clingy.",
-    "direct": "Be direct, concrete and low-fluff.",
-    "playful": "Allow light wit and playfulness when context supports it.",
-}
-
-_LANGUAGE_GUIDANCE = {
-    "auto": "Follow the user's current language naturally.",
-    "vi": "Prefer Vietnamese unless the user explicitly asks for another language.",
-    "en": "Prefer English unless the user explicitly asks for another language.",
-}
-
 
 class FactorizedProductCortex:
     """Standalone Nolane cortex adapter for the product runtime.
@@ -133,77 +123,15 @@ class FactorizedProductCortex:
 
     @staticmethod
     def _state_summary(request: CortexRequest) -> str:
-        state = request.state
-        unresolved = [
-            thread.topic
-            for thread in state.open_threads
-            if thread.unresolved
-        ][:4]
-        return (
-            f"identity_id={state.identity_id}\n"
-            f"relationship: closeness={state.relationship.closeness:.2f}, "
-            f"trust={state.relationship.trust:.2f}, "
-            f"familiarity={state.relationship.familiarity:.2f}, "
-            f"interactions={state.relationship.interaction_count}\n"
-            f"behavior: valence={state.affect.valence:.2f}, "
-            f"energy={state.affect.energy:.2f}, "
-            f"playfulness={state.affect.playfulness:.2f}, "
-            f"concern={state.affect.concern:.2f}, "
-            f"irritation={state.affect.irritation:.2f}\n"
-            f"open_threads={unresolved}\n"
-            f"requested_intent={request.intent}"
-        )
+        return product_state_summary(request)
 
     @staticmethod
     def _profile_summary(profile: ProductProfile) -> str:
-        preferred = profile.preferred_name or "(not set)"
-        instruction = profile.personal_instruction or "(none)"
-        return (
-            f"preferred_name={preferred}\n"
-            f"language={profile.language}: "
-            f"{_LANGUAGE_GUIDANCE[profile.language]}\n"
-            f"response_length={profile.response_length}\n"
-            f"conversation_style={profile.conversation_style}: "
-            f"{_STYLE_GUIDANCE[profile.conversation_style]}\n"
-            f"personal_instruction={instruction}\n"
-            "Do not mention these settings unless they are directly relevant."
-        )
+        return product_profile_summary(profile)
 
     def generate(self, request: CortexRequest) -> CortexReply:
         profile = self.profile_getter()
-        memory_text = "\n".join(
-            f"- {memory.text}" for memory in request.memories[:8]
-        ) or "(none)"
-        if request.mode == "reply":
-            task = (
-                f"User message:\n{request.user_text or ''}\n\n"
-                "Reply as this persistent personal companion."
-            )
-        else:
-            task = (
-                "Initiate one natural, non-intrusive message that genuinely "
-                "uses the supplied state or open thread."
-            )
-
-        messages = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": (
-                    "Personalization:\n"
-                    + self._profile_summary(profile)
-                    + "\n\nRuntime state:\n"
-                    + self._state_summary(request)
-                    + "\n\nRelevant memories:\n"
-                    + memory_text
-                    + "\n\n"
-                    + task
-                ),
-            },
-        ]
+        messages = build_product_messages(profile, request)
         try:
             rendered = self.tokenizer.apply_chat_template(
                 messages,
