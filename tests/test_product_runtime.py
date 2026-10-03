@@ -382,6 +382,49 @@ def test_conversation_history_is_separate_from_memory_policy(tmp_path):
 
 
 
+def test_product_preflight_rehashes_checkpoint_when_file_changes(tmp_path):
+    checkpoint = tmp_path / "factorized-nolane.pt"
+    checkpoint.write_bytes(b"release-checkpoint")
+    actual_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    ceremony_path = tmp_path / "promotion-ceremony.json"
+    ceremony_path.write_text(
+        json.dumps(release_ceremony(actual_sha)),
+        encoding="utf-8",
+    )
+    tokenizer = tmp_path / "tokenizer"
+    tokenizer.mkdir()
+    (tokenizer / "tokenizer_config.json").write_text(
+        "{}",
+        encoding="utf-8",
+    )
+    (tokenizer / "tokenizer.json").write_text(
+        "{}",
+        encoding="utf-8",
+    )
+
+    runtime = ProductRuntime(
+        tmp_path / "data",
+        checkpoint=checkpoint,
+        tokenizer_path=tokenizer,
+        release_ceremony=ceremony_path,
+    )
+    try:
+        first = runtime.preflight()
+        assert first["status"] == "PASS"
+
+        checkpoint.write_bytes(b"release-checkpoint-mutated-and-longer")
+        second = runtime.preflight()
+        assert second["status"] == "BLOCKED"
+        release = next(
+            row for row in second["critical"]
+            if row["name"] == "release_assets"
+        )
+        assert release["status"] == "FAIL"
+        assert "does not match COMPLETE ceremony" in release["detail"]
+    finally:
+        runtime.close()
+
+
 def test_product_runtime_reverifies_release_ceremony_before_startup(tmp_path):
     checkpoint = tmp_path / "factorized-nolane.pt"
     checkpoint.write_bytes(b"release-checkpoint")
