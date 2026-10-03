@@ -1555,7 +1555,7 @@ See `docs/V058-ANDROID-EMULATOR-LOCALCHAT-COURT.md`.
 
 v0.59 makes Android LocalMobile time-aware and proactive instead of only persistent. The native product host now carries a migratable lifecycle sidecar for event timestamps, social drive, curiosity and REST scheduling while leaving the frozen v0.55 identity/latent/product-state contract intact.
 
-User messages update relationship/affect/lifecycle controls before native cortex generation, matching desktop causal ordering. `POST /v1/tick` ports the desktop 15-minute user-silence guard, 30-minute speech cooldown, 24-hour hard-silence rule and 0.66 initiative threshold, and initiative speech uses the normal native product prompt/sampler/kernel path.
+User messages update relationship/affect/lifecycle controls before native cortex generation, matching desktop causal ordering. `POST /v1/tick` ports the desktop 15-minute user-silence guard, 30-minute speech cooldown, 24-hour hard-silence rule and 0.66 initiative threshold, and initiative speech uses the normal native product prompt/sampler/kernel path. Android Tauri now drives that lifecycle from a native 5s/30s/12s heartbeat instead of relying on browser focus. Persistent-state integrity also moved to an IEEE-bit typed digest while retaining legacy v0.55 read compatibility.
 
 The 30-minute REST idle window and 45-minute cooldown are also ported. Mobile still has only a bounded string memory projection, so REST is deliberately conservative near-duplicate compaction rather than a fake provenance-rich ConsolidationReceipt.
 
