@@ -117,3 +117,10 @@ Missing or mismatched evidence stops the release.
 v0.42 establishes the product/distribution substrate. A Windows installer is only a real release once the manual release workflow runs with an actually promoted checkpoint and succeeds end-to-end.
 
 Android UI/APK compilation is not the same claim as Android local inference. That remains explicitly open.
+
+### Dynamic product payload parity
+
+v0.53 freezes the personalization/state/memory payload below the existing UI. Desktop Python and the native mobile runtime now share one structured payload schema and are required to render the same pinned-Qwen prompt and token IDs. No additional settings panel or Android-only chat surface is introduced.
+
+The current native parity covers preferred name, language, response length, conversational style, personal instruction, relationship/affect state, four unresolved threads, eight relevant memories and reply/initiative task wording. Sampling and persistent Android state remain separate follow-on gates.
+
