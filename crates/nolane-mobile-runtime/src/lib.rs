@@ -25,6 +25,7 @@ pub const PRODUCT_SAMPLING_TOP_P: f64 = 0.90;
 const SAMPLER_LOGIT_SCALE: f64 = 1_000.0;
 const SAMPLER_EXP_WEIGHT_SCALE: u64 = 1u64 << 40;
 const SAMPLER_PROBABILITY_SCALE: u64 = 1u64 << 32;
+const SAMPLER_MAX_QUANTIZED_ABS: f64 = ((1u64 << 60) - 1) as f64;
 const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
 const SPLITMIX_MUL1: u64 = 0xBF58476D1CE4E5B9;
 const SPLITMIX_MUL2: u64 = 0x94D049BB133111EB;
@@ -411,6 +412,16 @@ fn round_half_away_from_zero(value: f64) -> Result<i64, RuntimeError> {
     }
 }
 
+fn quantize_logit(value: f32) -> Result<i64, RuntimeError> {
+    let scaled = value as f64 * SAMPLER_LOGIT_SCALE;
+    if !scaled.is_finite() || scaled.abs() > SAMPLER_MAX_QUANTIZED_ABS {
+        return Err(RuntimeError::Invalid(
+            "logit magnitude exceeds seeded sampler quantization range".into(),
+        ));
+    }
+    round_half_away_from_zero(scaled)
+}
+
 fn splitmix64_next(state: u64) -> (u64, u64) {
     let state = state.wrapping_add(SPLITMIX_GAMMA);
     let mut value = state;
@@ -468,9 +479,7 @@ impl SeededNucleusSampler {
 
         let mut quantized_logits = Vec::with_capacity(logits.len());
         for value in logits {
-            quantized_logits.push(round_half_away_from_zero(
-                *value as f64 * SAMPLER_LOGIT_SCALE,
-            )?);
+            quantized_logits.push(quantize_logit(*value)?);
         }
         let maximum = *quantized_logits.iter().max().ok_or_else(|| {
             RuntimeError::Invalid("seeded sampler has no logits".into())
