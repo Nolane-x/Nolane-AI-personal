@@ -31,7 +31,8 @@
     "resources": [
       "resources/runtime/**/*",
       "resources/model/**/*",
-      "resources/tokenizer/**/*"
+      "resources/tokenizer/**/*",
+      "resources/mobile/**/*"
     ],
     "windows": {
       "webviewInstallMode": {
