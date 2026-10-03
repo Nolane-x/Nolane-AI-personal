@@ -27,6 +27,10 @@ from nolane_personal.mobile_prompt_contract import (
     sha256_file,
     write_product_prompt_contract,
 )
+from nolane_personal.seeded_sampling import (
+    SAMPLER_SCHEMA,
+    SeededNucleusSampler,
+)
 from nolane_personal.standalone_model import StandaloneNolaneLM
 
 
@@ -174,6 +178,62 @@ def main() -> int:
                 latent,
             )
 
+    sampling_seed = 0xC0FFEE1234567890
+    sampling_temperature = 0.78
+    sampling_top_p = 0.90
+    sampled_max_new_tokens = 8
+    sampled = []
+    sampled_stopped_on_eos = False
+
+    with torch.no_grad():
+        sampled_state = init_state(latent)
+        sampled_logits = None
+        for token in tokens:
+            sampled_logits, sampled_state = token_step(
+                torch.tensor([token], dtype=torch.long),
+                sampled_state,
+                latent,
+            )
+        assert sampled_logits is not None
+        sampler = SeededNucleusSampler(
+            state=sampling_seed,
+            temperature=sampling_temperature,
+            top_p=sampling_top_p,
+        )
+        for _ in range(sampled_max_new_tokens):
+            token = sampler.sample(
+                sampled_logits[0].detach().float().cpu().tolist()
+            )
+            sampled.append(token)
+            if token == 2:
+                sampled_stopped_on_eos = True
+                break
+            sampled_logits, sampled_state = token_step(
+                torch.tensor([token], dtype=torch.long),
+                sampled_state,
+                latent,
+            )
+
+        standalone_seeded = model.generate(
+            input_ids=torch.tensor([tokens], dtype=torch.long),
+            max_new_tokens=sampled_max_new_tokens,
+            do_sample=True,
+            temperature=sampling_temperature,
+            top_p=sampling_top_p,
+            sampling_seed=sampling_seed,
+            eos_token_id=2,
+            pad_token_id=0,
+        )
+        standalone_new = standalone_seeded[
+            0,
+            len(tokens):,
+        ].tolist()
+        if standalone_new != sampled:
+            raise RuntimeError(
+                "Standalone seeded generation drifted from mobile token-step "
+                f"sampler: standalone={standalone_new} mobile={sampled}"
+            )
+
     payload = {
         "schema": "NOLANE-V050-MOBILE-RUST-GOLDEN-V1",
         "source_checkpoint_sha256": SOURCE_SHA,
@@ -193,6 +253,15 @@ def main() -> int:
         "steps": rows,
         "atol": 2e-5,
         "rtol": 2e-5,
+        "seeded_sampler_schema": SAMPLER_SCHEMA,
+        "sampling_seed": sampling_seed,
+        "sampling_temperature": sampling_temperature,
+        "sampling_top_p": sampling_top_p,
+        "sampled_max_new_tokens": sampled_max_new_tokens,
+        "sampled_generated_token_ids": sampled,
+        "sampled_generated_text": tokenizer.decode(sampled),
+        "sampled_stopped_on_eos": sampled_stopped_on_eos,
+        "sampled_final_state": sampled_state[0].tolist(),
     }
     (root / "fixture.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
