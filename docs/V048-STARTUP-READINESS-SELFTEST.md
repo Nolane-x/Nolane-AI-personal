@@ -102,6 +102,23 @@ It tests actual write capability without permanently changing user state.
 
 Raw diagnostic details remain in the authenticated readiness response.
 
+## Release version consistency
+
+The installable product version is a release invariant.
+
+v0.48 requires the same semantic version in:
+
+- `pyproject.toml`;
+- Tauri `tauri.conf.json`;
+- product-client `package.json`.
+
+Product Client CI and the Windows release workflow both run the version court.
+The Windows artifact name is intentionally generic instead of embedding a
+manually maintained stale version string.
+
+This closes a real packaging bug where a current runtime could otherwise be
+distributed as an old `0.42.0` desktop application.
+
 ## v1 principle
 
 Readiness is automatic.
