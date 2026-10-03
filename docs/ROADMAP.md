@@ -1596,9 +1596,9 @@ v1 hardening target: **NO NEW PRIMARY SURFACE / RETRY + CRASH SAFETY**.
 - [x] no new primary UI surface
 - [x] ProductRuntime store explicitly serialized for threaded sidecar HTTP
 - [x] authenticated HTTP power -> chat -> history regression court
-- [ ] L47 CI PASS
-- [ ] merge v0.47
-- [ ] begin v1 release-readiness closure
+- [x] L47 CI PASS
+- [x] merge v0.47
+- [x] begin v1 release-readiness closure
 
 ## L48 — Startup Readiness Self-Test
 
