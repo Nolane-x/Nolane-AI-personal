@@ -162,6 +162,75 @@ fn wait_for_port(port: u16, timeout: Duration) -> bool {
 }
 
 #[cfg(target_os = "windows")]
+fn wait_for_preflight(
+    port: u16,
+    token: &str,
+    timeout: Duration,
+) -> Result<(), String> {
+    let deadline = Instant::now() + timeout;
+    let client = reqwest::blocking::Client::builder()
+        .connect_timeout(Duration::from_millis(500))
+        .timeout(Duration::from_secs(2))
+        .build()
+        .map_err(|e| format!("Could not create startup preflight client: {e}"))?;
+    let url = format!("http://127.0.0.1:{port}/v1/preflight");
+    let mut last_error = "runtime preflight did not respond".to_string();
+
+    while Instant::now() < deadline {
+        match client
+            .get(&url)
+            .header("X-Nolane-Token", token)
+            .send()
+        {
+            Ok(response) => {
+                if !response.status().is_success() {
+                    last_error = format!(
+                        "runtime preflight returned HTTP {}",
+                        response.status()
+                    );
+                } else {
+                    let payload: Value = response
+                        .json()
+                        .map_err(|e| format!(
+                            "Invalid runtime preflight response: {e}"
+                        ))?;
+                    match payload.get("status").and_then(Value::as_str) {
+                        Some("ready") => return Ok(()),
+                        Some("blocked") => {
+                            let reasons = payload
+                                .get("reasons")
+                                .and_then(Value::as_array)
+                                .map(|items| {
+                                    items
+                                        .iter()
+                                        .filter_map(Value::as_str)
+                                        .collect::<Vec<_>>()
+                                        .join(",")
+                                })
+                                .unwrap_or_else(|| "unknown".into());
+                            return Err(format!(
+                                "runtime preflight blocked: {reasons}"
+                            ));
+                        }
+                        other => {
+                            last_error = format!(
+                                "runtime preflight status invalid: {:?}",
+                                other
+                            );
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                last_error = format!("runtime preflight unavailable: {error}");
+            }
+        }
+        std::thread::sleep(Duration::from_millis(120));
+    }
+    Err(last_error)
+}
+
+#[cfg(target_os = "windows")]
 fn spawn_windows_runtime(
     app: &tauri::App,
     data_dir: &Path,
@@ -240,7 +309,16 @@ fn spawn_windows_runtime(
     if !wait_for_port(port, Duration::from_secs(12)) {
         let _ = child.kill();
         let _ = child.wait();
-        return Err("Bundled Nolane runtime did not become ready".into());
+        return Err("Bundled Nolane runtime did not open its local port".into());
+    }
+    if let Err(error) = wait_for_preflight(
+        port,
+        &auth_token,
+        Duration::from_secs(8),
+    ) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(format!("Bundled Nolane runtime failed preflight: {error}"));
     }
 
     Ok((
