@@ -1427,6 +1427,18 @@ The v1 product-surface rule is now explicit: prefer reliability and depth in cha
 
 See `docs/V047-PRODUCT-RELIABILITY-FREEZE.md`.
 
+### v0.48 Startup Readiness Self-Test
+
+v0.48 keeps the v1 UI feature-frozen and makes the existing power state truthful.
+
+Before the sidecar listens, the runtime now verifies writable local storage, SQLite integrity/write rollback and production release assets. Reviewed-learning registry health is advisory so an advanced learning feature cannot take down core chat.
+
+When the user presses the existing power control, the production factorized cortex must additionally generate one real local token before phase may become `on`. A model that loads but cannot infer leaves the runtime in `error`.
+
+The detailed readiness report is available only through authenticated `GET /v1/readiness`; normal status exposes only PASS/BLOCKED and failure counts.
+
+See `docs/V048-STARTUP-READINESS-SELFTEST.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
