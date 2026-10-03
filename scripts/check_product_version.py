@@ -6,15 +6,27 @@ import re
 from pathlib import Path
 
 
+def toml_section_version(text: str, section: str, *, source: str) -> str:
+    section_match = re.search(
+        rf"(?ms)^\[{re.escape(section)}\]\s*(.*?)(?=^\[|\Z)",
+        text,
+    )
+    if section_match is None:
+        raise ValueError(f"{source}: [{section}] section not found")
+    version_match = re.search(
+        r'(?m)^version\s*=\s*"([^"]+)"\s*$',
+        section_match.group(1),
+    )
+    if version_match is None:
+        raise ValueError(f"{source}: version not found in [{section}]")
+    return version_match.group(1)
+
+
 def product_versions(root: Path) -> dict[str, str]:
     pyproject_text = (root / "pyproject.toml").read_text(encoding="utf-8")
-    match = re.search(
-        r'(?m)^version\s*=\s*"([^"]+)"\s*$',
-        pyproject_text,
-    )
-    if match is None:
-        raise ValueError("project version not found in pyproject.toml")
-
+    cargo_text = (
+        root / "apps/product-client/src-tauri/Cargo.toml"
+    ).read_text(encoding="utf-8")
     tauri = json.loads(
         (root / "apps/product-client/src-tauri/tauri.conf.json").read_text(
             encoding="utf-8"
@@ -26,7 +38,16 @@ def product_versions(root: Path) -> dict[str, str]:
         )
     )
     return {
-        "python": match.group(1),
+        "python": toml_section_version(
+            pyproject_text,
+            "project",
+            source="pyproject.toml",
+        ),
+        "cargo": toml_section_version(
+            cargo_text,
+            "package",
+            source="Cargo.toml",
+        ),
         "tauri": str(tauri["version"]),
         "package": str(package["version"]),
     }

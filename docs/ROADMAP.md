@@ -1645,8 +1645,41 @@ v1 Windows distribution target: **BUILT INSTALLER -> CLEAN INSTALL -> INSTALLED 
 - [x] clean-install receipt excludes chat text/auth token/user path
 - [x] PR Windows job parses release PowerShell with native AST parser
 - [x] staging test proves external and embedded release manifests match
-- [ ] L49 source CI PASS
-- [ ] merge v0.49 release-court tooling
+- [x] L49 source CI PASS
+- [x] merge v0.49 release-court tooling
 - [ ] run manual Windows release with real promoted checkpoint
 - [ ] clean-install receipt PASS on real release artifact
+
+## L50 — Android Local Inference Foundation
+
+Android neural-runtime target: **PYTHON-FREE TOKEN STEP / NATIVE EQUIVALENCE BEFORE APP WIRING**.
+
+- [x] no new primary product UI
+- [x] explicit one-token mobile contract
+- [x] contract exposes hidden/latent/final normalization epsilons
+- [x] Python mobile init-state matches native recurrent cortex
+- [x] Python mobile token-step matches standalone Nolane logits/state
+- [x] tied and untied factorized boundaries covered
+- [x] sequential multi-token equivalence court
+- [x] Python-free mobile package: contract + safetensors
+- [x] floating package weights normalized to float32
+- [x] package bound to exact source checkpoint SHA-256
+- [x] package excludes user latent/tokenizer/chat/promotion authority
+- [x] contract and weights tamper courts
+- [x] checkpoint-bound mobile export CLI
+- [x] pure Rust factorized/recurrent one-token kernel
+- [x] deterministic Python -> Rust logits/state golden court
+- [x] Rust crate has no Python/PyTorch/Qwen runtime dependency
+- [x] Rust crate Android target compile gate
+- [x] Product Client Court includes mobile Python/export/native jobs
+- [ ] L50 CI PASS
+- [ ] merge v0.50
+- [ ] native tokenizer + product prompt construction
+- [ ] autoregressive sampling/EOS loop in Rust
+- [ ] persistent latent/profile/state bridge into Android local runtime
+- [ ] Tauri Android local target wiring
+- [ ] bundle L36-authorized mobile package into Android release
+- [ ] emulator/device local-chat court
+- [ ] latency/memory/battery court
+- [ ] only then call Android local chat production-complete
 
