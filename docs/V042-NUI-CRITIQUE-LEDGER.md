@@ -87,6 +87,32 @@ Product runtime/release courts verify:
 
 Status: corrections implemented; CI PASS still required.
 
+## Cycle 3 — mobile interaction layering
+
+### Finding
+
+The touch-mode browser court showed that the mobile personalization sheet's
+scrolling body could sit above the header in the hit-test stack. The close
+button was visually present and geometrically large enough, but the body
+intercepted taps.
+
+This is a real mobile interaction defect because a visible close control that
+cannot receive touch does not satisfy the product contract.
+
+### Correction
+
+- sheet header/footer now establish an explicit higher stacking layer;
+- the scrolling sheet body remains below that layer;
+- the close button receives its own top interaction layer;
+- no force-click or test-only bypass is used.
+
+### Verification
+
+The mobile Playwright court must close the sheet with a real touch `tap()` on
+`#closeProfileButton`.
+
+Status: correction implemented; final rendered PASS is owned by CI.
+
 ## Render evidence
 
 The NUI browser job captures:
