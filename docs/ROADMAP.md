@@ -1532,6 +1532,11 @@ Product-consent target: **REAL CHAT -> ONE-BY-ONE LOCAL HUMAN REVIEW / NO AUTO-T
 - [x] authenticated product API for evidence window metadata
 - [x] authenticated pending-candidate endpoint for local review UI
 - [x] explicit Approve / Reject / Sensitive decisions only
+- [x] approved target is editable by the user before learning
+- [x] corrected target is valid only for approved non-sensitive evidence
+- [x] corrected target is hash-bound through immutable local decision evidence
+- [x] corrected target reaches reviewed source + approved training dataset
+- [x] corrected raw text excluded from registry/progress metadata
 - [x] sensitive decisions excluded from approved count
 - [x] no approve-all path
 - [x] no auto-training path
