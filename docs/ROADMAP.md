@@ -1700,6 +1700,9 @@ Android text-generation target: **TOKENIZER.JSON -> RUST PREFILL -> GREEDY AUTOR
 - [x] generated token IDs decoded by the same frozen tokenizer
 - [x] Python fixture freezes prompt IDs + generated IDs + decoded text + final state
 - [x] Rust tokenizer/generation output must match Python fixture
+- [x] native tokenizer uses pure-Rust fancy-regex backend
+- [x] exact pinned Qwen3-0.6B tokenizer.json compatibility court
+- [x] real-tokenizer Vietnamese/English/Unicode/code encode+decode parity
 - [x] native runtime crate Android target compile gate
 - [ ] L51 Product Client Court PASS
 - [ ] merge v0.51
