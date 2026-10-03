@@ -642,6 +642,11 @@
     renderLearningSummary();
   }
 
+  function updateLearningApprovalState() {
+    els.approveLearning.disabled =
+      !learningCandidate || !els.reviewTarget.value.trim();
+  }
+
   function renderLearningCandidate(candidate) {
     learningCandidate = candidate || null;
     const window = activeLearningWindow;
@@ -658,6 +663,7 @@
       els.reviewComplete.hidden = false;
       els.reviewActions.hidden = true;
       els.finalizeLearning.hidden = false;
+      updateLearningApprovalState();
       return;
     }
 
@@ -667,6 +673,7 @@
     els.finalizeLearning.hidden = true;
     els.reviewPrompt.textContent = candidate.prompt || "";
     els.reviewTarget.value = candidate.target || "";
+    updateLearningApprovalState();
     const language =
       candidate.language === "vi" || candidate.language === "en"
         ? candidate.language
@@ -742,7 +749,9 @@
         language: els.reviewLanguage.value,
         weight: 1.0,
         corrected_target:
-          decision === "approve"
+          decision === "approve" &&
+          els.reviewTarget.value.trim() !==
+            String(learningCandidate.target || "").trim()
             ? els.reviewTarget.value.trim()
             : null,
       });
@@ -755,13 +764,9 @@
     } catch (error) {
       showBanner(String(error?.message || error), false);
     } finally {
-      for (const button of [
-        els.approveLearning,
-        els.rejectLearning,
-        els.markSensitive,
-      ]) {
-        button.disabled = false;
-      }
+      els.rejectLearning.disabled = false;
+      els.markSensitive.disabled = false;
+      updateLearningApprovalState();
     }
   }
 
@@ -994,6 +999,10 @@
   els.finalizeLearning.addEventListener(
     "click",
     () => void finalizeLearningWindow(),
+  );
+  els.reviewTarget.addEventListener(
+    "input",
+    updateLearningApprovalState,
   );
 
   els.dialog.addEventListener("click", (event) => {
