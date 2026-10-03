@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import secrets
 from pathlib import Path
 from typing import Callable
 
@@ -37,6 +38,7 @@ class FactorizedProductCortex:
         identity_id: str,
         profile_getter: Callable[[], ProductProfile],
         device: str = "auto",
+        sampling_seed_getter: Callable[[], int] | None = None,
     ) -> None:
         try:
             import torch
@@ -66,6 +68,11 @@ class FactorizedProductCortex:
         self.device = resolved_device
         self.checkpoint = checkpoint
         self.profile_getter = profile_getter
+        self.sampling_seed_getter = (
+            sampling_seed_getter
+            if sampling_seed_getter is not None
+            else lambda: secrets.randbits(64)
+        )
 
         try:
             payload = torch.load(
@@ -158,6 +165,7 @@ class FactorizedProductCortex:
                 do_sample=True,
                 temperature=0.78,
                 top_p=0.9,
+                sampling_seed=int(self.sampling_seed_getter()),
                 eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.eos_token_id,
             )
