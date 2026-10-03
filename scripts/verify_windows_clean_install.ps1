@@ -71,12 +71,33 @@ if ($installerProcess.ExitCode -ne 0) {
 }
 
 $app = Find-OneFile -Root $installRoot -Filter "Nolane.exe" -Label "Nolane.exe"
-$runtime = Find-OneFile -Root $installRoot -Filter "nolane-product-runtime.exe" -Label "bundled runtime"
 $model = Find-OneFile -Root $installRoot -Filter "factorized-nolane.pt" -Label "factorized model"
-$ceremony = Find-OneFile -Root $installRoot -Filter "promotion-ceremony.json" -Label "promotion ceremony"
-$tokenizerJson = Find-OneFile -Root $installRoot -Filter "tokenizer.json" -Label "tokenizer.json"
-$tokenizerConfig = Find-OneFile -Root $installRoot -Filter "tokenizer_config.json" -Label "tokenizer_config.json"
-$releaseManifest = Find-OneFile -Root $installRoot -Filter "release-assets.json" -Label "release-assets.json"
+
+$resourceRoot = $model.Directory.Parent
+$runtimePath = Join-Path $resourceRoot.FullName "runtime\nolane-product-runtime.exe"
+$tokenizerRoot = Join-Path $resourceRoot.FullName "tokenizer"
+$tokenizerJsonPath = Join-Path $tokenizerRoot "tokenizer.json"
+$tokenizerConfigPath = Join-Path $tokenizerRoot "tokenizer_config.json"
+$ceremonyPath = Join-Path $model.Directory.FullName "promotion-ceremony.json"
+$releaseManifestPath = Join-Path $model.Directory.FullName "release-assets.json"
+
+foreach ($required in @(
+    $runtimePath,
+    $tokenizerJsonPath,
+    $tokenizerConfigPath,
+    $ceremonyPath,
+    $releaseManifestPath
+)) {
+    if (-not (Test-Path $required -PathType Leaf)) {
+        throw "Installed release asset missing at deterministic path: $required"
+    }
+}
+
+$runtime = Get-Item $runtimePath
+$tokenizerJson = Get-Item $tokenizerJsonPath
+$tokenizerConfig = Get-Item $tokenizerConfigPath
+$ceremony = Get-Item $ceremonyPath
+$releaseManifest = Get-Item $releaseManifestPath
 
 $manifest = Get-Content $releaseManifest.FullName -Raw | ConvertFrom-Json
 $modelHash = (Get-FileHash $model.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
