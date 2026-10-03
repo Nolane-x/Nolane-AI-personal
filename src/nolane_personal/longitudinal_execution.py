@@ -7,7 +7,14 @@ from pathlib import Path
 from typing import Any
 
 from .approved_evidence import resolve_approved_evidence_pack
+from .long_horizon_retention import verify_long_horizon_retention_digest
 from .store import payload_digest
+from .unified_continual import (
+    UnifiedContinualPolicy,
+    assess_unified_continual_chain,
+    verify_l38_run_receipt,
+    verify_unified_continual_chain_digest,
+)
 
 
 PLAN_SCHEMA = "NOLANE-L43-REAL-LONGITUDINAL-PLAN-V1"
@@ -372,6 +379,23 @@ def validate_longitudinal_plan(
     )
 
 
+def verify_longitudinal_plan_receipt(
+    receipt: dict[str, Any],
+) -> dict[str, Any]:
+    if receipt.get("schema") != PLAN_RECEIPT_SCHEMA:
+        raise ValueError("unsupported longitudinal plan receipt schema")
+    supplied = receipt.get("plan_sha256")
+    body = dict(receipt)
+    body.pop("plan_sha256", None)
+    if payload_digest(body) != supplied:
+        raise ValueError("longitudinal plan receipt digest mismatch")
+    if receipt.get("authority") != AUTHORITY:
+        raise ValueError("longitudinal plan receipt authority mismatch")
+    if int(receipt.get("cycles", 0)) < 5:
+        raise ValueError("longitudinal plan receipt has fewer than five cycles")
+    return receipt
+
+
 def build_longitudinal_report(
     *,
     plan_receipt: dict[str, Any],
@@ -380,6 +404,78 @@ def build_longitudinal_report(
     learned_window_receipts: list[dict[str, Any]],
     unified_chain: dict[str, Any],
 ) -> dict[str, Any]:
+    verify_longitudinal_plan_receipt(plan_receipt)
+    if len(cycle_receipts) != int(plan_receipt["cycles"]):
+        raise ValueError("cycle receipt count does not match longitudinal plan")
+    for receipt in cycle_receipts:
+        verify_l38_run_receipt(receipt)
+    verify_long_horizon_retention_digest(fixed_panel_receipt)
+    verify_unified_continual_chain_digest(unified_chain)
+
+    fixed_binding = plan_receipt.get("fixed_panel", {})
+    if (
+        fixed_panel_receipt.get("protocol_sha256")
+        != fixed_binding.get("protocol_sha256")
+    ):
+        raise ValueError("fixed-panel protocol does not match longitudinal plan")
+
+    cycle_bindings = list(plan_receipt.get("cycle_bindings", []))
+    if len(cycle_bindings) != len(cycle_receipts):
+        raise ValueError("cycle bindings do not match longitudinal plan")
+    for index, cycle in enumerate(cycle_receipts):
+        expected_protocol = cycle_bindings[index]["adaptation"][
+            "protocol_sha256"
+        ]
+        actual_protocol = cycle["training"]["lineage"][
+            "adaptation_protocol_sha256"
+        ]
+        if actual_protocol != expected_protocol:
+            raise ValueError(
+                f"cycle {index + 1} adaptation protocol does not match plan"
+            )
+
+    expected_learned_courts = max(0, len(cycle_receipts) - 1)
+    if len(learned_window_receipts) != expected_learned_courts:
+        raise ValueError(
+            "learned-window retention court count must equal cycles - 1"
+        )
+    for index, receipt in enumerate(learned_window_receipts):
+        verify_long_horizon_retention_digest(receipt)
+        expected_protocol = cycle_bindings[index]["adaptation"][
+            "protocol_sha256"
+        ]
+        if receipt.get("protocol_sha256") != expected_protocol:
+            raise ValueError(
+                f"learned-window {index + 1} protocol does not match plan"
+            )
+        expected_initial = cycle_receipts[index]["artifact"][
+            "checkpoint_sha256"
+        ]
+        if receipt.get("initial_checkpoint_sha256") != expected_initial:
+            raise ValueError(
+                f"learned-window {index + 1} initial checkpoint mismatch"
+            )
+        expected_final = cycle_receipts[-1]["artifact"][
+            "checkpoint_sha256"
+        ]
+        if receipt.get("final_checkpoint_sha256") != expected_final:
+            raise ValueError(
+                f"learned-window {index + 1} final checkpoint mismatch"
+            )
+
+    unified_policy = UnifiedContinualPolicy(
+        **dict(unified_chain.get("policy", {}))
+    )
+    recomputed = assess_unified_continual_chain(
+        cycle_receipts,
+        long_horizon_retention=fixed_panel_receipt,
+        policy=unified_policy,
+    )
+    if recomputed != unified_chain:
+        raise ValueError(
+            "unified chain does not match longitudinal raw evidence"
+        )
+
     reasons: list[str] = []
     if fixed_panel_receipt.get("status") != "PASS":
         reasons.append("fixed_long_horizon_panel_failed")
@@ -387,11 +483,6 @@ def build_longitudinal_report(
         reasons.append("unified_continual_chain_failed")
     if len(cycle_receipts) < 5:
         reasons.append("insufficient_real_cycles")
-    expected_learned_courts = max(0, len(cycle_receipts) - 1)
-    if len(learned_window_receipts) != expected_learned_courts:
-        raise ValueError(
-            "learned-window retention court count must equal cycles - 1"
-        )
     for index, receipt in enumerate(learned_window_receipts, start=1):
         if receipt.get("status") != "PASS":
             reasons.append(f"learned_window_{index:03d}_forgotten")
