@@ -462,6 +462,85 @@ impl MobileStateStore {
         })
     }
 
+    pub fn update_profile(
+        &self,
+        profile: MobileProfile,
+    ) -> Result<MobilePersistentProductState, RuntimeError> {
+        profile.validate()?;
+        let mut current = self.load_product_state()?.ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile product state is not initialized".into(),
+            )
+        })?;
+        current.profile = profile;
+        current.version = current.version.checked_add(1).ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile product state version overflow".into(),
+            )
+        })?;
+        current.seal()?;
+        self.save_product_state(&current)?;
+        Ok(current)
+    }
+
+    pub fn update_product_state(
+        &self,
+        state: ProductPayloadState,
+    ) -> Result<MobilePersistentProductState, RuntimeError> {
+        let mut current = self.load_product_state()?.ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile product state is not initialized".into(),
+            )
+        })?;
+        if state.identity_id != current.state.identity_id {
+            return Err(RuntimeError::Invalid(
+                "mobile product identity cannot change through state update".into(),
+            ));
+        }
+        current.state = state;
+        current.version = current.version.checked_add(1).ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile product state version overflow".into(),
+            )
+        })?;
+        current.seal()?;
+        self.save_product_state(&current)?;
+        Ok(current)
+    }
+
+    pub fn update_latent(
+        &self,
+        values: Vec<f32>,
+        *,
+        source_state_version: u64,
+    ) -> Result<MobilePersistentLatent, RuntimeError> {
+        let mut current = self.load_latent()?.ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile latent is not initialized".into(),
+            )
+        })?;
+        if values.len() != current.latent_dim {
+            return Err(RuntimeError::Invalid(
+                "mobile latent update dimension mismatch".into(),
+            ));
+        }
+        if values.iter().any(|value| !value.is_finite()) {
+            return Err(RuntimeError::Invalid(
+                "mobile latent update contains non-finite value".into(),
+            ));
+        }
+        current.values = values;
+        current.source_state_version = source_state_version;
+        current.sequence = current.sequence.checked_add(1).ok_or_else(|| {
+            RuntimeError::Invalid(
+                "mobile latent sequence overflow".into(),
+            )
+        })?;
+        current.seal()?;
+        self.save_latent(&current)?;
+        Ok(current)
+    }
+
     pub fn load_product_state(
         &self,
     ) -> Result<Option<MobilePersistentProductState>, RuntimeError> {
