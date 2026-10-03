@@ -29,3 +29,5 @@ rand = "0.8"
 
 [target.'cfg(target_os = "android")'.dependencies]
 nolane-mobile-runtime = { path = "../../../crates/nolane-mobile-runtime" }
+android_logger = "0.14"
+log = "0.4"
