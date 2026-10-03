@@ -126,5 +126,7 @@ The current native parity covers preferred name, language, response length, conv
 
 v0.54 freezes seeded stochastic decoding parity below the same Ember Quiet UI. Desktop Python and native Rust share SplitMix64 + quantized nucleus sampling; CI freezes generated sampled token IDs, text, EOS behavior and final recurrent state. The production desktop path still chooses a fresh 64-bit seed per response unless a deterministic seed source is injected for courts/replay.
 
-Android is still not called production-complete until persistent local state/latent binding, Tauri LocalMobile routing, authorized release assets and emulator/device courts close.
+v0.55 adds the native persistent state bridge without adding a new settings surface. A checkpoint-bound, integrity-checked local artifact now carries latent/profile/identity/relationship/affect/open-thread/memory continuity between launches, and Python-authored state is courted directly inside the Rust runtime.
+
+Android is still not called production-complete until Tauri LocalMobile routing, authorized release assets and emulator/device courts close.
 

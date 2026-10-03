@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.54.0
+## Current executable milestone: Living Runtime v0.55.0
 
 The runtime now contains two very different compute scales:
 
@@ -1504,6 +1504,18 @@ With the same prompt, product payload, latent, seed, temperature and top-p, Pyth
 This still does not make Android product-complete: persistent local state/latent binding, Tauri LocalMobile routing, L36-authorized release assets and emulator/device courts remain open.
 
 See `docs/V054-SEEDED-SAMPLING-PARITY.md`.
+
+### v0.55 Persistent Mobile State Bridge
+
+v0.55 keeps the product UI unchanged and closes the persistent state split between the desktop Living Runtime projection and the native Android inference host.
+
+Python and Rust now share `NOLANE-V055-MOBILE-PERSISTENT-STATE-V1`: one checkpoint-bound, integrity-checked local state artifact carries the persistent latent, product profile, identity, relationship/affect state, bounded unresolved threads and bounded relevant memories. Writes are fsync + atomic replace; corruption, schema drift, checkpoint mismatch, invalid latent shape and non-finite state fail closed instead of silently creating a fresh identity.
+
+The deterministic mobile fixture is now a real cross-language bridge court: Python emits the state artifact, Rust verifies it before f32 narrowing, attaches it to `MobileRuntime`, rebuilds the v0.53 product payload, executes seeded native generation, writes the state back and reloads identical semantics.
+
+This still does not make Android product-complete: Tauri `LocalMobile` routing, L36-authorized mobile release assets and emulator/device courts remain open.
+
+See `docs/V055-PERSISTENT-MOBILE-STATE-BRIDGE.md`.
 
 ## Bootstrap Qwen
 

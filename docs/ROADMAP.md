@@ -1803,13 +1803,46 @@ Android stochastic-decoding target: **SAME INPUT/PAYLOAD/LATENT/SEED -> SAME SAM
 - [x] Python fixture freezes sampled token IDs/text/EOS/final state
 - [x] Rust reproduces seeded fixture trajectory
 - [x] Android target compile remains mandatory
-- [ ] L54 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.54
+- [x] L54 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.54
 - [ ] persistent Android latent/profile/state bridge
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile release bundle
 - [ ] emulator/device sampled local-chat parity court
+- [ ] latency/memory/battery court
+- [ ] only then call Android local chat production-complete
+
+
+## L55 — Persistent Mobile State Bridge
+
+Android continuity target: **PYTHON LIVING STATE -> CHECKPOINT-BOUND LOCAL STATE -> RUST NATIVE RUNTIME**.
+
+- [x] no new primary product UI
+- [x] frozen `NOLANE-V055-MOBILE-PERSISTENT-STATE-V1` schema
+- [x] Python exporter projects ProductProfile + LivingState into the v0.53 behavioral fields
+- [x] persistent state carries exact source-checkpoint SHA-256
+- [x] persistent state carries latent + profile + identity + relationship/affect + bounded threads/memories
+- [x] canonical semantic-state SHA-256 shared across Python/Rust
+- [x] Rust verifies integrity before narrowing latent JSON values to f32
+- [x] checkpoint mismatch fails closed
+- [x] latent shape/non-finite state fails closed
+- [x] empty identity / negative interaction count fails closed
+- [x] 4 MiB state-file limit
+- [x] same-directory temporary write + fsync + atomic replacement
+- [x] MobileRuntime loads directly from persistent state
+- [x] prompt-contract + persistent-state constructor
+- [x] attached persistent state can rebuild the canonical product payload
+- [x] seeded native product generation can consume attached state directly
+- [x] Python deterministic fixture emits persistent-state.json
+- [x] Rust court accepts Python-authored state and round-trips it back to disk
+- [x] Android target compile remains mandatory
+- [ ] L55 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.55
+- [ ] Tauri Android LocalMobile target
+- [ ] L36-authorized mobile release bundle
+- [ ] emulator/device persistent local-chat court
 - [ ] latency/memory/battery court
 - [ ] only then call Android local chat production-complete
 
