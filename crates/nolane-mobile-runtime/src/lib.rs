@@ -417,10 +417,14 @@ pub fn write_persistent_mobile_state(
         expected_latent_dim,
     )?;
     let state_value = serde_json::to_value(state)?;
-    let state_sha256 = persistent_state_typed_digest(state)?;
-    // Rust-authored state uses an IEEE-bit projection for integrity. This
-    // avoids decimal float spelling drift across JSON parse/write cycles while
-    // keeping legacy Python/v0.55 envelopes readable.
+    // Integrity must bind the exact semantics that can be reconstructed from
+    // the persisted JSON, not an in-memory float representation that JSON may
+    // normalize while materializing. Reparse the exact Value we will write and
+    // hash that typed state. This keeps lifecycle-generated non-binary f64
+    // values stable across write -> restart -> read.
+    let persisted_state: PersistentMobileState =
+        serde_json::from_value(state_value.clone())?;
+    let state_sha256 = persistent_state_typed_digest(&persisted_state)?;
     let envelope = serde_json::json!({
         "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
         "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
