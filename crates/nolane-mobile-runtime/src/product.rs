@@ -470,7 +470,7 @@ impl LocalMobileProductRuntime {
             }
             (_, route) if route.starts_with("/v1/learning/") => {
                 Err(RuntimeError::Invalid(
-                    "Learning review is not available on LocalMobile v0.56".into(),
+                    "Learning review is not available on LocalMobile".into(),
                 ))
             }
             _ => Err(RuntimeError::Invalid(format!(
