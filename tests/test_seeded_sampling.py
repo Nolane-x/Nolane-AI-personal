@@ -53,6 +53,21 @@ def small_model() -> StandaloneNolaneLM:
     ).eval()
 
 
+def test_splitmix64_known_answer_vectors():
+    assert splitmix64_next(0) == (
+        0x9E3779B97F4A7C15,
+        0xE220A8397B1DCDAF,
+    )
+    assert splitmix64_next(1) == (
+        0x9E3779B97F4A7C16,
+        0x910A2DEC89025CC1,
+    )
+    assert splitmix64_next(0x123456789ABCDEF0) == (
+        0xB06BD0321A075B05,
+        0x161922C645CE50E8,
+    )
+
+
 def test_splitmix64_is_repeatable_and_stateful():
     first_state, first_value = splitmix64_next(0x123456789ABCDEF0)
     second_state, second_value = splitmix64_next(first_state)
@@ -82,6 +97,8 @@ def test_seeded_sampler_is_repeatable_and_rejects_invalid_inputs():
         SeededNucleusSampler(1, top_p=0.0)
     with pytest.raises(ValueError, match="temperature"):
         SeededNucleusSampler(1, temperature=0.0)
+    with pytest.raises(ValueError, match="quantization range"):
+        SeededNucleusSampler(1).sample([1e20, 0.0])
 
 
 def test_top_p_retains_minimal_q32_nucleus_with_stable_tie_break():
