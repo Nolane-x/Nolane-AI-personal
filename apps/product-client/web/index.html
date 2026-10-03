@@ -275,8 +275,17 @@
             <p id="reviewPrompt"></p>
           </div>
           <div class="review-block assistant-review">
-            <span class="review-role">Nolane</span>
-            <p id="reviewTarget"></p>
+            <label class="review-role" for="reviewTarget">Nolane nên học</label>
+            <textarea
+              id="reviewTarget"
+              class="review-target-editor"
+              rows="5"
+              maxlength="8000"
+              aria-describedby="reviewEditHint"
+            ></textarea>
+            <small class="review-edit-hint" id="reviewEditHint">
+              Bạn có thể sửa câu trả lời thành phiên bản bạn thật sự muốn Nolane học.
+            </small>
           </div>
 
           <label class="field review-language">
