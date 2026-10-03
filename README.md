@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.42.0
+## Current executable milestone: Living Runtime v0.43.0
 
 The runtime now contains two very different compute scales:
 
@@ -1336,6 +1336,42 @@ L39 mixed chain
 This closes the mechanical release path. A real recurrent-cortex production claim still requires approved real multi-window evidence and a real ceremony on trained checkpoints.
 
 See `docs/L41-UNIFIED-PROMOTION-INTEGRATION.md`.
+
+### L43 Real Longitudinal Learning Execution
+
+L43 turns the real recurrent-cortex update path into one resumable longitudinal experiment instead of requiring manual orchestration for every window.
+
+A valid plan contains at least five L23-approved learning windows plus one fixed held-out panel that is source-group isolated from all training/rehearsal data. Adaptation protocols and adaptation source groups must be fresh across cycles.
+
+The executor runs the exact L38 checkpoint chain and then asks two different retention questions:
+
+```text
+initial checkpoint -> final checkpoint
+    fixed old-capability panel
+
+cycle 1 learned state -> final checkpoint
+cycle 2 learned state -> final checkpoint
+...
+cycle N-1 learned state -> final checkpoint
+    each cycle's own held-out adaptation panel
+```
+
+This means a final model cannot PASS merely by preserving pre-existing skills while forgetting things it learned during earlier cycles.
+
+```bash
+python scripts/run_real_longitudinal_learning.py \
+  --plan /private/l43-plan.json \
+  --validate-only
+
+python scripts/run_real_longitudinal_learning.py \
+  --plan /private/l43-plan.json \
+  --output-dir runtime-data/l43-real-longitudinal \
+  --resume
+```
+
+L43 never auto-authorizes promotion. A PASS produces evidence for later human review; L40 remains a separate explicit authority step.
+
+See `docs/L43-REAL-LONGITUDINAL-EXECUTION.md`.
 
 ## Bootstrap Qwen
 
