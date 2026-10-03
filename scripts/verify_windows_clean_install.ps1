@@ -102,16 +102,31 @@ $releaseManifest = Get-Item $releaseManifestPath
 $manifest = Get-Content $releaseManifest.FullName -Raw | ConvertFrom-Json
 $modelHash = (Get-FileHash $model.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 $runtimeHash = (Get-FileHash $runtime.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+$tokenizerJsonHash = (Get-FileHash $tokenizerJson.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+$tokenizerConfigHash = (Get-FileHash $tokenizerConfig.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+
 if ($modelHash -ne ([string]$manifest.model_checkpoint_sha256).ToLowerInvariant()) {
     throw "Installed model hash does not match release-assets.json"
 }
 if ($runtimeHash -ne ([string]$manifest.runtime_executable_sha256).ToLowerInvariant()) {
     throw "Installed runtime hash does not match release-assets.json"
 }
+if ($tokenizerJsonHash -ne ([string]$manifest.tokenizer_json_sha256).ToLowerInvariant()) {
+    throw "Installed tokenizer.json hash does not match release-assets.json"
+}
+if ($tokenizerConfigHash -ne ([string]$manifest.tokenizer_config_sha256).ToLowerInvariant()) {
+    throw "Installed tokenizer_config.json hash does not match release-assets.json"
+}
+if (-not [bool]$manifest.windows_one_click_prerequisites_bundled) {
+    throw "Release manifest does not assert bundled Windows prerequisites"
+}
 
 $ceremonyPayload = Get-Content $ceremony.FullName -Raw | ConvertFrom-Json
 if (([string]$ceremonyPayload.candidate_checkpoint_sha256).ToLowerInvariant() -ne $modelHash) {
     throw "Installed ceremony does not authorize the installed model"
+}
+if (([string]$ceremonyPayload.ceremony_sha256).ToLowerInvariant() -ne ([string]$manifest.promotion_ceremony_sha256).ToLowerInvariant()) {
+    throw "Installed ceremony digest does not match release-assets.json"
 }
 
 $appVersion = [string]$app.VersionInfo.ProductVersion
@@ -210,6 +225,8 @@ $receiptObject = [ordered]@{
     installed_app_sha256 = (Get-FileHash $app.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     installed_runtime_sha256 = $runtimeHash
     installed_model_sha256 = $modelHash
+    installed_tokenizer_json_sha256 = $tokenizerJsonHash
+    installed_tokenizer_config_sha256 = $tokenizerConfigHash
     promotion_ceremony_sha256 = [string]$ceremonyPayload.ceremony_sha256
     release_manifest_model_sha256 = [string]$manifest.model_checkpoint_sha256
     product_version = $ExpectedVersion
