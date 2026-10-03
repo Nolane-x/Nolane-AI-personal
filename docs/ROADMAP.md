@@ -1704,13 +1704,44 @@ Android text-generation target: **TOKENIZER.JSON -> RUST PREFILL -> GREEDY AUTOR
 - [x] exact pinned Qwen3-0.6B tokenizer.json compatibility court
 - [x] real-tokenizer Vietnamese/English/Unicode/code encode+decode parity
 - [x] native runtime crate Android target compile gate
-- [ ] L51 Product Client Court PASS
-- [ ] merge v0.51
+- [x] L51 Product Client Court PASS
+- [x] merge v0.51
 - [ ] exact product chat-template rendering in native host
 - [ ] seeded sampling parity with desktop product path
 - [ ] persistent latent/profile/state bridge
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile package + tokenizer release binding
 - [ ] emulator/device end-to-end local chat court
+- [ ] only then call Android local chat production-complete
+
+## L52 — Frozen Product Prompt Contract
+
+Android product-prompt target: **EXACT PINNED CHAT TEMPLATE / NO JINJA IN APK**.
+
+- [x] no new primary product UI
+- [x] freeze only system + user + generation-prompt product subset
+- [x] thinking explicitly disabled in frozen contract
+- [x] unique sentinel extraction instead of hand-written Qwen delimiters
+- [x] prefix/between/suffix deterministic native rendering
+- [x] contract binds tokenizer.json SHA-256
+- [x] contract binds tokenizer_config.json SHA-256
+- [x] Rust requires expected complete prompt-contract file SHA-256
+- [x] native sentinel probe render integrity check
+- [x] contract carries no model/promotion authority
+- [x] Python tamper/tokenizer-drift courts
+- [x] Rust contract-file/tokenizer-integrity regressions
+- [x] synthetic prompt-bound native chat generation trajectory
+- [x] exact pinned Qwen Transformers render authority
+- [x] desktop AutoTokenizer vs raw native-tokenizer ID boundary check
+- [x] Rust byte-for-byte prompt render parity on pinned Qwen
+- [x] Rust token-for-token prompt parity on pinned Qwen
+- [ ] L52 Product Client Court PASS
+- [ ] merge v0.52
+- [ ] dynamic product personalization/state/memory payload parity
+- [ ] seeded sampling parity with desktop product
+- [ ] persistent Android latent/profile/state bridge
+- [ ] Tauri Android LocalMobile target
+- [ ] L36-authorized mobile model/prompt/tokenizer release binding
+- [ ] emulator/device local-chat court
 - [ ] only then call Android local chat production-complete
 
