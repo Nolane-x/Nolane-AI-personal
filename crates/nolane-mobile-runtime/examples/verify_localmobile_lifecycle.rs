@@ -1,5 +1,6 @@
 use nolane_mobile_runtime::{
     product::{
+        lifecycle_tick_seconds,
         LocalMobileBundleManifest,
         LocalMobileProductRuntime,
         LEGACY_LOCAL_MOBILE_META_SCHEMA,
@@ -13,6 +14,10 @@ use std::{env, fs, path::PathBuf};
 use tempfile::tempdir;
 
 fn main() {
+    assert_eq!(lifecycle_tick_seconds("off"), 5);
+    assert_eq!(lifecycle_tick_seconds("gentle"), 30);
+    assert_eq!(lifecycle_tick_seconds("active"), 12);
+
     let mut args = env::args().skip(1);
     let bundle = PathBuf::from(
         args.next().expect("fixture root argument required"),
