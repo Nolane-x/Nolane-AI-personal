@@ -172,6 +172,21 @@ class ProductLearningWorkspace:
     def create_window(self) -> dict[str, Any]:
         with self._lock:
             registry = self.verify_registry()
+
+            pending: list[dict[str, Any]] = []
+            for row in registry["windows"]:
+                status = self.window_status(str(row["window_id"]))
+                if not status["intake_ready"]:
+                    pending.append(status)
+            if len(pending) > 1:
+                raise ValueError(
+                    "multiple pending evidence windows violate the product review invariant"
+                )
+            if pending:
+                # Idempotent create/retry: a lost HTTP response must not create
+                # another review window or advance the SQLite cursor twice.
+                return pending[0]
+
             index = int(registry["next_window_index"])
             window_id = f"window-{index:04d}"
             final_root = self._window_root(window_id)
@@ -307,6 +322,43 @@ class ProductLearningWorkspace:
                 paths.decisions,
                 paths.review_progress,
             )
+
+            candidate_id = str(candidate_id).strip()
+            existing = session.decisions.get(candidate_id)
+            if existing is not None:
+                candidate = session.by_id.get(candidate_id)
+                if candidate is None:
+                    raise ValueError("unknown candidate_id")
+                inherited_language = candidate.get("language")
+                requested_language = (
+                    language if language is not None else inherited_language
+                )
+                if requested_language is not None:
+                    requested_language = str(requested_language).strip().lower()
+                    if not requested_language:
+                        requested_language = None
+                requested_correction = (
+                    None
+                    if corrected_target is None
+                    else str(corrected_target).strip()
+                )
+                requested = {
+                    "candidate_id": candidate_id,
+                    "approved": command == "approve",
+                    "sensitive": command == "sensitive",
+                    "language": requested_language,
+                    "weight": float(weight),
+                    "corrected_target": requested_correction,
+                }
+                if existing != requested:
+                    raise ValueError(
+                        "conflicting retry for frozen candidate decision"
+                    )
+                return {
+                    "window": self.window_status(window_id),
+                    "next_candidate": self.next_candidate(window_id),
+                }
+
             session.record_decision(
                 candidate_id,
                 approved=command == "approve",

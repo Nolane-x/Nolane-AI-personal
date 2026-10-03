@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.45.0
+## Current executable milestone: Living Runtime v0.47.0
 
 The runtime now contains two very different compute scales:
 
@@ -1411,6 +1411,20 @@ The local learning registry forms a contiguous SQLite high-water chain, so later
 Finalization still reuses the existing L25/L27/L28 evidence courts. L45 cannot train or promote a model.
 
 See `docs/L45-INAPP-EXPLICIT-EVIDENCE-REVIEW.md`.
+
+### L46 Real Learning Campaign
+
+L46 is backend-only. It turns one fixed window, one baseline-retention window and at least five reviewed adaptation windows into a native L43 campaign while protecting every original held-out test split from future rehearsal. Later retention packs contain only baseline/prior train+dev evidence, so learned-window retention cannot pass by training on its own old test answers.
+
+### L47 v1 Interaction Reliability Freeze
+
+L47 freezes the visible v1 product surface: chat, AI power, personalization and explicit learning review/correction. It adds no primary UI feature.
+
+Existing learning operations are hardened for real user behavior: create-window retry returns the same pending window, exact decision retries are idempotent, conflicting retries fail closed, partial review resumes exactly after restart, and finalize retry returns the same verified evidence state.
+
+From this point, adding more buttons is not counted as progress toward v1.0. The remaining major work is empirical/release closure: real reviewed windows, real 5+ cycle L43 result, explicit L40 authorization only if merited, and final clean-install production release.
+
+See `docs/L46-REAL-LEARNING-CAMPAIGN.md` and `docs/L47-V1-INTERACTION-RELIABILITY-FREEZE.md`.
 
 ## Bootstrap Qwen
 
