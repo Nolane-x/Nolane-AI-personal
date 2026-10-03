@@ -1,4 +1,10 @@
 use crate::{
+    memory::{
+        read_mobile_memory_store,
+        write_mobile_memory_store,
+        MobileMemoryStore,
+        DEFAULT_RETRIEVAL_LIMIT,
+    },
     read_persistent_mobile_state,
     write_persistent_mobile_state,
     MobileRuntime,
@@ -128,8 +134,10 @@ pub struct LocalMobileProductRuntime {
     state_path: PathBuf,
     meta_path: PathBuf,
     history_path: PathBuf,
+    memory_path: PathBuf,
     meta: LocalMobileMeta,
     history: Vec<LocalMobileMessage>,
+    memory_store: MobileMemoryStore,
     powered: bool,
 }
 
@@ -473,6 +481,7 @@ impl LocalMobileProductRuntime {
         let state_path = data_dir.join("persistent-state.json");
         let meta_path = data_dir.join("local-mobile-meta.json");
         let history_path = data_dir.join("local-mobile-history.json");
+        let memory_path = data_dir.join("local-mobile-memory.json");
 
         if !state_path.exists() {
             let mut bootstrap = read_persistent_mobile_state(
@@ -502,6 +511,18 @@ impl LocalMobileProductRuntime {
 
         let meta = load_meta(&meta_path)?;
         let history = load_history(&history_path)?;
+        let memory_store = if memory_path.exists() {
+            read_mobile_memory_store(&memory_path)?
+        } else {
+            let legacy = runtime
+                .persistent_state()
+                .map(|state| state.memories.as_slice())
+                .unwrap_or(&[]);
+            let migrated =
+                MobileMemoryStore::migrate_legacy_projection(legacy);
+            write_mobile_memory_store(&memory_path, &migrated)?;
+            migrated
+        };
 
         Ok(Self {
             runtime,
@@ -509,8 +530,10 @@ impl LocalMobileProductRuntime {
             state_path,
             meta_path,
             history_path,
+            memory_path,
             meta,
             history,
+            memory_store,
             powered: false,
         })
     }
@@ -600,6 +623,11 @@ impl LocalMobileProductRuntime {
             "interactions": interactions,
             "open_threads": open_threads,
             "memory_enabled": self.meta.memory_enabled,
+            "memory": {
+                "schema": crate::memory::MOBILE_MEMORY_SCHEMA,
+                "records": self.memory_store.records.len(),
+                "links": self.memory_store.links.len(),
+            },
             "initiative": &self.meta.initiative,
             "model_checkpoint_sha256": self.runtime.source_checkpoint_sha256(),
             "device": "android-local-rust",
@@ -712,7 +740,14 @@ impl LocalMobileProductRuntime {
             intent,
             user_text,
         )?;
-        if !self.meta.memory_enabled {
+        if self.meta.memory_enabled {
+            let query = user_text.unwrap_or(intent);
+            payload.memories = self.memory_store.relevant_texts(
+                query,
+                now_millis(),
+                DEFAULT_RETRIEVAL_LIMIT,
+            );
+        } else {
             payload.memories.clear();
         }
         if let Some(limit) = max_new_tokens {
@@ -988,10 +1023,10 @@ impl LocalMobileProductRuntime {
         (true, "idle_window")
     }
 
-    fn run_rest_baseline(
+    fn sync_memory_projection(
         &mut self,
         at_ms: u64,
-    ) -> Result<Value, RuntimeError> {
+    ) -> Result<(), RuntimeError> {
         let mut state = self
             .runtime
             .persistent_state()
@@ -999,33 +1034,47 @@ impl LocalMobileProductRuntime {
             .ok_or_else(|| RuntimeError::Invalid(
                 "LocalMobile persistent state disappeared".into(),
             ))?;
-        let source_count = state.memories.len();
-        let mut compacted: Vec<String> = Vec::new();
-        let mut removed = 0usize;
-        for memory in &state.memories {
-            if compacted
-                .iter()
-                .any(|kept| lexical_similarity(kept, memory)
-                    >= REST_DUPLICATE_SIMILARITY)
-            {
-                removed += 1;
-            } else {
-                compacted.push(memory.clone());
-            }
-        }
-        state.memories = compacted;
-        self.meta.rest_cycles = self.meta.rest_cycles.saturating_add(1);
+        state.memories = self.memory_store.projection(
+            at_ms,
+            DEFAULT_RETRIEVAL_LIMIT,
+        );
+        self.runtime.set_persistent_state(state)?;
+        Ok(())
+    }
+
+    fn run_rest_baseline(
+        &mut self,
+        at_ms: u64,
+    ) -> Result<Value, RuntimeError> {
+        let source_count =
+            self.memory_store.unconsolidated_records().len();
+        let rest_cycle = self.meta.rest_cycles.saturating_add(1);
+        let source_event_id =
+            format!("local-mobile-rest-{rest_cycle}-{at_ms}");
+        let stored = self.memory_store.consolidate_near_duplicates(
+            &source_event_id,
+            at_ms,
+            REST_DUPLICATE_SIMILARITY,
+            4,
+        )?;
+        self.meta.rest_cycles = rest_cycle;
         self.meta.last_rest_ms = Some(at_ms);
         self.meta.last_rest_source_count = source_count;
-        self.meta.last_rest_new_memories = 0;
-        self.runtime.set_persistent_state(state)?;
+        self.meta.last_rest_new_memories = stored.len();
+        self.sync_memory_projection(at_ms)?;
+        write_mobile_memory_store(
+            &self.memory_path,
+            &self.memory_store,
+        )?;
         Ok(json!({
             "ran": true,
-            "strategy": "conservative_near_duplicate_compaction",
+            "strategy": "near_duplicate_merge",
+            "source_event_id": source_event_id,
             "source_count": source_count,
-            "removed_duplicates": removed,
-            "new_memories": 0,
-            "provenance_rich_consolidation": false,
+            "stored_memory_ids": stored,
+            "new_memories": self.meta.last_rest_new_memories,
+            "memory_links": self.memory_store.links.len(),
+            "provenance_rich_consolidation": true,
         }))
     }
 
@@ -1152,10 +1201,23 @@ impl LocalMobileProductRuntime {
         }
 
         let at_ms = now_millis();
+        let ordinal = self.meta.state_version.saturating_add(1);
+        let user_event_id = format!("local-mobile-u-{ordinal}");
         self.apply_user_lifecycle(clean, at_ms)?;
-        // Desktop LivingEngine commits the user event before cortex generation.
-        // Persist that same causal ordering so a generation failure never
-        // erases a real user interaction.
+        if self.meta.memory_enabled {
+            self.memory_store.record_user_message(
+                clean,
+                &user_event_id,
+                at_ms,
+            )?;
+            self.sync_memory_projection(at_ms)?;
+            write_mobile_memory_store(
+                &self.memory_path,
+                &self.memory_store,
+            )?;
+        }
+        // Desktop LivingEngine commits the user event + episodic memory before
+        // cortex generation. Preserve that causal ordering on mobile.
         self.runtime.save_persistent_state(&self.state_path)?;
         write_json(&self.meta_path, &self.meta)?;
 
@@ -1170,10 +1232,9 @@ impl LocalMobileProductRuntime {
         )?;
         let reply = generated.text.trim().to_string();
 
-        let ordinal = self.meta.state_version.saturating_add(1);
         let marker = at_ms.to_string();
         self.history.push(LocalMobileMessage {
-            event_id: format!("local-mobile-u-{ordinal}"),
+            event_id: user_event_id,
             at: marker.clone(),
             role: "user".into(),
             text: clean.to_string(),
