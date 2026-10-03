@@ -236,6 +236,23 @@ impl MobileMemoryStore {
         }
     }
 
+    pub fn push_record(
+        &mut self,
+        record: MobileMemoryRecord,
+    ) -> Result<(), RuntimeError> {
+        if self.records.len() >= MAX_MEMORY_RECORDS {
+            return Err(RuntimeError::Invalid(
+                "mobile memory store is full".into(),
+            ));
+        }
+        self.records.push(record);
+        if let Err(error) = self.validate() {
+            self.records.pop();
+            return Err(error);
+        }
+        Ok(())
+    }
+
     pub fn record_user_message(
         &mut self,
         text: &str,
