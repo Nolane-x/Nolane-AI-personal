@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.59.0
+## Current executable milestone: Living Runtime v0.60.0
 
 The runtime now contains two very different compute scales:
 
@@ -1560,6 +1560,20 @@ User messages update relationship/affect/lifecycle controls before native cortex
 The 30-minute REST idle window and 45-minute cooldown are also ported. Mobile still has only a bounded string memory projection, so REST is deliberately conservative near-duplicate compaction rather than a fake provenance-rich ConsolidationReceipt.
 
 See `docs/V059-MOBILE-LIFECYCLE-PARITY.md`.
+
+### v0.60 Provenance Memory + Social Mutation Boundary
+
+v0.60 keeps the v1 UI frozen and upgrades LocalMobile memory from a bounded text-only projection into a source-bound evidence store without changing the frozen v0.55 neural/product state schema.
+
+Each mobile memory now carries a stable ID, kind, salience, confidence, source-event ID, timestamp and bounded metadata. The language cortex still receives only a small ranked text projection, while the local runtime preserves provenance for REST and future reviewed learning.
+
+User-event ordering now matches the desktop LivingEngine more closely: base lifecycle mutation -> episodic memory commit -> validated social proposal -> cortex generation. The deterministic production observer is intentionally narrow and only proposes preference memory for explicit statements such as `Tôi thích ...` or `I prefer ...`; the mutation validator clamps state deltas, bounds proposals and downgrades weak fact claims instead of granting the observer direct write authority.
+
+Deterministic REST is now provenance-preserving. Near-duplicate sources remain on disk, derived memories bind their source IDs, and explicit parent->child links prevent the source evidence from being silently erased. Memory-off stops retrieval and new writes without deleting already-stored evidence.
+
+This still does not claim model-generated mobile observer quality, Android reviewed-training parity, a real L43 longitudinal PASS, a real COMPLETE-L36 Android release, physical-device acceptance or final performance/thermal/battery fitness.
+
+See `docs/V060-PROVENANCE-MEMORY-OBSERVER-BOUNDARY.md`.
 
 ## Bootstrap Qwen
 
