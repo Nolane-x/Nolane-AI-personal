@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.50.0
+## Current executable milestone: Living Runtime v0.51.0
 
 The runtime now contains two very different compute scales:
 
@@ -1460,6 +1460,16 @@ The mobile package contains no user latent, tokenizer, chat text or promotion au
 This is **not yet end-to-end Android local chat**. Native tokenizer/chat-template handling, sampling loop, persistent product-state bridge, Tauri local-target wiring and emulator/device courts remain explicit gates.
 
 See `docs/V050-ANDROID-LOCAL-INFERENCE-FOUNDATION.md`.
+
+### v0.51 Native Tokenizer & Generation Host
+
+v0.51 keeps the existing Ember Quiet product UI unchanged and moves another inference layer into native Rust.
+
+The mobile runtime now loads a frozen `tokenizer.json` without Python or Transformers, pre-fills every prompt token through the v0.50 Rust neural kernel, and performs bounded deterministic greedy autoregressive generation with EOS handling. CI freezes tokenization and generation outputs in Python and requires Rust to reproduce prompt token IDs, generated token IDs, decoded text and final recurrent state before both native crates compile for `aarch64-linux-android`.
+
+This still does **not** claim end-to-end Android product chat. Exact product chat-template rendering, sampling, persistent product-state/latent wiring, Tauri LocalMobile routing, release-bound promoted assets and emulator/device courts remain explicit gates.
+
+See `docs/V051-NATIVE-TOKENIZER-GENERATION.md`.
 
 ## Bootstrap Qwen
 
