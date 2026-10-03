@@ -333,8 +333,8 @@ def main() -> int:
     learned_dir.mkdir(parents=True, exist_ok=True)
     learned_receipts: list[dict[str, Any]] = []
     for cycle, learned_checkpoint in zip(
-        plan.cycles,
-        cycle_checkpoints,
+        plan.cycles[:-1],
+        cycle_checkpoints[:-1],
         strict=True,
     ):
         retention_path = learned_dir / f"cycle-{cycle.index:03d}.json"
