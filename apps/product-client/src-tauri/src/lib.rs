@@ -1,6 +1,6 @@
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -24,6 +24,16 @@ use std::{
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+#[cfg(target_os = "android")]
+const V058_COURT_TRANSACTION_ID: &str =
+    "synthetic-mobile-release-court";
+#[cfg(target_os = "android")]
+const V058_COURT_CHECKPOINT_SHA256: &str =
+    "7777777777777777777777777777777777777777777777777777777777777777";
+#[cfg(target_os = "android")]
+const V058_COURT_RECEIPT_SCHEMA: &str =
+    "NOLANE-V058-ANDROID-EMULATOR-COURT-V1";
 
 #[derive(Clone, Debug)]
 enum RuntimeTarget {
@@ -274,6 +284,231 @@ fn initial_non_windows_target(data_dir: &Path) -> RuntimeTarget {
 }
 
 #[cfg(target_os = "android")]
+fn android_v058_court_enabled(app: &tauri::App) -> Result<bool, String> {
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+    let ceremony_path = resource_dir
+        .join("resources")
+        .join("mobile")
+        .join("promotion-ceremony.json");
+    if !ceremony_path.is_file() {
+        return Ok(false);
+    }
+    let ceremony: Value = serde_json::from_slice(
+        &fs::read(&ceremony_path).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    let transaction_id = ceremony
+        .get("transaction_id")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let checkpoint = ceremony
+        .get("candidate_checkpoint_sha256")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    Ok(
+        transaction_id == V058_COURT_TRANSACTION_ID
+            && checkpoint == V058_COURT_CHECKPOINT_SHA256,
+    )
+}
+
+#[cfg(target_os = "android")]
+fn v058_u64(value: &Value, key: &str) -> Result<u64, String> {
+    value
+        .get(key)
+        .and_then(Value::as_u64)
+        .ok_or_else(|| format!("v0.58 court missing numeric field: {key}"))
+}
+
+#[cfg(target_os = "android")]
+fn v058_string(value: &Value, key: &str) -> Result<String, String> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| format!("v0.58 court missing text field: {key}"))
+}
+
+#[cfg(target_os = "android")]
+fn v058_history_len(value: &Value) -> Result<u64, String> {
+    value
+        .get("messages")
+        .and_then(Value::as_array)
+        .map(|rows| rows.len() as u64)
+        .ok_or_else(|| "v0.58 court history payload is invalid".to_string())
+}
+
+#[cfg(target_os = "android")]
+fn write_v058_court_receipt(
+    path: &Path,
+    payload: &Value,
+) -> Result<(), String> {
+    let temp = path.with_extension("json.tmp");
+    let bytes = serde_json::to_vec(payload).map_err(|e| e.to_string())?;
+    fs::write(&temp, bytes).map_err(|e| e.to_string())?;
+    fs::rename(&temp, path).map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "android")]
+fn run_v058_android_emulator_court(
+    app: &tauri::App,
+    manager: &mut RuntimeManager,
+    data_dir: &Path,
+) -> Result<(), String> {
+    if !android_v058_court_enabled(app)? {
+        return Ok(());
+    }
+    if !matches!(manager.target, RuntimeTarget::LocalMobile) {
+        return Err(
+            "v0.58 synthetic emulator court did not boot LocalMobile".into(),
+        );
+    }
+    let mobile = manager.mobile.as_mut().ok_or_else(|| {
+        "v0.58 synthetic emulator court has no native runtime".to_string()
+    })?;
+
+    let receipt_path = data_dir.join("v058-android-emulator-court.json");
+    let previous = if receipt_path.is_file() {
+        Some(
+            serde_json::from_slice::<Value>(
+                &fs::read(&receipt_path).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?,
+        )
+    } else {
+        None
+    };
+
+    let before = mobile
+        .api("GET", "/v1/status", None)
+        .map_err(|e| e.to_string())?;
+    let history_before = mobile
+        .api("GET", "/v1/history", None)
+        .map_err(|e| e.to_string())?;
+    let identity = v058_string(&before, "identity_id")?;
+    if !identity.starts_with("nolane-mobile-") {
+        return Err("v0.58 court identity is not device-local".into());
+    }
+    if before.get("phase").and_then(Value::as_str) != Some("off") {
+        return Err("v0.58 court expected power state off after process boot".into());
+    }
+
+    let before_version = v058_u64(&before, "state_version")?;
+    let before_interactions = v058_u64(&before, "interactions")?;
+    let before_history = v058_history_len(&history_before)?;
+
+    let expected_stage = previous
+        .as_ref()
+        .and_then(|value| value.get("stage"))
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    if let Some(previous) = previous.as_ref() {
+        if previous.get("schema").and_then(Value::as_str)
+            != Some(V058_COURT_RECEIPT_SCHEMA)
+        {
+            return Err("v0.58 court receipt schema mismatch".into());
+        }
+        let previous_identity = v058_string(previous, "identity_id")?;
+        let previous_version = v058_u64(previous, "state_version")?;
+        let previous_interactions = v058_u64(previous, "interactions")?;
+        let previous_history = v058_u64(previous, "history_len")?;
+        if previous_identity != identity {
+            return Err("v0.58 identity changed across app restart".into());
+        }
+        if previous_version != before_version
+            || previous_interactions != before_interactions
+            || previous_history != before_history
+        {
+            return Err(
+                "v0.58 persisted state/history drifted across app restart".into(),
+            );
+        }
+    } else if before_version != 0 || before_history != 0 {
+        return Err("v0.58 first boot was not a clean LocalMobile state".into());
+    }
+
+    if expected_stage >= 2 {
+        log::info!(
+            "NOLANE_V058_EMULATOR_FINAL_PASS identity={} state_version={} history={}",
+            identity,
+            before_version,
+            before_history,
+        );
+        return Ok(());
+    }
+
+    mobile
+        .api(
+            "POST",
+            "/v1/power",
+            Some(json!({"enabled": true})),
+        )
+        .map_err(|e| e.to_string())?;
+    let prompt = if expected_stage == 0 {
+        "v058 emulator first boot local chat"
+    } else {
+        "v058 emulator restart local chat"
+    };
+    let reply = mobile
+        .api(
+            "POST",
+            "/v1/chat",
+            Some(json!({"text": prompt})),
+        )
+        .map_err(|e| e.to_string())?;
+    if reply.get("reply").and_then(Value::as_str).is_none() {
+        return Err("v0.58 local chat did not return a reply field".into());
+    }
+
+    let after = mobile
+        .api("GET", "/v1/status", None)
+        .map_err(|e| e.to_string())?;
+    let history_after = mobile
+        .api("GET", "/v1/history", None)
+        .map_err(|e| e.to_string())?;
+    let after_identity = v058_string(&after, "identity_id")?;
+    let after_version = v058_u64(&after, "state_version")?;
+    let after_interactions = v058_u64(&after, "interactions")?;
+    let after_history = v058_history_len(&history_after)?;
+
+    if after_identity != identity
+        || after_version != before_version.saturating_add(1)
+        || after_interactions != before_interactions.saturating_add(1)
+        || after_history != before_history.saturating_add(2)
+    {
+        return Err("v0.58 local chat state transition mismatch".into());
+    }
+
+    let stage = expected_stage + 1;
+    let receipt = json!({
+        "schema": V058_COURT_RECEIPT_SCHEMA,
+        "stage": stage,
+        "identity_id": identity,
+        "state_version": after_version,
+        "interactions": after_interactions,
+        "history_len": after_history,
+        "checkpoint_sha256": V058_COURT_CHECKPOINT_SHA256,
+    });
+    write_v058_court_receipt(&receipt_path, &receipt)?;
+
+    if stage == 1 {
+        log::info!(
+            "NOLANE_V058_FIRST_BOOT_PASS identity={} state_version={} history={}",
+            after_identity,
+            after_version,
+            after_history,
+        );
+    } else {
+        log::info!(
+            "NOLANE_V058_RESTART_PASS identity={} state_version={} history={}",
+            after_identity,
+            after_version,
+            after_history,
+        );
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
 fn load_android_local_mobile(
     app: &tauri::App,
     data_dir: &Path,
@@ -500,11 +735,27 @@ fn stop_child(state: &ProductState) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "android")]
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_tag("Nolane")
+            .with_max_level(log::LevelFilter::Info),
+    );
+
     let app = tauri::Builder::default()
         .setup(|app| {
             let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
-            let manager = initial_manager(app, &data_dir);
+            let mut manager = initial_manager(app, &data_dir);
+            #[cfg(target_os = "android")]
+            if let Err(error) = run_v058_android_emulator_court(
+                app,
+                &mut manager,
+                &data_dir,
+            ) {
+                log::error!("NOLANE_V058_EMULATOR_COURT_FAIL {error}");
+                return Err(error.into());
+            }
             let client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(180))
                 .build()
