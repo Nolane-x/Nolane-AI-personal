@@ -1371,6 +1371,7 @@ impl MobileRuntime {
 mod tests {
     use super::{
         argmax,
+        canonical_json_bytes,
         read_persistent_mobile_state,
         sha256_hex,
         splitmix64_next,
@@ -1382,6 +1383,7 @@ mod tests {
         ProductPayloadRelationship,
         ProductPayloadState,
         SeededNucleusSampler,
+        PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
         PERSISTENT_MOBILE_STATE_SCHEMA,
     };
     use serde_json::{json, Value};
@@ -1458,6 +1460,10 @@ mod tests {
             raw["schema"].as_str(),
             Some(PERSISTENT_MOBILE_STATE_SCHEMA)
         );
+        assert_eq!(
+            raw["integrity"].as_str(),
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+        );
         assert!(raw["state_sha256"].as_str().unwrap().len() == 64);
         assert!(
             root.path()
@@ -1501,6 +1507,31 @@ mod tests {
         )
         .unwrap_err();
         assert!(tamper.to_string().contains("integrity mismatch"));
+    }
+
+    #[test]
+    fn persistent_mobile_state_reads_legacy_v055_integrity() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("legacy-state.json");
+        let state = persistent_fixture();
+        let state_value = serde_json::to_value(&state).unwrap();
+        let legacy_sha = sha256_hex(
+            &canonical_json_bytes(state_value.clone()).unwrap(),
+        );
+        let envelope = json!({
+            "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
+            "state_sha256": legacy_sha,
+            "state": state_value,
+        });
+        fs::write(&path, serde_json::to_vec(&envelope).unwrap()).unwrap();
+
+        let loaded = read_persistent_mobile_state(
+            &path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        assert_eq!(loaded, state);
     }
 
     #[test]
