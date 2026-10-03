@@ -1019,15 +1019,6 @@
     if (outside) els.dialog.close();
   });
 
-  els.learningDialog.addEventListener("click", (event) => {
-    const rect = els.learningDialog.getBoundingClientRect();
-    const outside =
-      event.clientX < rect.left ||
-      event.clientX > rect.right ||
-      event.clientY < rect.top ||
-      event.clientY > rect.bottom;
-    if (outside) els.learningDialog.close();
-  });
 
   window.addEventListener("focus", () => void refreshAll());
 
