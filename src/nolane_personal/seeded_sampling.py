@@ -129,18 +129,22 @@ class SeededNucleusSampler:
             raise ValueError("quantized probability mass is empty")
 
         top_p_q32 = _top_p_q32(self.top_p)
-        threshold = (total * top_p_q32) // PROBABILITY_SCALE
+        threshold = (
+            total * top_p_q32
+            + PROBABILITY_SCALE - 1
+        ) // PROBABILITY_SCALE
+        threshold = max(1, min(total, threshold))
 
         retained: list[tuple[int, int]] = []
-        cumulative_before = 0
+        cumulative = 0
         for token_id in ranked:
             weight = weights[token_id]
             if weight <= 0:
                 continue
-            if cumulative_before > threshold:
-                break
             retained.append((token_id, weight))
-            cumulative_before += weight
+            cumulative += weight
+            if cumulative >= threshold:
+                break
 
         if not retained:
             raise ValueError("top-p filter removed all probability mass")
