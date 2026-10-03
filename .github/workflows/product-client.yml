@@ -22,7 +22,7 @@ on:
       - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
       - "docs/V042-NUI-CRITIQUE-LEDGER.md"
       - "docs/ROADMAP.md"
-      - "README.md"
+      - "pyproject.toml"\n      - "scripts/check_product_versions.py"\n      - "README.md"
   pull_request:
     paths:
       - "apps/product-client/**"
@@ -39,7 +39,7 @@ on:
       - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
       - "docs/V042-NUI-CRITIQUE-LEDGER.md"
       - "docs/ROADMAP.md"
-      - "README.md"
+      - "pyproject.toml"\n      - "scripts/check_product_versions.py"\n      - "README.md"
 
 jobs:
   runtime:
@@ -52,7 +52,8 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e '.[dev]'
       - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py tests/test_product_learning_workspace.py
-      - run: python -m compileall -q src/nolane_personal/product_*.py scripts/stage_product_release_assets.py packaging/product_runtime_entry.py
+      - run: python scripts/check_product_versions.py
+      - run: python -m compileall -q src/nolane_personal/product_*.py scripts/stage_product_release_assets.py scripts/check_product_versions.py packaging/product_runtime_entry.py
 
   browser:
     name: NUI browser court
