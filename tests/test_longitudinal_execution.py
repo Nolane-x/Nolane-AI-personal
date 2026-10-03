@@ -13,15 +13,45 @@ from nolane_personal.longitudinal_execution import (
 
 
 def write_source(path: Path, prefix: str, *, groups=None, count: int = 12):
-    rows = []
+    prompts = [
+        "Explain why a bicycle stays easier to balance while moving forward.",
+        "Mình muốn một lời nhắc ngắn để nhớ mang áo mưa trước khi ra ngoài.",
+        "Compare a paper map with GPS navigation for a day hike.",
+        "Viết một câu trả lời lịch sự khi mình cần từ chối một cuộc hẹn.",
+        "Describe how bread dough changes while yeast ferments.",
+        "Nếu mình học từ mới, hãy gợi ý cách ôn lại sau ba ngày.",
+        "What makes a mechanical keyboard switch feel different from another?",
+        "Tóm tắt cách sắp xếp bàn học để ít bị phân tâm hơn.",
+        "Explain the difference between a meteor and a meteorite simply.",
+        "Mình muốn chuẩn bị đồ cho chuyến đi ngắn hai ngày, nên nhớ gì?",
+        "Give one practical way to verify a downloaded file has not changed.",
+        "Giải thích vì sao cây trong phòng vẫn cần ánh sáng dù được tưới đủ nước.",
+    ]
+    targets = [
+        "Forward motion makes steering corrections effective, so small tilts can be corrected before they grow.",
+        "Trước khi đi, nhớ kiểm tra dự báo và bỏ một chiếc áo mưa gọn vào túi.",
+        "A paper map works without power and shows broad context, while GPS is faster for live position and rerouting.",
+        "Mình cảm ơn lời mời, nhưng lần này mình không sắp xếp tham gia được. Hẹn dịp khác nhé.",
+        "Yeast consumes sugars and releases carbon dioxide, which becomes trapped in the dough and makes it expand.",
+        "Sau ba ngày, hãy tự nhớ nghĩa trước, rồi đặt từ đó vào một câu mới thay vì chỉ đọc lại.",
+        "Switches differ in spring weight, travel, tactile bumps, sound, and housing construction, which changes the key feel.",
+        "Giữ trên bàn chỉ những thứ đang dùng, đặt điện thoại ngoài tầm tay và chừa một vùng trống để viết.",
+        "A meteor is the streak of light from material burning in the atmosphere; a meteorite is what reaches the ground.",
+        "Ưu tiên giấy tờ, sạc, thuốc cần thiết, quần áo theo thời tiết và một bộ dự phòng gọn nhẹ.",
+        "Compute a cryptographic hash such as SHA-256 and compare it with the trusted value published by the source.",
+        "Cây cần ánh sáng để quang hợp tạo năng lượng; nước không thể thay thế phần năng lượng đó.",
+    ]
+    if count > len(prompts):
+        raise ValueError("test fixture supports at most 12 evidence rows")
     groups = groups or [f"{prefix}-group-{i}" for i in range(count)]
     assert len(groups) == count
+    rows = []
     for i in range(count):
         rows.append(
             {
-                "prompt": f"{prefix} prompt {i} with enough distinction",
-                "target": f"{prefix} target {i} with a concrete answer",
-                "language": "vi" if i % 2 == 0 else "en",
+                "prompt": f"{prefix}: {prompts[i]}",
+                "target": targets[i],
+                "language": "vi" if i % 2 else "en",
                 "weight": 1.0,
                 "approved": True,
                 "sensitive": False,
@@ -32,7 +62,6 @@ def write_source(path: Path, prefix: str, *, groups=None, count: int = 12):
         "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
         encoding="utf-8",
     )
-
 
 def pack(tmp_path: Path, name: str, *, groups=None):
     source = tmp_path / f"{name}.jsonl"
