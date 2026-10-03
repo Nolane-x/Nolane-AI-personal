@@ -66,9 +66,10 @@ def main() -> int:
     tokenizer_config_path = output / "tokenizer_config.json"
     tokenizer = Tokenizer.from_file(str(tokenizer_path))
     desktop = AutoTokenizer.from_pretrained(
-        str(output),
-        local_files_only=True,
+        repo_id,
+        revision=revision,
         trust_remote_code=False,
+        use_fast=True,
     )
 
     samples = [
