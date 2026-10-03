@@ -204,6 +204,8 @@ jobs:
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_localmobile_product -- artifacts/mobile-rust-fixture
       - name: LocalMobile lifecycle parity and restart court
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_localmobile_lifecycle -- artifacts/mobile-rust-fixture
+      - name: Provenance memory + observer + REST restart court
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_localmobile_memory -- artifacts/mobile-rust-fixture
       - name: Frozen prompt -> native chat generation equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_chat_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Freeze exact pinned Qwen tokenizer fixture
