@@ -9,6 +9,7 @@ from nolane_personal.longitudinal_execution import (
     PLAN_SCHEMA,
     build_longitudinal_report,
     validate_longitudinal_plan,
+    verify_longitudinal_plan_receipt,
     verify_longitudinal_report_digest,
 )
 
@@ -443,3 +444,14 @@ def test_longitudinal_plan_identity_changes_when_tokenizer_changes(tmp_path):
         != second.receipt["tokenizer_assets_sha256"]
     )
     assert first.receipt["plan_sha256"] != second.receipt["plan_sha256"]
+
+
+
+def test_longitudinal_plan_receipt_tamper_is_detected(tmp_path):
+    path, _ = make_plan(tmp_path, cycles=5)
+    plan = validate_longitudinal_plan(path)
+    verify_longitudinal_plan_receipt(plan.receipt)
+    tampered = dict(plan.receipt)
+    tampered["tokenizer_assets_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="plan receipt digest mismatch"):
+        verify_longitudinal_plan_receipt(tampered)
