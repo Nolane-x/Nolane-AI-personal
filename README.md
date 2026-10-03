@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.43.0
+## Current executable milestone: Living Runtime v0.44.0
 
 The runtime now contains two very different compute scales:
 
@@ -1372,6 +1372,33 @@ python scripts/run_real_longitudinal_learning.py \
 L43 never auto-authorizes promotion. A PASS produces evidence for later human review; L40 remains a separate explicit authority step.
 
 See `docs/L43-REAL-LONGITUDINAL-EXECUTION.md`.
+
+### L44 Product Experience Evidence Bridge
+
+L44 connects normal Nolane product usage to the real longitudinal-learning evidence path without auto-approving or auto-training on private conversations.
+
+A product chat window can now be exported directly from the local `living.db`, split into leakage-safe source groups, and initialized as an L24/L26/L27 local review workbench. Every imported candidate starts unreviewed and unapproved.
+
+```bash
+python scripts/product_evidence.py prepare-window \
+  --db "/path/to/Nolane/living.db" \
+  --profile "/path/to/Nolane/personalization.json" \
+  --workspace runtime-data/real-window-001
+
+python scripts/product_evidence.py review \
+  --workspace runtime-data/real-window-001
+
+python scripts/product_evidence.py finalize \
+  --workspace runtime-data/real-window-001
+```
+
+After at least five explicitly reviewed windows exist, L44 can bind their finalized workbenches into one L43 plan. The operator still explicitly chooses which workbench is the isolated fixed panel, retention evidence and new adaptation evidence.
+
+Before emitting the L43 plan, L44 adds a cross-window exact-content leakage court: the fixed panel may not repeat training prompts/pairs, adaptation windows may not repeat older adaptation content, and one cycle's retention/adaptation sets may not overlap even under different source IDs.
+
+L44 authority remains `PRODUCT_REVIEWED_EVIDENCE_TO_L43_PLAN_NO_TRAINING_AUTHORITY`. It cannot train, call L40 or promote a checkpoint.
+
+See `docs/L44-PRODUCT-EXPERIENCE-EVIDENCE-BRIDGE.md`.
 
 ## Bootstrap Qwen
 
