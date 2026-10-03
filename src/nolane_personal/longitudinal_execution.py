@@ -30,14 +30,28 @@ class LongitudinalExecutionPolicy:
     def validate(self) -> None:
         if self.min_cycles < 5:
             raise ValueError("real longitudinal execution requires min_cycles >= 5")
-        for name in (
-            "max_fixed_overall_regression",
-            "max_fixed_worst_group_regression",
-            "max_learned_window_overall_regression",
-            "max_learned_window_worst_group_regression",
-        ):
-            if float(getattr(self, name)) < 0:
+        limits = {
+            "max_fixed_overall_regression": 0.01,
+            "max_fixed_worst_group_regression": 0.03,
+            "max_learned_window_overall_regression": 0.03,
+            "max_learned_window_worst_group_regression": 0.05,
+        }
+        for name, ceiling in limits.items():
+            value = float(getattr(self, name))
+            if value < 0:
                 raise ValueError(f"{name} must be non-negative")
+            if value > ceiling:
+                raise ValueError(
+                    f"{name} cannot be looser than the L43 ceiling {ceiling}"
+                )
+        for name in (
+            "require_full_source_group_lineage",
+            "require_unique_adaptation_protocols",
+            "require_disjoint_adaptation_groups",
+            "require_fixed_panel_isolation",
+        ):
+            if not bool(getattr(self, name)):
+                raise ValueError(f"{name} cannot be disabled for real evidence")
 
 
 @dataclass(slots=True)
@@ -148,6 +162,18 @@ def _training_config(payload: Any) -> dict[str, Any]:
         raise ValueError("cycle learning_rate must be positive")
     if int(result.get("max_length", 384)) < 32:
         raise ValueError("cycle max_length must be >=32")
+    for key in (
+        "adaptation_task_weight",
+        "retention_task_weight",
+        "retention_distill_weight",
+        "cortex_anchor_weight",
+    ):
+        if key in result and float(result[key]) < 0:
+            raise ValueError(f"cycle {key} must be non-negative")
+    if "temperature" in result and float(result["temperature"]) <= 0:
+        raise ValueError("cycle temperature must be positive")
+    if "max_grad_norm" in result and float(result["max_grad_norm"]) <= 0:
+        raise ValueError("cycle max_grad_norm must be positive")
     return result
 
 
@@ -310,17 +336,24 @@ def build_longitudinal_report(
         reasons.append("unified_continual_chain_failed")
     if len(cycle_receipts) < 5:
         reasons.append("insufficient_real_cycles")
+    expected_learned_courts = max(0, len(cycle_receipts) - 1)
+    if len(learned_window_receipts) != expected_learned_courts:
+        raise ValueError(
+            "learned-window retention court count must equal cycles - 1"
+        )
     for index, receipt in enumerate(learned_window_receipts, start=1):
         if receipt.get("status") != "PASS":
             reasons.append(f"learned_window_{index:03d}_forgotten")
 
     rows: list[dict[str, Any]] = []
-    for index, (cycle, retention) in enumerate(
-        zip(cycle_receipts, learned_window_receipts, strict=True),
-        start=1,
-    ):
+    for index, cycle in enumerate(cycle_receipts, start=1):
         training = cycle["training"]
         continual = training["continual_learning"]
+        retention = (
+            learned_window_receipts[index - 1]
+            if index <= len(learned_window_receipts)
+            else None
+        )
         rows.append(
             {
                 "cycle": index,
@@ -336,13 +369,26 @@ def build_longitudinal_report(
                 "cycle_retention_worst_group_regression": continual[
                     "retention"
                 ]["summary"]["worst_group_regression"],
-                "final_learned_window_overall_regression": retention[
-                    "group_robustness"
-                ]["summary"]["overall_regression"],
-                "final_learned_window_worst_group_regression": retention[
-                    "group_robustness"
-                ]["summary"]["worst_group_regression"],
-                "learned_window_court_sha256": retention["court_sha256"],
+                "future_cycles_observed": len(cycle_receipts) - index,
+                "final_learned_window_overall_regression": (
+                    retention["group_robustness"]["summary"][
+                        "overall_regression"
+                    ]
+                    if retention is not None
+                    else 0.0
+                ),
+                "final_learned_window_worst_group_regression": (
+                    retention["group_robustness"]["summary"][
+                        "worst_group_regression"
+                    ]
+                    if retention is not None
+                    else 0.0
+                ),
+                "learned_window_court_sha256": (
+                    retention["court_sha256"]
+                    if retention is not None
+                    else None
+                ),
             }
         )
 
