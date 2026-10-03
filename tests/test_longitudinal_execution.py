@@ -172,7 +172,7 @@ def fake_window(i: int, *, status="PASS"):
 
 def test_longitudinal_report_requires_every_learned_window_to_survive():
     cycles = [fake_cycle(i) for i in range(5)]
-    windows = [fake_window(i) for i in range(5)]
+    windows = [fake_window(i) for i in range(4)]
     unified = {
         "status": "PASS",
         "first_parent_checkpoint_sha256": "a" * 64,
@@ -196,10 +196,7 @@ def test_longitudinal_report_requires_every_learned_window_to_survive():
     )
     assert report["status"] == "PASS"
     assert report["cycles"] == 5
-    assert report["cycle_rows"][0][
-        "final_learned_window_overall_regression"
-    ] == 0.004
-    verify_longitudinal_report_digest(report)
+    assert report["cycle_rows"][0][\n        "final_learned_window_overall_regression"\n    ] == 0.004\n    assert report["cycle_rows"][-1]["future_cycles_observed"] == 0\n    assert report["cycle_rows"][-1]["learned_window_court_sha256"] is None\n    verify_longitudinal_report_digest(report)
 
     windows[1] = fake_window(1, status="BLOCKED")
     blocked = build_longitudinal_report(
@@ -219,7 +216,7 @@ def test_longitudinal_report_digest_tamper_is_detected():
         plan_receipt={"plan_sha256": "d" * 64},
         cycle_receipts=cycles,
         fixed_panel_receipt={"status": "PASS", "court_sha256": "c" * 64},
-        learned_window_receipts=[fake_window(i) for i in range(5)],
+        learned_window_receipts=[fake_window(i) for i in range(4)],
         unified_chain={
             "status": "PASS",
             "first_parent_checkpoint_sha256": "a" * 64,
@@ -232,3 +229,46 @@ def test_longitudinal_report_digest_tamper_is_detected():
     report["cycles"] = 99
     with pytest.raises(ValueError, match="digest mismatch"):
         verify_longitudinal_report_digest(report)
+
+
+
+def test_longitudinal_policy_rejects_looser_evidence_thresholds(tmp_path):
+    path, payload = make_plan(tmp_path, cycles=5)
+    payload["policy"] = {
+        "max_fixed_overall_regression": 0.02,
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="cannot be looser"):
+        validate_longitudinal_plan(path)
+
+
+def test_longitudinal_policy_cannot_disable_fixed_panel_isolation(tmp_path):
+    path, payload = make_plan(tmp_path, cycles=5)
+    payload["policy"] = {
+        "require_fixed_panel_isolation": False,
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="cannot be disabled"):
+        validate_longitudinal_plan(path)
+
+
+def test_longitudinal_report_requires_exactly_cycles_minus_one_future_courts():
+    cycles = [fake_cycle(i) for i in range(5)]
+    with pytest.raises(ValueError, match="cycles - 1"):
+        build_longitudinal_report(
+            plan_receipt={"plan_sha256": "d" * 64},
+            cycle_receipts=cycles,
+            fixed_panel_receipt={
+                "status": "PASS",
+                "court_sha256": "c" * 64,
+            },
+            learned_window_receipts=[fake_window(i) for i in range(5)],
+            unified_chain={
+                "status": "PASS",
+                "first_parent_checkpoint_sha256": "a" * 64,
+                "final_artifact_checkpoint_sha256": cycles[-1][
+                    "artifact"
+                ]["checkpoint_sha256"],
+                "chain_sha256": "b" * 64,
+            },
+        )
