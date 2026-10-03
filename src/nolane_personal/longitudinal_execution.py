@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -13,6 +14,32 @@ PLAN_SCHEMA = "NOLANE-L43-REAL-LONGITUDINAL-PLAN-V1"
 PLAN_RECEIPT_SCHEMA = "NOLANE-L43-REAL-LONGITUDINAL-PLAN-RECEIPT-V1"
 REPORT_SCHEMA = "NOLANE-L43-REAL-LONGITUDINAL-REPORT-V1"
 AUTHORITY = "REAL_LONGITUDINAL_EVIDENCE_EXECUTION_NO_PROMOTION_AUTHORITY"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_tree(path: Path) -> str:
+    if path.is_file():
+        return _sha256_file(path)
+    if not path.is_dir():
+        raise FileNotFoundError(path)
+    digest = hashlib.sha256()
+    files = sorted(item for item in path.rglob("*") if item.is_file())
+    if not files:
+        raise ValueError(f"tokenizer asset directory is empty: {path}")
+    for item in files:
+        relative = item.relative_to(path).as_posix().encode("utf-8")
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        file_sha = bytes.fromhex(_sha256_file(item))
+        digest.update(file_sha)
+    return digest.hexdigest()
 
 
 @dataclass(slots=True)
@@ -152,7 +179,24 @@ def _training_config(payload: Any) -> dict[str, Any]:
         "max_grad_norm": float,
         "max_length": int,
     }
-    result: dict[str, Any] = {}
+    unknown = sorted(set(source) - set(allowed))
+    if unknown:
+        raise ValueError(
+            "unsupported longitudinal training fields: "
+            + ",".join(unknown)
+        )
+    defaults: dict[str, Any] = {
+        "epochs": 2,
+        "learning_rate": 2e-4,
+        "adaptation_task_weight": 1.0,
+        "retention_task_weight": 0.5,
+        "retention_distill_weight": 1.0,
+        "cortex_anchor_weight": 0.01,
+        "temperature": 2.0,
+        "max_grad_norm": 1.0,
+        "max_length": 384,
+    }
+    result = dict(defaults)
     for key, caster in allowed.items():
         if key in source:
             result[key] = caster(source[key])
@@ -207,6 +251,10 @@ def validate_longitudinal_plan(
         raise FileNotFoundError(latent)
     if not tokenizer.exists():
         raise FileNotFoundError(tokenizer)
+
+    initial_factorized_sha256 = _sha256_file(initial_factorized)
+    latent_sha256 = _sha256_file(latent)
+    tokenizer_assets_sha256 = _sha256_tree(tokenizer)
 
     device = str(payload.get("device", "cpu"))
     if device not in {"cpu", "cuda"}:
@@ -297,6 +345,9 @@ def validate_longitudinal_plan(
         "authority": AUTHORITY,
         "policy": asdict(policy),
         "device": device,
+        "initial_factorized_sha256": initial_factorized_sha256,
+        "latent_sha256": latent_sha256,
+        "tokenizer_assets_sha256": tokenizer_assets_sha256,
         "cycles": len(cycles),
         "fixed_panel": fixed_panel.public_receipt(),
         "cycle_bindings": public_cycles,
