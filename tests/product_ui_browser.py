@@ -112,7 +112,7 @@ def run_desktop(browser, base_url):
     assert learning_dialog.evaluate("(el) => el.open")
     assert page.locator("#reviewCandidate").is_visible()
     assert page.locator("#reviewPrompt").inner_text()
-    assert page.locator("#reviewTarget").inner_text()
+    assert page.locator("#reviewTarget").input_value()
     assert page.locator("#finalizeLearning").is_hidden()
     page.screenshot(
         path=str(EVIDENCE / "desktop-learning-review.png"),
