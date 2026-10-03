@@ -57,8 +57,97 @@ class FakeCortex:
         return None
 
 
+class SmokeFailCortex(FakeCortex):
+    def __init__(self):
+        self.closed = False
+
+    def self_test(self):
+        raise RuntimeError("neural smoke failed")
+
+    def close(self):
+        self.closed = True
+
+
 def fake_factory(_identity_id, _profile_getter):
     return FakeCortex()
+
+
+def test_product_preflight_checks_core_and_keeps_learning_corruption_advisory(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
+    try:
+        report = runtime.preflight()
+        assert report["status"] == "PASS"
+        assert report["critical_failures"] == 0
+        assert report["advisory_failures"] == 0
+        assert {row["name"] for row in report["critical"]} == {
+            "data_dir_writable",
+            "database",
+            "release_assets",
+        }
+
+        probe = runtime.store.db.execute(
+            "SELECT value FROM meta WHERE key=?",
+            ("__product_readiness__",),
+        ).fetchone()
+        assert probe is None
+
+        runtime.learning.registry_path.write_text(
+            '{"schema":"corrupted"}\n',
+            encoding="utf-8",
+        )
+        degraded = runtime.preflight()
+        assert degraded["status"] == "PASS"
+        assert degraded["critical_failures"] == 0
+        assert degraded["advisory_failures"] == 1
+        assert degraded["advisory"][0]["name"] == "learning_registry"
+        assert degraded["advisory"][0]["status"] == "FAIL"
+
+        powered = runtime.power_on()
+        assert powered["phase"] == "on"
+        assert powered["readiness"]["status"] == "PASS"
+        assert powered["readiness"]["advisory_failures"] == 1
+    finally:
+        runtime.close()
+
+
+def test_product_power_never_reports_on_when_live_cortex_smoke_fails(tmp_path):
+    holder = {}
+
+    def broken_smoke_factory(_identity, _profile):
+        cortex = SmokeFailCortex()
+        holder["cortex"] = cortex
+        return cortex
+
+    runtime = ProductRuntime(tmp_path, cortex_factory=broken_smoke_factory)
+    try:
+        status = runtime.power_on()
+        assert status["phase"] == "error"
+        assert status["powered"] is False
+        assert "neural smoke failed" in status["error"]
+        assert holder["cortex"].closed is True
+        with pytest.raises(RuntimeError, match="not running"):
+            runtime.send_message("must stay blocked")
+    finally:
+        runtime.close()
+
+
+def test_product_preflight_blocks_default_runtime_without_release_assets(tmp_path):
+    runtime = ProductRuntime(tmp_path)
+    try:
+        report = runtime.preflight()
+        assert report["status"] == "BLOCKED"
+        assert report["critical_failures"] == 1
+        release = next(
+            row for row in report["critical"]
+            if row["name"] == "release_assets"
+        )
+        assert release["status"] == "FAIL"
+
+        status = runtime.power_on()
+        assert status["phase"] == "error"
+        assert "product readiness blocked" in status["error"]
+    finally:
+        runtime.close()
 
 
 def test_product_runtime_power_chat_history_and_status(tmp_path):
@@ -243,6 +332,35 @@ def test_authenticated_http_chat_and_history_are_cross_thread_safe(tmp_path):
             "assistant",
         ]
         assert history["messages"][0]["text"] == "hello through HTTP worker"
+    finally:
+        server.shutdown()
+        server.server_close()
+        runtime.close()
+
+
+def test_authenticated_readiness_endpoint_reports_preflight(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=fake_factory)
+    server = ProductHTTPServer(
+        ("127.0.0.1", 0),
+        runtime,
+        auth_token="readiness-secret",
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, _ = request(server, "GET", "/v1/readiness")
+        assert status == 401
+
+        status, payload = request(
+            server,
+            "GET",
+            "/v1/readiness",
+            token="readiness-secret",
+        )
+        assert status == 200
+        assert payload["status"] == "PASS"
+        assert payload["critical_failures"] == 0
+        assert payload["schema"] == "NOLANE-PRODUCT-READINESS-V1"
     finally:
         server.shutdown()
         server.server_close()
