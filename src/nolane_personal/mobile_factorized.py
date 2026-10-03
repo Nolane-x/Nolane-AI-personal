@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any
+
+from .store import canonical_json, payload_digest
 
 
 SCHEMA = "NOLANE-V050-MOBILE-FACTORIZED-TOKEN-STEP-V1"
+PACKAGE_SCHEMA = "NOLANE-V050-MOBILE-FACTORIZED-PACKAGE-V1"
+PACKAGE_AUTHORITY = "MOBILE_EXPORT_ONLY_NO_PROMOTION_AUTHORITY"
 
 
 @dataclass(frozen=True, slots=True)
@@ -436,3 +443,185 @@ def build_mobile_factorized_modules(model):
         MobileFactorizedTokenStep.from_model(model),
         mobile_factorized_contract(model),
     )
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _portable_state_dict(prefix: str, module) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, tensor in module.state_dict().items():
+        key = f"{prefix}.{name}"
+        result[key] = tensor.detach().cpu().contiguous()
+    return result
+
+
+def export_mobile_factorized_package(
+    model,
+    output_dir: str | Path,
+    *,
+    source_checkpoint_sha256: str,
+) -> dict[str, Any]:
+    """Export a Python-free one-token runtime package.
+
+    The package contains frozen neural weights + a public shape/config contract.
+    It deliberately excludes user latent state, tokenizer assets and promotion
+    authority.
+    """
+    try:
+        from safetensors.torch import save_file
+    except ImportError as exc:
+        raise RuntimeError(
+            "mobile package export requires safetensors"
+        ) from exc
+
+    source_sha = str(source_checkpoint_sha256).strip().lower()
+    if len(source_sha) != 64 or any(
+        char not in "0123456789abcdef" for char in source_sha
+    ):
+        raise ValueError("source_checkpoint_sha256 must be 64 lowercase hex chars")
+
+    output = Path(output_dir)
+    if output.exists() and any(output.iterdir()):
+        raise FileExistsError(
+            f"refusing to overwrite non-empty mobile package: {output}"
+        )
+    output.mkdir(parents=True, exist_ok=True)
+
+    init_state, token_step, contract = build_mobile_factorized_modules(model)
+    tensors = {
+        **_portable_state_dict("init", init_state),
+        **_portable_state_dict("step", token_step),
+    }
+    weights_path = output / "weights.safetensors"
+    save_file(
+        tensors,
+        str(weights_path),
+        metadata={
+            "schema": PACKAGE_SCHEMA,
+            "source_checkpoint_sha256": source_sha,
+        },
+    )
+
+    contract_payload = contract.to_dict()
+    contract_payload["contract_sha256"] = payload_digest(contract_payload)
+    contract_path = output / "contract.json"
+    contract_path.write_text(
+        canonical_json(contract_payload) + "\n",
+        encoding="utf-8",
+    )
+
+    manifest = {
+        "schema": PACKAGE_SCHEMA,
+        "authority": PACKAGE_AUTHORITY,
+        "source_checkpoint_sha256": source_sha,
+        "contract_filename": contract_path.name,
+        "contract_sha256": _sha256_file(contract_path),
+        "weights_filename": weights_path.name,
+        "weights_sha256": _sha256_file(weights_path),
+        "tensor_count": len(tensors),
+        "tensor_names": sorted(tensors),
+        "privacy": {
+            "contains_user_latent": False,
+            "contains_tokenizer": False,
+            "contains_chat_text": False,
+            "contains_promotion_authority": False,
+        },
+        "runtime": {
+            "python_required": False,
+            "pytorch_required": False,
+            "autoregressive_loop_owned_by_native_host": True,
+            "sampling_owned_by_native_host": True,
+        },
+    }
+    manifest["manifest_sha256"] = payload_digest(manifest)
+    manifest_path = output / "manifest.json"
+    manifest_path.write_text(
+        canonical_json(manifest) + "\n",
+        encoding="utf-8",
+    )
+    verify_mobile_factorized_package(output)
+    return manifest
+
+
+def verify_mobile_factorized_package(
+    package_dir: str | Path,
+    *,
+    expected_source_checkpoint_sha256: str | None = None,
+) -> dict[str, Any]:
+    try:
+        from safetensors import safe_open
+    except ImportError as exc:
+        raise RuntimeError(
+            "mobile package verification requires safetensors"
+        ) from exc
+
+    root = Path(package_dir)
+    manifest_path = root / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("schema") != PACKAGE_SCHEMA:
+        raise ValueError("unsupported mobile package schema")
+    if manifest.get("authority") != PACKAGE_AUTHORITY:
+        raise ValueError("mobile package authority mismatch")
+
+    supplied_manifest_sha = manifest.get("manifest_sha256")
+    manifest_body = dict(manifest)
+    manifest_body.pop("manifest_sha256", None)
+    if payload_digest(manifest_body) != supplied_manifest_sha:
+        raise ValueError("mobile package manifest digest mismatch")
+
+    source_sha = str(manifest.get("source_checkpoint_sha256", ""))
+    if (
+        expected_source_checkpoint_sha256 is not None
+        and source_sha != str(expected_source_checkpoint_sha256).lower()
+    ):
+        raise ValueError("mobile package source checkpoint mismatch")
+
+    contract_path = root / str(manifest["contract_filename"])
+    weights_path = root / str(manifest["weights_filename"])
+    if _sha256_file(contract_path) != manifest["contract_sha256"]:
+        raise ValueError("mobile package contract SHA-256 mismatch")
+    if _sha256_file(weights_path) != manifest["weights_sha256"]:
+        raise ValueError("mobile package weights SHA-256 mismatch")
+
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    if contract.get("schema") != SCHEMA:
+        raise ValueError("mobile token-step contract schema mismatch")
+    supplied_contract_sha = contract.get("contract_sha256")
+    contract_body = dict(contract)
+    contract_body.pop("contract_sha256", None)
+    if payload_digest(contract_body) != supplied_contract_sha:
+        raise ValueError("mobile token-step contract digest mismatch")
+
+    with safe_open(str(weights_path), framework="pt", device="cpu") as tensors:
+        names = sorted(tensors.keys())
+        metadata = tensors.metadata() or {}
+    if names != list(manifest["tensor_names"]):
+        raise ValueError("mobile package tensor-name manifest mismatch")
+    if len(names) != int(manifest["tensor_count"]):
+        raise ValueError("mobile package tensor-count mismatch")
+    if metadata.get("schema") != PACKAGE_SCHEMA:
+        raise ValueError("mobile weights schema metadata mismatch")
+    if metadata.get("source_checkpoint_sha256") != source_sha:
+        raise ValueError("mobile weights source checkpoint mismatch")
+
+    if manifest.get("privacy") != {
+        "contains_user_latent": False,
+        "contains_tokenizer": False,
+        "contains_chat_text": False,
+        "contains_promotion_authority": False,
+    }:
+        raise ValueError("mobile package privacy declaration mismatch")
+    if manifest.get("runtime") != {
+        "python_required": False,
+        "pytorch_required": False,
+        "autoregressive_loop_owned_by_native_host": True,
+        "sampling_owned_by_native_host": True,
+    }:
+        raise ValueError("mobile package runtime declaration mismatch")
+    return manifest
+
