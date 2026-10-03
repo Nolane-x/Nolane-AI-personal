@@ -666,7 +666,7 @@
     els.reviewActions.hidden = false;
     els.finalizeLearning.hidden = true;
     els.reviewPrompt.textContent = candidate.prompt || "";
-    els.reviewTarget.textContent = candidate.target || "";
+    els.reviewTarget.value = candidate.target || "";
     const language =
       candidate.language === "vi" || candidate.language === "en"
         ? candidate.language
@@ -741,6 +741,10 @@
         decision,
         language: els.reviewLanguage.value,
         weight: 1.0,
+        corrected_target:
+          decision === "approve"
+            ? els.reviewTarget.value.trim()
+            : null,
       });
       activeLearningWindow = result.window;
       learningWindows = learningWindows.map((row) =>
