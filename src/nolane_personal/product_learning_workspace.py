@@ -291,6 +291,7 @@ class ProductLearningWorkspace:
         decision: str,
         language: str | None = None,
         weight: float = 1.0,
+        corrected_target: str | None = None,
     ) -> dict[str, Any]:
         with self._lock:
             self.window_status(window_id)
@@ -312,6 +313,7 @@ class ProductLearningWorkspace:
                 sensitive=command == "sensitive",
                 language=language,
                 weight=float(weight),
+                corrected_target=corrected_target,
             )
             workbench_status(root / "workbench")
             return {
