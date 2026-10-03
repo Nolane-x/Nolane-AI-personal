@@ -1,5 +1,6 @@
 pub mod memory;
 pub mod product;
+pub mod social;
 
 use nolane_mobile_kernel::{KernelError, MobileKernel};
 use serde::{Deserialize, Serialize};
