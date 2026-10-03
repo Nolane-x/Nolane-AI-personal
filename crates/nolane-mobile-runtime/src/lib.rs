@@ -950,6 +950,31 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn splitmix64_matches_frozen_known_answer_vectors() {
+        assert_eq!(
+            splitmix64_next(0),
+            (0x9E3779B97F4A7C15, 0xE220A8397B1DCDAF)
+        );
+        assert_eq!(
+            splitmix64_next(1),
+            (0x9E3779B97F4A7C16, 0x910A2DEC89025CC1)
+        );
+        assert_eq!(
+            splitmix64_next(0x123456789ABCDEF0),
+            (0xB06BD0321A075B05, 0x161922C645CE50E8)
+        );
+    }
+
+    #[test]
+    fn seeded_sampler_rejects_out_of_range_finite_logits() {
+        let mut sampler = SeededNucleusSampler::new(1, 0.78, 0.9).unwrap();
+        let error = sampler.sample(&[1e20f32, 0.0]).unwrap_err();
+        assert!(
+            error.to_string().contains("quantization range")
+        );
+    }
+
+    #[test]
     fn seeded_top_p_retains_minimal_nucleus_with_stable_ties() {
         let logits = [0.0f32, 0.0, 0.0, 0.0];
 
