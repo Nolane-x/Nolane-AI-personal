@@ -1,7 +1,12 @@
 use nolane_mobile_kernel::{KernelError, MobileKernel};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    fs::OpenOptions,
+    io::Write,
+    path::Path,
+};
 use thiserror::Error;
 use tokenizers::Tokenizer;
 
@@ -22,6 +27,10 @@ pub const SEEDED_SAMPLER_SCHEMA: &str =
 pub const PRODUCT_SAMPLING_TEMPERATURE: f64 = 0.78;
 pub const PRODUCT_SAMPLING_TOP_P: f64 = 0.90;
 
+pub const PERSISTENT_MOBILE_STATE_SCHEMA: &str =
+    "NOLANE-V055-MOBILE-PERSISTENT-STATE-V1";
+pub const MAX_PERSISTENT_MOBILE_STATE_BYTES: u64 = 4 * 1024 * 1024;
+
 const SAMPLER_LOGIT_SCALE: f64 = 1_000.0;
 const SAMPLER_EXP_WEIGHT_SCALE: u64 = 1u64 << 40;
 const SAMPLER_PROBABILITY_SCALE: u64 = 1u64 << 32;
@@ -30,7 +39,7 @@ const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
 const SPLITMIX_MUL1: u64 = 0xBF58476D1CE4E5B9;
 const SPLITMIX_MUL2: u64 = 0x94D049BB133111EB;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadProfile {
     pub preferred_name: String,
     pub language: String,
@@ -39,7 +48,7 @@ pub struct ProductPayloadProfile {
     pub personal_instruction: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadRelationship {
     pub closeness: f64,
     pub trust: f64,
@@ -47,7 +56,7 @@ pub struct ProductPayloadRelationship {
     pub interaction_count: i64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadAffect {
     pub valence: f64,
     pub energy: f64,
@@ -56,7 +65,7 @@ pub struct ProductPayloadAffect {
     pub irritation: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadState {
     pub identity_id: String,
     pub relationship: ProductPayloadRelationship,
@@ -64,7 +73,7 @@ pub struct ProductPayloadState {
     pub open_threads: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadInput {
     pub schema: String,
     pub profile: ProductPayloadProfile,
@@ -73,6 +82,22 @@ pub struct ProductPayloadInput {
     pub intent: String,
     pub user_text: Option<String>,
     pub memories: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct PersistentMobileState {
+    pub source_checkpoint_sha256: String,
+    pub latent: Vec<f32>,
+    pub profile: ProductPayloadProfile,
+    pub state: ProductPayloadState,
+    pub memories: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct PersistentMobileStateEnvelope {
+    schema: String,
+    state_sha256: String,
+    state: PersistentMobileState,
 }
 
 #[derive(Debug, Error)]
@@ -136,6 +161,7 @@ pub struct MobileRuntime {
     tokenizer: Tokenizer,
     latent: Vec<f32>,
     prompt_contract: Option<FrozenPromptContract>,
+    persistent_state: Option<PersistentMobileState>,
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -150,6 +176,195 @@ fn sha256_hex(bytes: &[u8]) -> String {
 
 fn sha256_file(path: &Path) -> Result<String, RuntimeError> {
     Ok(sha256_hex(&fs::read(path)?))
+}
+
+fn is_lower_hex_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+impl PersistentMobileState {
+    pub fn validate(
+        &self,
+        expected_source_checkpoint_sha256: Option<&str>,
+        expected_latent_dim: Option<usize>,
+    ) -> Result<(), RuntimeError> {
+        if !is_lower_hex_sha256(&self.source_checkpoint_sha256) {
+            return Err(RuntimeError::Invalid(
+                "persistent mobile state checkpoint digest is malformed".into(),
+            ));
+        }
+        if let Some(expected) = expected_source_checkpoint_sha256 {
+            if self.source_checkpoint_sha256 != expected.to_ascii_lowercase() {
+                return Err(RuntimeError::Invalid(
+                    "persistent mobile state checkpoint mismatch".into(),
+                ));
+            }
+        }
+        if let Some(expected) = expected_latent_dim {
+            if self.latent.len() != expected {
+                return Err(RuntimeError::Invalid(format!(
+                    "persistent mobile latent shape mismatch: expected {}, got {}",
+                    expected,
+                    self.latent.len(),
+                )));
+            }
+        }
+        if self.latent.is_empty() {
+            return Err(RuntimeError::Invalid(
+                "persistent mobile latent must not be empty".into(),
+            ));
+        }
+        if self.latent.iter().any(|value| !value.is_finite()) {
+            return Err(RuntimeError::Invalid(
+                "persistent mobile latent contains non-finite value".into(),
+            ));
+        }
+        if self.state.identity_id.trim().is_empty() {
+            return Err(RuntimeError::Invalid(
+                "persistent mobile identity_id must not be empty".into(),
+            ));
+        }
+        if self.state.relationship.interaction_count < 0 {
+            return Err(RuntimeError::Invalid(
+                "persistent mobile interaction_count must be non-negative".into(),
+            ));
+        }
+
+        let probe = self.product_payload(
+            "reply",
+            "persistent-state-validation",
+            Some(""),
+        );
+        probe.validate()?;
+        Ok(())
+    }
+
+    pub fn product_payload(
+        &self,
+        mode: &str,
+        intent: &str,
+        user_text: Option<&str>,
+    ) -> ProductPayloadInput {
+        ProductPayloadInput {
+            schema: PRODUCT_PAYLOAD_SCHEMA.to_string(),
+            profile: self.profile.clone(),
+            state: self.state.clone(),
+            mode: mode.to_string(),
+            intent: intent.to_string(),
+            user_text: user_text.map(str::to_string),
+            memories: self.memories.clone(),
+        }
+    }
+}
+
+fn persistent_state_digest(
+    state: &PersistentMobileState,
+) -> Result<String, RuntimeError> {
+    Ok(sha256_hex(&serde_json::to_vec(state)?))
+}
+
+pub fn read_persistent_mobile_state(
+    path: impl AsRef<Path>,
+    expected_source_checkpoint_sha256: Option<&str>,
+    expected_latent_dim: Option<usize>,
+) -> Result<PersistentMobileState, RuntimeError> {
+    let path = path.as_ref();
+    let metadata = fs::metadata(path)?;
+    if metadata.len() > MAX_PERSISTENT_MOBILE_STATE_BYTES {
+        return Err(RuntimeError::Invalid(format!(
+            "persistent mobile state exceeds size limit: {} > {}",
+            metadata.len(),
+            MAX_PERSISTENT_MOBILE_STATE_BYTES,
+        )));
+    }
+    let bytes = fs::read(path)?;
+    let envelope: PersistentMobileStateEnvelope =
+        serde_json::from_slice(&bytes)?;
+    if envelope.schema != PERSISTENT_MOBILE_STATE_SCHEMA {
+        return Err(RuntimeError::Invalid(
+            "persistent mobile state schema mismatch".into(),
+        ));
+    }
+    if !is_lower_hex_sha256(&envelope.state_sha256) {
+        return Err(RuntimeError::Invalid(
+            "persistent mobile state integrity digest is malformed".into(),
+        ));
+    }
+    let actual = persistent_state_digest(&envelope.state)?;
+    if actual != envelope.state_sha256 {
+        return Err(RuntimeError::Invalid(
+            "persistent mobile state integrity mismatch".into(),
+        ));
+    }
+    envelope.state.validate(
+        expected_source_checkpoint_sha256,
+        expected_latent_dim,
+    )?;
+    Ok(envelope.state)
+}
+
+pub fn write_persistent_mobile_state(
+    path: impl AsRef<Path>,
+    state: &PersistentMobileState,
+    expected_source_checkpoint_sha256: Option<&str>,
+    expected_latent_dim: Option<usize>,
+) -> Result<(), RuntimeError> {
+    state.validate(
+        expected_source_checkpoint_sha256,
+        expected_latent_dim,
+    )?;
+    let state_sha256 = persistent_state_digest(state)?;
+    let envelope = PersistentMobileStateEnvelope {
+        schema: PERSISTENT_MOBILE_STATE_SCHEMA.to_string(),
+        state_sha256: state_sha256.clone(),
+        state: state.clone(),
+    };
+    let bytes = serde_json::to_vec(&envelope)?;
+    if bytes.len() as u64 > MAX_PERSISTENT_MOBILE_STATE_BYTES {
+        return Err(RuntimeError::Invalid(format!(
+            "persistent mobile state exceeds size limit: {} > {}",
+            bytes.len(),
+            MAX_PERSISTENT_MOBILE_STATE_BYTES,
+        )));
+    }
+
+    let path = path.as_ref();
+    let parent = path.parent().ok_or_else(|| {
+        RuntimeError::Invalid(
+            "persistent mobile state path has no parent directory".into(),
+        )
+    })?;
+    fs::create_dir_all(parent)?;
+    let file_name = path.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+        RuntimeError::Invalid(
+            "persistent mobile state path has invalid file name".into(),
+        )
+    })?;
+    let temporary = parent.join(format!(
+        ".{file_name}.{}.tmp",
+        &state_sha256[..16],
+    ));
+    if temporary.exists() {
+        fs::remove_file(&temporary)?;
+    }
+
+    let result = (|| -> Result<(), RuntimeError> {
+        let mut file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temporary)?;
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+        fs::rename(&temporary, path)?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temporary);
+    }
+    result
 }
 
 impl FrozenPromptContract {
@@ -659,7 +874,29 @@ impl MobileRuntime {
             tokenizer,
             latent,
             prompt_contract: None,
+            persistent_state: None,
         })
+    }
+
+    pub fn load_with_persistent_state(
+        package_dir: impl AsRef<Path>,
+        tokenizer_json: impl AsRef<Path>,
+        expected_source_checkpoint_sha256: Option<&str>,
+        persistent_state_json: impl AsRef<Path>,
+    ) -> Result<Self, RuntimeError> {
+        let state = read_persistent_mobile_state(
+            persistent_state_json,
+            expected_source_checkpoint_sha256,
+            None,
+        )?;
+        let mut runtime = Self::load(
+            package_dir,
+            tokenizer_json,
+            expected_source_checkpoint_sha256,
+            state.latent.clone(),
+        )?;
+        runtime.set_persistent_state(state)?;
+        Ok(runtime)
     }
 
     pub fn load_with_prompt_contract(
@@ -686,6 +923,95 @@ impl MobileRuntime {
         )?;
         runtime.prompt_contract = Some(prompt_contract);
         Ok(runtime)
+    }
+
+    pub fn load_with_prompt_contract_and_persistent_state(
+        package_dir: impl AsRef<Path>,
+        tokenizer_json: impl AsRef<Path>,
+        tokenizer_config_json: impl AsRef<Path>,
+        prompt_contract_json: impl AsRef<Path>,
+        expected_prompt_contract_file_sha256: &str,
+        expected_source_checkpoint_sha256: Option<&str>,
+        persistent_state_json: impl AsRef<Path>,
+    ) -> Result<Self, RuntimeError> {
+        let state = read_persistent_mobile_state(
+            persistent_state_json,
+            expected_source_checkpoint_sha256,
+            None,
+        )?;
+        let mut runtime = Self::load_with_prompt_contract(
+            package_dir,
+            tokenizer_json,
+            tokenizer_config_json,
+            prompt_contract_json,
+            expected_prompt_contract_file_sha256,
+            expected_source_checkpoint_sha256,
+            state.latent.clone(),
+        )?;
+        runtime.set_persistent_state(state)?;
+        Ok(runtime)
+    }
+
+    pub fn set_persistent_state(
+        &mut self,
+        state: PersistentMobileState,
+    ) -> Result<(), RuntimeError> {
+        state.validate(
+            Some(self.kernel.source_checkpoint_sha256()),
+            Some(self.kernel.contract().latent_dim),
+        )?;
+        self.latent.clone_from(&state.latent);
+        self.persistent_state = Some(state);
+        Ok(())
+    }
+
+    pub fn persistent_state(&self) -> Option<&PersistentMobileState> {
+        self.persistent_state.as_ref()
+    }
+
+    pub fn save_persistent_state(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<(), RuntimeError> {
+        let state = self.persistent_state.as_ref().ok_or_else(|| {
+            RuntimeError::Invalid(
+                "native runtime has no persistent mobile state attached".into(),
+            )
+        })?;
+        write_persistent_mobile_state(
+            path,
+            state,
+            Some(self.kernel.source_checkpoint_sha256()),
+            Some(self.kernel.contract().latent_dim),
+        )
+    }
+
+    pub fn persistent_product_payload(
+        &self,
+        mode: &str,
+        intent: &str,
+        user_text: Option<&str>,
+    ) -> Result<ProductPayloadInput, RuntimeError> {
+        let state = self.persistent_state.as_ref().ok_or_else(|| {
+            RuntimeError::Invalid(
+                "native runtime has no persistent mobile state attached".into(),
+            )
+        })?;
+        let payload = state.product_payload(mode, intent, user_text);
+        payload.validate()?;
+        Ok(payload)
+    }
+
+    pub fn generate_persistent_product_seeded(
+        &self,
+        mode: &str,
+        intent: &str,
+        user_text: Option<&str>,
+        seed: u64,
+    ) -> Result<GenerationResult, RuntimeError> {
+        let payload =
+            self.persistent_product_payload(mode, intent, user_text)?;
+        self.generate_product_seeded(&payload, seed)
     }
 
     pub fn encode(&self, text: &str) -> Result<Vec<u32>, RuntimeError> {
@@ -942,12 +1268,182 @@ mod tests {
         argmax,
         sha256_hex,
         splitmix64_next,
+        read_persistent_mobile_state,
+        sha256_hex,
+        splitmix64_next,
+        write_persistent_mobile_state,
         FrozenPromptContract,
+        PersistentMobileState,
+        ProductPayloadAffect,
+        ProductPayloadProfile,
+        ProductPayloadRelationship,
+        ProductPayloadState,
         SeededNucleusSampler,
+        PERSISTENT_MOBILE_STATE_SCHEMA,
     };
-    use serde_json::json;
+    use serde_json::{json, Value};
     use std::fs;
     use tempfile::tempdir;
+
+    fn persistent_fixture() -> PersistentMobileState {
+        PersistentMobileState {
+            source_checkpoint_sha256: "a".repeat(64),
+            latent: vec![0.125, -0.25, 0.5, 1.0],
+            profile: ProductPayloadProfile {
+                preferred_name: "Thuận".into(),
+                language: "vi".into(),
+                response_length: "compact".into(),
+                conversation_style: "natural".into(),
+                personal_instruction: "Nói ngắn gọn.".into(),
+            },
+            state: ProductPayloadState {
+                identity_id: "nolane-mobile-identity".into(),
+                relationship: ProductPayloadRelationship {
+                    closeness: 0.71,
+                    trust: 0.82,
+                    familiarity: 0.63,
+                    interaction_count: 17,
+                },
+                affect: ProductPayloadAffect {
+                    valence: 0.2,
+                    energy: 0.4,
+                    playfulness: 0.1,
+                    concern: 0.05,
+                    irritation: 0.0,
+                },
+                open_threads: vec!["Hoàn thành v0.55".into()],
+            },
+            memories: vec!["Người dùng đang xây Nolane.".into()],
+        }
+    }
+
+    #[test]
+    fn persistent_mobile_state_roundtrips_and_builds_product_payload() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("state").join("nolane-state.json");
+        let expected = persistent_fixture();
+
+        write_persistent_mobile_state(
+            &path,
+            &expected,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        let loaded = read_persistent_mobile_state(
+            &path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+        assert_eq!(loaded, expected);
+
+        let payload = loaded.product_payload(
+            "reply",
+            "conversation",
+            Some("Tiếp tục nhé"),
+        );
+        payload.validate().unwrap();
+        assert_eq!(payload.profile.preferred_name, "Thuận");
+        assert_eq!(payload.state.identity_id, "nolane-mobile-identity");
+        assert_eq!(payload.memories, vec!["Người dùng đang xây Nolane."]);
+        assert_eq!(payload.user_text.as_deref(), Some("Tiếp tục nhé"));
+
+        let raw: Value =
+            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(
+            raw["schema"].as_str(),
+            Some(PERSISTENT_MOBILE_STATE_SCHEMA)
+        );
+        assert!(raw["state_sha256"].as_str().unwrap().len() == 64);
+        assert!(
+            root.path()
+                .join("state")
+                .read_dir()
+                .unwrap()
+                .all(|entry| !entry.unwrap().file_name().to_string_lossy().ends_with(".tmp"))
+        );
+    }
+
+    #[test]
+    fn persistent_mobile_state_fails_closed_on_tamper_and_wrong_checkpoint() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("state.json");
+        let state = persistent_fixture();
+        write_persistent_mobile_state(
+            &path,
+            &state,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+
+        let mismatch = read_persistent_mobile_state(
+            &path,
+            Some(&"b".repeat(64)),
+            Some(4),
+        )
+        .unwrap_err();
+        assert!(mismatch.to_string().contains("checkpoint mismatch"));
+
+        let mut raw: Value =
+            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        raw["state"]["profile"]["preferred_name"] =
+            Value::String("tampered".into());
+        fs::write(&path, serde_json::to_vec(&raw).unwrap()).unwrap();
+        let tamper = read_persistent_mobile_state(
+            &path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap_err();
+        assert!(tamper.to_string().contains("integrity mismatch"));
+    }
+
+    #[test]
+    fn persistent_mobile_state_rejects_invalid_latent_and_schema() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("state.json");
+        let state = persistent_fixture();
+        write_persistent_mobile_state(
+            &path,
+            &state,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap();
+
+        let wrong_shape = read_persistent_mobile_state(
+            &path,
+            Some(&"a".repeat(64)),
+            Some(5),
+        )
+        .unwrap_err();
+        assert!(wrong_shape.to_string().contains("latent shape mismatch"));
+
+        let mut invalid = state;
+        invalid.latent[0] = f32::NAN;
+        let error = write_persistent_mobile_state(
+            root.path().join("invalid.json"),
+            &invalid,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("non-finite"));
+
+        let mut raw: Value =
+            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        raw["schema"] = Value::String("WRONG".into());
+        fs::write(&path, serde_json::to_vec(&raw).unwrap()).unwrap();
+        let error = read_persistent_mobile_state(
+            &path,
+            Some(&"a".repeat(64)),
+            Some(4),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("schema mismatch"));
+    }
 
     #[test]
     fn splitmix64_matches_frozen_known_answer_vectors() {
