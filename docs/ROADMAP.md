@@ -1995,9 +1995,9 @@ Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERV
 - [x] explicitly refuse to claim provenance-rich consolidation parity
 - [x] lifecycle metadata survives product-host restart
 - [x] integrated lifecycle court covers recent-user silence -> idle initiative -> REST -> restart -> cooldown
-- [ ] L59 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.59
+- [x] L59 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.59
 - [ ] provenance-rich mobile MemoryRecord/consolidation parity
 - [ ] social-observer mutation parity
 - [ ] continual-learning/review parity
@@ -2007,5 +2007,45 @@ Lifecycle target: **PERSISTENT TIME + USER-EVENT DYNAMICS + INITIATIVE + CONSERV
 - [ ] only then call Android LocalMobile production-complete
 
 L59 deliberately separates **lifecycle parity** from **learning/provenance parity**. The mobile runtime may become proactive and time-aware without pretending that its bounded memory projection is already the desktop evidence graph.
+
+
+## L60 — Mobile Provenance Memory + Social Mutation Boundary
+
+Memory/observer target: **SOURCE-BOUND MEMORY -> VALIDATED DERIVATION -> BOUNDED PROMPT PROJECTION**.
+
+- [x] preserve frozen v0.55 persistent neural/product state schema
+- [x] introduce integrity-checked `NOLANE-V060-MOBILE-PROVENANCE-MEMORY-V1`
+- [x] migrate legacy v0.55 text memories into deterministic provenance records
+- [x] stable memory IDs + kind + salience + confidence + source event + timestamp + metadata
+- [x] bounded store and provenance-link limits
+- [x] fail closed on invalid kind/non-finite score/duplicate ID/broken link/tamper
+- [x] commit episodic user memory before cortex generation
+- [x] port desktop 0.52 overlap + 0.30 salience + 0.18 recency retrieval structure
+- [x] keep provenance out of prompt while projecting only bounded memory text
+- [x] memory-off disables retrieval and new memory writes without deleting stored evidence
+- [x] deterministic REST keeps source records instead of destructive compaction
+- [x] deterministic REST creates source_memory_ids metadata + parent->child links
+- [x] already-consolidated parents are excluded from repeated consolidation
+- [x] confidence cannot exceed weakest source
+- [x] fact cannot be derived from mixed/non-fact sources
+- [x] mobile social proposal schema + mutation receipt
+- [x] affect/relationship delta allow-list and clamps match desktop mutation boundary
+- [x] low-confidence fact proposal downgrade
+- [x] observer uncertainty + proposed-by-observer provenance
+- [x] production deterministic observer limited to explicit preference statements
+- [x] v0.60 provenance-memory/observer/REST/restart court wired into Product Client CI
+- [ ] L60 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.60
+- [ ] model-generated mobile social-observer proposal quality court
+- [ ] rich open-thread ID/importance provenance parity
+- [ ] Android reviewed-learning/training parity or explicit v1 scope decision
+- [ ] real L43 longitudinal-learning PASS
+- [ ] real COMPLETE-L36 Android release APK campaign
+- [ ] physical-device acceptance
+- [ ] latency/RAM/thermal/battery acceptance
+- [ ] only then authorize v1.0 production closure
+
+L60 closes memory provenance and the **mutation commit boundary**, not the quality of a future model-generated social observer. Synthetic source CI cannot satisfy the real longitudinal-learning, real promotion, physical-device or performance gates.
 
 
