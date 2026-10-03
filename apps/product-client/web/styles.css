@@ -864,6 +864,153 @@ summary:focus-visible {
   border-top: 1px solid var(--line);
 }
 
+.learning-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin: -2px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.learning-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--orange) 18%, transparent);
+}
+
+.learning-dialog {
+  width: min(660px, calc(100vw - 24px));
+  max-height: min(760px, calc(100dvh - 32px));
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 28px;
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.learning-dialog::backdrop {
+  background: rgba(18, 15, 12, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.learning-sheet {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: inherit;
+}
+
+.learning-body {
+  min-height: 0;
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+}
+
+.learning-progress {
+  min-height: 24px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-turn {
+  display: grid;
+  gap: 12px;
+}
+
+.review-turn[hidden],
+.review-complete[hidden] {
+  display: none;
+}
+
+.review-block {
+  padding: 15px 16px;
+  border: 1px solid color-mix(in srgb, var(--orange) 13%, var(--line));
+  border-radius: 18px;
+  background: var(--orange-faint);
+}
+
+.review-block.assistant-review {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  border-color: var(--line);
+}
+
+.review-role {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--orange-strong);
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.review-block p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.review-language {
+  margin: 2px 0 0;
+}
+
+.review-complete {
+  display: grid;
+  justify-items: center;
+  padding: 46px 20px;
+  text-align: center;
+}
+
+.review-complete strong {
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+
+.review-complete span {
+  max-width: 390px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.learning-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 72px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+}
+
+.review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.review-actions[hidden] {
+  display: none;
+}
+
+.danger-text {
+  margin-right: auto;
+  color: var(--danger);
+}
+
 .save-state {
   color: var(--muted);
   font-size: 11px;
@@ -947,7 +1094,8 @@ summary:focus-visible {
     border-radius: 20px;
   }
 
-  .personalization-dialog {
+  .personalization-dialog,
+  .learning-dialog {
     width: 100vw;
     max-width: none;
     max-height: min(88dvh, 780px);
@@ -982,12 +1130,26 @@ summary:focus-visible {
     gap: 0;
   }
 
-  .sheet-footer {
+  .sheet-footer,
+  .learning-footer {
     padding:
       14px
       max(18px, env(safe-area-inset-right))
       max(14px, env(safe-area-inset-bottom))
       max(18px, env(safe-area-inset-left));
+  }
+
+  .learning-body {
+    padding: 18px 18px 22px;
+  }
+
+  .review-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .danger-text {
+    margin-right: 0;
   }
 }
 
