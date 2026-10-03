@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.44.0
+## Current executable milestone: Living Runtime v0.45.0
 
 The runtime now contains two very different compute scales:
 
@@ -1399,6 +1399,18 @@ Before emitting the L43 plan, L44 adds a cross-window exact-content leakage cour
 L44 authority remains `PRODUCT_REVIEWED_EVIDENCE_TO_L43_PLAN_NO_TRAINING_AUTHORITY`. It cannot train, call L40 or promote a checkpoint.
 
 See `docs/L44-PRODUCT-EXPERIENCE-EVIDENCE-BRIDGE.md`.
+
+### L45 In-App Explicit Evidence Review
+
+L45 removes the terminal as a requirement for reviewing real product evidence while keeping the main chat surface unchanged.
+
+Under Personalization -> Advanced, the user can prepare one local learning window from new product conversations and review one real USER/NOLANE pair at a time. Every candidate remains unapproved until the user explicitly chooses Approve, Reject or Sensitive. There is no approve-all or background training action.
+
+The local learning registry forms a contiguous SQLite high-water chain, so later windows cannot silently reuse earlier product turns. Failed window preparation does not advance the cursor. Raw candidate text is returned only to the authenticated local review dialog; window/registry metadata remains text-free.
+
+Finalization still reuses the existing L25/L27/L28 evidence courts. L45 cannot train or promote a model.
+
+See `docs/L45-INAPP-EXPLICIT-EVIDENCE-REVIEW.md`.
 
 ## Bootstrap Qwen
 
