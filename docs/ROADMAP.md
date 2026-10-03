@@ -1911,9 +1911,9 @@ Android release-authority target: **COMPLETE L36 CEREMONY -> EXACT CHECKPOINT ->
 - [x] Android release artifact includes manifest + ceremony evidence alongside the APK
 - [x] CI builds a synthetic COMPLETE ceremony only for staging/court mechanics
 - [x] CI strict-loader accepts the staged authority-bound court bundle
-- [ ] L57 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.57
+- [x] L57 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.57
 - [ ] run real Android Product Release with a real COMPLETE L36 ceremony
 - [ ] emulator/device install + persistent local-chat court on that exact APK
 - [ ] full mobile LivingEngine transition/initiative-learning parity
@@ -1921,5 +1921,46 @@ Android release-authority target: **COMPLETE L36 CEREMONY -> EXACT CHECKPOINT ->
 - [ ] only then call Android local chat production-complete
 
 L57 closes release **binding and tooling**, not the real-device evidence requirement. A synthetic court ceremony proves the pipeline mechanics only and is structurally prevented from passing the production strict-loader unless it is restaged through the explicit court path.
+
+
+## L58 — Android Emulator Native-Boot + Persistent Local-Chat Court
+
+Packaged-app target: **AUTHORITY-BOUND BUNDLE -> X86_64 APK -> ANDROID EMULATOR -> TAURI LOCALMOBILE -> FORCE-STOP -> RESTART CONTINUITY**.
+
+- [x] no new user-facing feature or settings surface
+- [x] Android-only logging path for court receipts
+- [x] emulator probe is gated by the exact synthetic ceremony transaction ID
+- [x] emulator probe is additionally bound to the deterministic `777...` fixture checkpoint
+- [x] real L36 release bundles cannot accidentally activate the probe
+- [x] first packaged-app boot must resolve LocalMobile from APK resources
+- [x] first boot must create a device-local `nolane-mobile-...` identity
+- [x] first boot must start powered-off
+- [x] first boot runs a real LocalMobile product chat through native Rust
+- [x] accepted turn advances state_version + interaction count
+- [x] accepted turn appends exactly user + assistant history rows
+- [x] court persists its expected identity/state/history receipt in app data
+- [x] emulator force-stops the Android package instead of calling a graceful runtime reset
+- [x] second process boot must restore the same identity
+- [x] second process boot must restore exact state_version/interactions/history
+- [x] power state must reset to off after process restart
+- [x] second boot runs another native local-chat turn
+- [x] second turn advances persisted state/history again
+- [x] x86_64 emulator APK is built from the same staged authority-bound bundle courted by native CI
+- [x] arm64 APK court remains independent
+- [x] emulator verifies installed product version is exactly 0.58.0
+- [x] explicit failure marker and timeout log capture
+- [ ] L58 packaged x86_64 APK build PASS
+- [ ] L58 Android emulator first-boot marker PASS
+- [ ] L58 Android emulator force-stop/restart marker PASS
+- [ ] L58 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.58
+- [ ] run the same install/restart court on an APK built from **real** COMPLETE L36 evidence
+- [ ] physical Android device court
+- [ ] full mobile LivingEngine transition/initiative-learning parity
+- [ ] latency/memory/thermal/battery court
+- [ ] only then call Android local chat production-complete
+
+L58 proves that the packaged Tauri process can boot and execute LocalMobile inside an Android emulator with persistence across an OS-level force-stop. The CI APK deliberately uses deterministic synthetic authority evidence, so this is stronger than a Rust-only host court but still not a substitute for a real L36 release/device campaign.
 
 

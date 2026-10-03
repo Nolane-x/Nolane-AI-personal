@@ -132,5 +132,7 @@ v0.56 routes Android through a native Rust LocalMobile product host. The existin
 
 v0.57 makes the Android local bundle authority-bound. Production LocalMobile now requires a COMPLETE L36 ceremony tied to the exact checkpoint and hashes for the native package, tokenizer, prompt contract and bootstrap state. The release workflow stages those assets and performs a strict native smoke before building the APK.
 
-Android is still not called production-complete until a real authority-bound release run, emulator/device courts, fuller LivingEngine parity and latency/memory/battery evidence close.
+v0.58 adds a packaged Android emulator court. CI builds an x86_64 APK with the deterministic authority-bound fixture, launches the real Tauri package, executes native LocalMobile chat, force-stops the package and requires identity/state/history continuity after process restart.
+
+Android is still not called production-complete until the same court passes on a real authority-bound release APK, a physical device, fuller LivingEngine parity and latency/memory/thermal/battery evidence.
 
