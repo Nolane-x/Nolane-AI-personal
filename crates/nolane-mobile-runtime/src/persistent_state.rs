@@ -220,7 +220,6 @@ impl MobilePersistentProductState {
 
     pub fn to_payload(
         &self,
-        *,
         mode: impl Into<String>,
         intent: impl Into<String>,
         user_text: Option<String>,
@@ -379,7 +378,6 @@ impl MobileStateStore {
 
     pub fn load_or_initialize(
         &self,
-        *,
         identity_id: &str,
         checkpoint_sha256: &str,
         latent_dim: usize,
@@ -511,7 +509,6 @@ impl MobileStateStore {
     pub fn update_latent(
         &self,
         values: Vec<f32>,
-        *,
         source_state_version: u64,
     ) -> Result<MobilePersistentLatent, RuntimeError> {
         let mut current = self.load_latent()?.ok_or_else(|| {
