@@ -134,6 +134,38 @@ def run_desktop(browser, base_url):
     page.wait_for_function(
         "() => !document.querySelector('#finalizeLearning').hidden"
     )
+    page.screenshot(
+        path=str(EVIDENCE / "desktop-learning-completion-state.png"),
+        full_page=True,
+    )
+    completion_state = page.evaluate(
+        """() => {
+          const dialog = document.querySelector('#learningDialog');
+          const complete = document.querySelector('#reviewComplete');
+          const actions = document.querySelector('#reviewActions');
+          const finalize = document.querySelector('#finalizeLearning');
+          const body = document.querySelector('.learning-body');
+          const rect = complete.getBoundingClientRect();
+          return {
+            dialogOpen: dialog.open,
+            completeHidden: complete.hidden,
+            completeDisplay: getComputedStyle(complete).display,
+            completeVisibility: getComputedStyle(complete).visibility,
+            completeRect: {
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              bottom: rect.bottom,
+            },
+            actionsHidden: actions.hidden,
+            finalizeHidden: finalize.hidden,
+            bodyScrollTop: body.scrollTop,
+            bodyClientHeight: body.clientHeight,
+            bodyScrollHeight: body.scrollHeight,
+          };
+        }"""
+    )
+    print("LEARNING_COMPLETION_STATE", completion_state)
     assert page.locator("#reviewComplete").is_visible()
     assert page.locator("#reviewActions").is_hidden()
     assert page.locator("#finalizeLearning").is_visible()
