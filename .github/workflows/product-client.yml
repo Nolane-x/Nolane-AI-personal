@@ -292,12 +292,14 @@ jobs:
       - name: Emulator boot + packaged LocalMobile restart court
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           arch: x86_64
-          target: google_apis
-          profile: pixel_6
+          target: default
+          cores: 2
+          ram-size: 2048M
+          emulator-boot-timeout: 600
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: bash scripts/verify_android_emulator_localchat.sh artifacts/v058-emulator-apk
 
   android:
