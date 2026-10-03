@@ -158,6 +158,8 @@ jobs:
         run: cargo test --manifest-path crates/nolane-mobile-runtime/Cargo.toml
       - name: Cross-language tokenizer/greedy generation equivalence
         run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_generation_fixture -- artifacts/mobile-rust-fixture
+      - name: Frozen prompt -> native chat generation equivalence
+        run: cargo run --quiet --manifest-path crates/nolane-mobile-runtime/Cargo.toml --example verify_chat_generation_fixture -- artifacts/mobile-rust-fixture
       - name: Freeze exact pinned Qwen tokenizer fixture
         env:
           HF_HUB_DISABLE_TELEMETRY: "1"
