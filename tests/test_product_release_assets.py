@@ -107,6 +107,12 @@ def test_release_asset_staging_requires_exact_model_and_runtime(tmp_path):
     manifest = json.loads(
         (resources / "release-assets.json").read_text(encoding="utf-8")
     )
+    bundled_manifest = json.loads(
+        (resources / "model" / "release-assets.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert bundled_manifest == manifest
     assert manifest["model_checkpoint_sha256"] == sha(model)
     assert manifest["promotion_ceremony_sha256"] == ceremony_payload["ceremony_sha256"]
     assert manifest["qwen_model_object_required"] is False
