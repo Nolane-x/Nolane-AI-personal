@@ -626,6 +626,8 @@ summary:focus-visible {
 
 .sheet-header,
 .sheet-footer {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -654,6 +656,8 @@ summary:focus-visible {
 }
 
 .icon-button {
+  position: relative;
+  z-index: 4;
   display: grid;
   place-items: center;
   width: 44px;
@@ -669,6 +673,8 @@ summary:focus-visible {
 }
 
 .sheet-body {
+  position: relative;
+  z-index: 1;
   min-height: 0;
   padding: 22px 24px 8px;
   overflow-y: auto;
