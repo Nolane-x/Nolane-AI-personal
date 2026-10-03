@@ -197,10 +197,6 @@ class LocalReviewSession:
         candidate_id = str(candidate_id).strip()
         if candidate_id not in self.by_id:
             raise ValueError("unknown candidate_id")
-        if candidate_id in self.decisions:
-            raise ValueError(
-                "candidate already has a frozen decision; use a new decisions file to reconsider"
-            )
 
         candidate = self.by_id[candidate_id]
         inherited_language = candidate.get("language")
@@ -218,6 +214,20 @@ class LocalReviewSession:
             },
             source="interactive review",
         )
+
+        existing = self.decisions.get(candidate_id)
+        if existing is not None:
+            if existing == decision:
+                # Exact network/UI retry after the durable decision write.
+                # Returning the frozen decision is safe and preserves
+                # immutability while making the operation idempotent.
+                self._write_progress_manifest()
+                return dict(existing)
+            raise ValueError(
+                "candidate already has a different frozen decision; "
+                "use a new decisions file to reconsider"
+            )
+
         self.decisions[candidate_id] = decision
         self._persist_decisions()
         self._write_progress_manifest()

@@ -171,6 +171,52 @@ def test_corrected_target_is_rejected_for_non_approved_or_sensitive_decision(tmp
         )
 
 
+def test_exact_frozen_decision_retry_is_idempotent(tmp_path):
+    review,_queued,decisions,progress=session(tmp_path)
+    candidate=review.pending_candidates()[0]
+    first=review.record_decision(
+        candidate["candidate_id"],
+        approved=True,
+        sensitive=False,
+        language="en",
+        corrected_target="Exact retry target.",
+    )
+    before=decisions.read_bytes()
+    manifest_before=progress.read_bytes()
+
+    second=review.record_decision(
+        candidate["candidate_id"],
+        approved=True,
+        sensitive=False,
+        language="en",
+        corrected_target="Exact retry target.",
+    )
+
+    assert second==first
+    assert decisions.read_bytes()==before
+    assert progress.read_bytes()==manifest_before
+    assert review.progress().decided==1
+
+
+def test_conflicting_frozen_decision_retry_remains_blocked(tmp_path):
+    review,_queued,_decisions,_progress=session(tmp_path)
+    candidate=review.pending_candidates()[0]
+    review.record_decision(
+        candidate["candidate_id"],
+        approved=True,
+        sensitive=False,
+        language="en",
+        corrected_target="Frozen target.",
+    )
+    with pytest.raises(ValueError,match="different frozen decision"):
+        review.record_decision(
+            candidate["candidate_id"],
+            approved=False,
+            sensitive=False,
+            language="en",
+        )
+
+
 def test_frozen_decision_cannot_be_silently_replaced(tmp_path):
     review,_queued,_decisions,_progress=session(tmp_path)
     candidate=review.pending_candidates()[0]
@@ -179,7 +225,7 @@ def test_frozen_decision_cannot_be_silently_replaced(tmp_path):
         approved=False,
         sensitive=False,
     )
-    with pytest.raises(ValueError,match="already has a frozen decision"):
+    with pytest.raises(ValueError,match="different frozen decision"):
         review.record_decision(
             candidate["candidate_id"],
             approved=True,

@@ -170,6 +170,9 @@ def test_inapp_windows_advance_without_reusing_old_product_turns(tmp_path):
         fill_runtime(runtime, prefix="old")
         first = runtime.create_learning_window()
         first_high_water = first["through_rowid_inclusive"]
+        approve_all(runtime, first["window_id"])
+        finalized = runtime.finalize_learning_window(first["window_id"])
+        assert finalized["intake_ready"] is True
 
         fill_runtime(runtime, prefix="new")
         second = runtime.create_learning_window()
@@ -192,6 +195,108 @@ def test_inapp_windows_advance_without_reusing_old_product_turns(tmp_path):
         rendered = json.dumps(registry)
         assert "old-0:" not in rendered
         assert "new-0:" not in rendered
+    finally:
+        runtime.close()
+
+
+def test_create_window_retry_returns_same_pending_window(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="retry")
+        first = runtime.create_learning_window()
+        second = runtime.create_learning_window()
+
+        assert first["window_id"] == "window-0001"
+        assert second["window_id"] == "window-0001"
+        registry = runtime.learning.verify_registry()
+        assert len(registry["windows"]) == 1
+        assert registry["next_window_index"] == 2
+        assert [path.name for path in (
+            tmp_path / "learning-evidence" / "windows"
+        ).iterdir() if path.is_dir() and path.name.startswith("window-")] == [
+            "window-0001"
+        ]
+    finally:
+        runtime.close()
+
+
+def test_registry_recovers_exact_next_orphan_after_atomic_window_install(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="first")
+        first = runtime.create_learning_window()
+        approve_all(runtime, first["window_id"])
+        runtime.finalize_learning_window(first["window_id"])
+
+        fill_runtime(runtime, prefix="second")
+        second = runtime.create_learning_window()
+        assert second["window_id"] == "window-0002"
+
+        registry_path = runtime.learning.registry_path
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        registry["windows"] = registry["windows"][:1]
+        registry["last_exported_rowid"] = registry["windows"][0][
+            "through_rowid_inclusive"
+        ]
+        registry["next_window_index"] = 2
+        registry.pop("registry_sha256", None)
+        from nolane_personal.store import payload_digest
+        registry["registry_sha256"] = payload_digest(registry)
+        registry_path.write_text(
+            json.dumps(registry, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        recovered = runtime.learning.verify_registry()
+        assert [row["window_id"] for row in recovered["windows"]] == [
+            "window-0001",
+            "window-0002",
+        ]
+        assert recovered["last_exported_rowid"] == second[
+            "through_rowid_inclusive"
+        ]
+        assert recovered["next_window_index"] == 3
+    finally:
+        runtime.close()
+
+
+def test_registry_refuses_cursor_corruption_before_orphan_recovery(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="cursor")
+        first = runtime.create_learning_window()
+        registry_path = runtime.learning.registry_path
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        registry["last_exported_rowid"] = 0
+        registry.pop("registry_sha256", None)
+        from nolane_personal.store import payload_digest
+        registry["registry_sha256"] = payload_digest(registry)
+        registry_path.write_text(
+            json.dumps(registry, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="final cursor mismatch"):
+            runtime.learning.verify_registry()
+        assert first["through_rowid_inclusive"] > 0
+    finally:
+        runtime.close()
+
+
+def test_registry_blocks_unregistered_window_gap(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    try:
+        fill_runtime(runtime, prefix="base")
+        first = runtime.create_learning_window()
+        approve_all(runtime, first["window_id"])
+        runtime.finalize_learning_window(first["window_id"])
+
+        windows = tmp_path / "learning-evidence" / "windows"
+        gap = windows / "window-0003"
+        gap.mkdir()
+
+        with pytest.raises(ValueError, match="unregistered evidence window gap"):
+            runtime.learning.verify_registry()
     finally:
         runtime.close()
 
@@ -291,6 +396,76 @@ def test_learning_review_api_is_authenticated_and_explicit(tmp_path):
         ).read_text(encoding="utf-8")
         assert corrected not in registry
         assert corrected not in progress
+    finally:
+        server.shutdown()
+        server.server_close()
+        runtime.close()
+
+
+def test_learning_review_api_exact_retry_is_successful_and_conflict_is_blocked(tmp_path):
+    runtime = ProductRuntime(tmp_path, cortex_factory=factory)
+    fill_runtime(runtime, prefix="api-retry")
+    server = ProductHTTPServer(
+        ("127.0.0.1", 0),
+        runtime,
+        auth_token="retry-secret",
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, window = request(
+            server,
+            "POST",
+            "/v1/learning/windows",
+            token="retry-secret",
+        )
+        assert status == 200
+        status, pending = request(
+            server,
+            "GET",
+            f"/v1/learning/pending?window_id={window['window_id']}",
+            token="retry-secret",
+        )
+        candidate = pending["candidate"]
+        payload = {
+            "window_id": window["window_id"],
+            "candidate_id": candidate["candidate_id"],
+            "decision": "approve",
+            "language": "en",
+            "corrected_target": "Durable retry target.",
+        }
+
+        first_status, first = request(
+            server,
+            "POST",
+            "/v1/learning/decision",
+            payload,
+            token="retry-secret",
+        )
+        second_status, second = request(
+            server,
+            "POST",
+            "/v1/learning/decision",
+            payload,
+            token="retry-secret",
+        )
+        assert first_status == second_status == 200
+        assert first["window"]["review_progress"]["decided"] == 1
+        assert second["window"]["review_progress"]["decided"] == 1
+
+        conflict_status, conflict = request(
+            server,
+            "POST",
+            "/v1/learning/decision",
+            {
+                **payload,
+                "decision": "reject",
+                "corrected_target": None,
+            },
+            token="retry-secret",
+        )
+        assert conflict_status == 400
+        assert "different frozen decision" in conflict["message"]
     finally:
         server.shutdown()
         server.server_close()

@@ -39,7 +39,13 @@ class ProductRuntime:
         )
         self.profile = self.profile_store.load()
         self._rest_allowed = bool(enable_rest)
-        self.store = LivingStore(self.data_dir / "living.db")
+        # ProductHTTPServer dispatches requests on worker threads.
+        # ProductRuntime's RLock serializes every store/engine operation, so
+        # this one product-owned connection may safely cross those threads.
+        self.store = LivingStore(
+            self.data_dir / "living.db",
+            allow_cross_thread=True,
+        )
         self.engine = LivingEngine(
             self.store,
             cortex=NullCortex(),
