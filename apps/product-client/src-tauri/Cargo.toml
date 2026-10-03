@@ -31,3 +31,4 @@ rand = "0.8"
 nolane-mobile-runtime = { path = "../../../crates/nolane-mobile-runtime" }
 android_logger = "0.14"
 log = "0.4"
+tauri-plugin-fs = "2"
