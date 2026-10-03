@@ -614,6 +614,8 @@ impl LocalMobileProductRuntime {
                 "curiosity": self.meta.curiosity,
                 "rest_cycles": self.meta.rest_cycles,
                 "last_rest_ms": self.meta.last_rest_ms,
+                "last_rest_source_count": self.meta.last_rest_source_count,
+                "last_rest_new_memories": self.meta.last_rest_new_memories,
             },
             "readiness": {
                 "status": "PASS",
@@ -703,10 +705,13 @@ impl LocalMobileProductRuntime {
         at_ms: u64,
     ) -> Result<(), RuntimeError> {
         let Some(previous_ms) = self.meta.last_event_ms else {
+            self.meta.tick = self.meta.tick.saturating_add(1);
             self.meta.last_event_ms = Some(at_ms);
             return Ok(());
         };
-        let dt_ms = at_ms.saturating_sub(previous_ms)
+        let effective_ms = at_ms.max(previous_ms);
+        let dt_ms = effective_ms
+            .saturating_sub(previous_ms)
             .min(7 * 24 * 60 * 60 * 1000);
         let dt = dt_ms as f64 / 1000.0;
         let mut state = self
@@ -753,7 +758,7 @@ impl LocalMobileProductRuntime {
                 + 0.22 * rise * (1.0 - self.meta.social_drive),
         );
         self.meta.tick = self.meta.tick.saturating_add(1);
-        self.meta.last_event_ms = Some(at_ms);
+        self.meta.last_event_ms = Some(effective_ms);
         self.runtime.set_persistent_state(state)?;
         Ok(())
     }
