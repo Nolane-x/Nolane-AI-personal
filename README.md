@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.45.0
+## Current executable milestone: Living Runtime v0.50.0
 
 The runtime now contains two very different compute scales:
 
@@ -1448,6 +1448,18 @@ The manual Windows release workflow now installs the generated NSIS package into
 The clean-install receipt contains hashes/status only, not chat text, auth tokens or user data paths. The court still requires a real promoted checkpoint; source CI cannot fake that evidence.
 
 See `docs/V049-WINDOWS-CLEAN-INSTALL-COURT.md`.
+
+### v0.50 Android Local Inference Foundation
+
+v0.50 keeps the Ember Quiet product surface unchanged and moves the local Android path below the UI.
+
+The factorized Nolane model now has an explicit one-token mobile contract, a verified `contract.json + weights.safetensors` package format and a pure-Rust token-step kernel. Python golden courts require the exported mobile path to match the existing standalone Nolane logits and recurrent state across multiple sequential tokens. A separate cross-language court runs the same package through Rust and requires matching logits/state before the crate may compile for `aarch64-linux-android`.
+
+The mobile package contains no user latent, tokenizer, chat text or promotion authority. It is bound to the source checkpoint SHA-256 and fails closed on contract/weights tamper.
+
+This is **not yet end-to-end Android local chat**. Native tokenizer/chat-template handling, sampling loop, persistent product-state bridge, Tauri local-target wiring and emulator/device courts remain explicit gates.
+
+See `docs/V050-ANDROID-LOCAL-INFERENCE-FOUNDATION.md`.
 
 ## Bootstrap Qwen
 
