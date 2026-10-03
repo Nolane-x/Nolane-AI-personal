@@ -1412,6 +1412,21 @@ Finalization still reuses the existing L25/L27/L28 evidence courts. L45 cannot t
 
 See `docs/L45-INAPP-EXPLICIT-EVIDENCE-REVIEW.md`.
 
+### v0.47 Product Reliability Freeze
+
+v0.47 intentionally adds no new primary UI surface. It hardens the existing product actions that are most likely to be retried or interrupted in real use.
+
+- exact review-decision retries are idempotent;
+- conflicting retries remain blocked by the frozen-decision rule;
+- repeated Create Learning Window while a window is still pending returns the same window instead of consuming more transcript;
+- a crash after an evidence window directory is atomically installed but before the registry pointer is written can recover the exact next self-verified contiguous window;
+- registry cursor/index corruption remains fail-closed and cannot be hidden by recovery;
+- unregistered window gaps remain blocked.
+
+The v1 product-surface rule is now explicit: prefer reliability and depth in chat, personalization and reviewed learning over adding more permanent controls.
+
+See `docs/V047-PRODUCT-RELIABILITY-FREEZE.md`.
+
 ## Bootstrap Qwen
 
 Model weights are intentionally **not committed to GitHub**. A pinned downloader reproduces the exact upstream checkpoint locally.
