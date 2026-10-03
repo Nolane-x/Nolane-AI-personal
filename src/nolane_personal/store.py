@@ -23,10 +23,18 @@ def payload_digest(payload: object) -> str:
 class LivingStore:
     """Local-first event, state snapshot, and memory store."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        allow_cross_thread: bool = False,
+    ) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(self.path)
+        self.db = sqlite3.connect(
+            self.path,
+            check_same_thread=not bool(allow_cross_thread),
+        )
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA foreign_keys=ON")
