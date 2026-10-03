@@ -561,12 +561,7 @@ impl LocalMobileProductRuntime {
                 self.send_message(text)
             }
             ("POST", "/v1/tick") => {
-                let at_ms = body
-                    .as_ref()
-                    .and_then(|value| value.get("at_ms"))
-                    .and_then(Value::as_u64)
-                    .unwrap_or_else(now_millis);
-                self.tick_at(at_ms, None)
+                self.tick_at(now_millis(), None)
             }
             (_, route) if route.starts_with("/v1/learning/") => {
                 Err(RuntimeError::Invalid(
@@ -870,7 +865,8 @@ impl LocalMobileProductRuntime {
                 "reasons": ["speech_cooldown"],
             }));
         }
-        if silence.is_some_and(|value| value > HARD_MAX_WITHOUT_USER_MS)
+        if (silence.is_none()
+            || silence.is_some_and(|value| value > HARD_MAX_WITHOUT_USER_MS))
             && state.state.open_threads.is_empty()
         {
             return Ok(json!({
