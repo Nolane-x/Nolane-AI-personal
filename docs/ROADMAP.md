@@ -1707,7 +1707,7 @@ Android text-generation target: **TOKENIZER.JSON -> RUST PREFILL -> GREEDY AUTOR
 - [x] L51 Product Client Court PASS
 - [x] merge v0.51
 - [ ] exact product chat-template rendering in native host
-- [ ] seeded sampling parity with desktop product path
+- [x] seeded sampling parity with desktop product path
 - [ ] persistent latent/profile/state bridge
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile package + tokenizer release binding
@@ -1768,13 +1768,48 @@ Android behavioral-parity target: **SAME PROFILE/STATE/MEMORY -> SAME PRODUCT PA
 - [x] Rust user payload byte-for-byte parity court
 - [x] Rust frozen full-prompt byte-for-byte parity court
 - [x] Rust pinned-Qwen prompt token-ID parity court
-- [ ] L53 Product Client Court PASS
-- [ ] Living Runtime / Neural / Crash regressions PASS
-- [ ] merge v0.53
+- [x] L53 Product Client Court PASS
+- [x] Living Runtime / Neural / Crash regressions PASS
+- [x] merge v0.53
 - [ ] seeded sampling parity with desktop product path
 - [ ] persistent Android latent/profile/state bridge
 - [ ] Tauri Android LocalMobile target
 - [ ] L36-authorized mobile model/prompt/tokenizer/payload release binding
 - [ ] emulator/device end-to-end local chat court
+- [ ] only then call Android local chat production-complete
+
+## L54 — Seeded Sampling Parity
+
+Android stochastic-decoding target: **SAME INPUT/PAYLOAD/LATENT/SEED -> SAME SAMPLED TOKENS/TEXT/STATE**.
+
+- [x] no new primary product UI
+- [x] frozen seeded sampler schema
+- [x] SplitMix64 RNG in Python + Rust
+- [x] known-answer SplitMix64 vectors
+- [x] one RNG advance per sampled token
+- [x] finite positive temperature required
+- [x] top-p restricted to (0, 1]
+- [x] non-finite logits fail closed
+- [x] oversized finite logits fail closed before cross-language integer overflow
+- [x] millilogit quantization
+- [x] Q40 exponential weights
+- [x] Q32 probability/top-p threshold
+- [x] deterministic weight-descending/token-id-ascending tie break
+- [x] minimal nucleus reaches threshold without retaining an extra boundary token
+- [x] tiny positive top-p retains one best token
+- [x] Python standalone generation accepts explicit sampling seed
+- [x] desktop ProductCortex normal sampling uses seeded path with fresh 64-bit production seed
+- [x] Rust native runtime exposes seeded generation
+- [x] Python fixture freezes sampled token IDs/text/EOS/final state
+- [x] Rust reproduces seeded fixture trajectory
+- [x] Android target compile remains mandatory
+- [ ] L54 Product Client Court PASS
+- [ ] Living Runtime / Neural / Crash regressions PASS
+- [ ] merge v0.54
+- [ ] persistent Android latent/profile/state bridge
+- [ ] Tauri Android LocalMobile target
+- [ ] L36-authorized mobile release bundle
+- [ ] emulator/device sampled local-chat parity court
+- [ ] latency/memory/battery court
 - [ ] only then call Android local chat production-complete
 

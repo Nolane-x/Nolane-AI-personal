@@ -4,7 +4,10 @@ from contextlib import nullcontext
 
 import pytest
 
+from nolane_personal.cortex import CortexRequest
 from nolane_personal.product_cortex import FactorizedProductCortex
+from nolane_personal.product_profile import ProductProfile
+from nolane_personal.state import LivingState
 
 
 class FakeTensor:
@@ -48,6 +51,79 @@ def cortex_with_generated_width(width: int):
     cortex.device = "cpu"
     cortex.checkpoint_sha256 = "a" * 64
     return cortex
+
+
+def test_product_generate_forwards_exact_seeded_sampling_policy():
+    torch = pytest.importorskip("torch")
+    captured = {}
+
+    class ProductTokenizer:
+        eos_token_id = 2
+
+        def apply_chat_template(
+            self,
+            _messages,
+            *,
+            tokenize,
+            add_generation_prompt,
+            enable_thinking=False,
+        ):
+            assert tokenize is False
+            assert add_generation_prompt is True
+            assert enable_thinking is False
+            return "rendered product prompt"
+
+        def __call__(self, text, *, return_tensors):
+            assert text == "rendered product prompt"
+            assert return_tensors == "pt"
+            return {
+                "input_ids": torch.tensor(
+                    [[1, 4, 6]],
+                    dtype=torch.long,
+                )
+            }
+
+        def decode(self, tokens, *, skip_special_tokens):
+            assert skip_special_tokens is True
+            assert tokens.tolist() == [7]
+            return "seeded reply"
+
+    class ProductModel:
+        def generate(self, **kwargs):
+            captured.update(kwargs)
+            return torch.tensor(
+                [[1, 4, 6, 7]],
+                dtype=torch.long,
+            )
+
+    fixed_seed = 0x123456789ABCDEF0
+    cortex = FactorizedProductCortex.__new__(FactorizedProductCortex)
+    cortex.tokenizer = ProductTokenizer()
+    cortex.model = ProductModel()
+    cortex.torch = torch
+    cortex.device = "cpu"
+    cortex.profile_getter = lambda: ProductProfile(
+        response_length="compact",
+    )
+    cortex.sampling_seed_getter = lambda: fixed_seed
+
+    reply = cortex.generate(
+        CortexRequest(
+            mode="reply",
+            intent="conversation",
+            user_text="hello",
+            state=LivingState(),
+        )
+    )
+
+    assert reply.utterance == "seeded reply"
+    assert captured["max_new_tokens"] == 96
+    assert captured["do_sample"] is True
+    assert captured["temperature"] == pytest.approx(0.78)
+    assert captured["top_p"] == pytest.approx(0.90)
+    assert captured["sampling_seed"] == fixed_seed
+    assert captured["eos_token_id"] == 2
+    assert captured["pad_token_id"] == 2
 
 
 def test_factorized_product_self_test_requires_real_generated_token():
