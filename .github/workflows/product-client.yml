@@ -1,0 +1,132 @@
+name: Product Client Court
+
+concurrency:
+  group: product-client-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/product-client/**"
+      - "src/nolane_personal/product_*.py"
+      - "src/nolane_personal/engine.py"
+      - "src/nolane_personal/store.py"
+      - "packaging/**"
+      - "scripts/stage_product_release_assets.py"
+      - "tests/product_ui_browser.py"
+      - "tests/test_product_runtime.py"
+      - "tests/test_product_release_assets.py"
+      - ".github/workflows/product-client.yml"
+      - ".github/workflows/product-windows-release.yml"
+      - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
+      - "docs/V042-NUI-CRITIQUE-LEDGER.md"
+      - "docs/ROADMAP.md"
+      - "README.md"
+  pull_request:
+    paths:
+      - "apps/product-client/**"
+      - "src/nolane_personal/product_*.py"
+      - "src/nolane_personal/engine.py"
+      - "src/nolane_personal/store.py"
+      - "packaging/**"
+      - "scripts/stage_product_release_assets.py"
+      - "tests/product_ui_browser.py"
+      - "tests/test_product_runtime.py"
+      - "tests/test_product_release_assets.py"
+      - ".github/workflows/product-client.yml"
+      - ".github/workflows/product-windows-release.yml"
+      - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
+      - "docs/V042-NUI-CRITIQUE-LEDGER.md"
+      - "docs/ROADMAP.md"
+      - "README.md"
+
+jobs:
+  runtime:
+    name: Product runtime court
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py
+      - run: python -m compileall -q src/nolane_personal/product_*.py scripts/stage_product_release_assets.py packaging/product_runtime_entry.py
+
+  browser:
+    name: NUI browser court
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/product_ui_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-ui-render-evidence
+          if-no-files-found: warn
+          path: artifacts/product-ui/*.png
+
+  windows-native:
+    name: Windows native host
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Tauri CLI
+        run: npm install --global @tauri-apps/cli@2.12.0
+      - name: Generate product icons
+        working-directory: apps/product-client
+        shell: pwsh
+        run: tauri icon icon-source.svg
+      - name: Build Windows app executable
+        working-directory: apps/product-client
+        shell: pwsh
+        run: tauri build --no-bundle
+
+  android:
+    name: Android APK court
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: "27.2.12479018"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "ndk;$NDK_VERSION"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+      - name: Install pinned Tauri CLI
+        run: npm install --global @tauri-apps/cli@2.12.0
+      - name: Build Android APK
+        working-directory: apps/product-client
+        shell: bash
+        run: |
+          tauri icon icon-source.svg
+          tauri android init --ci --skip-targets-install
+          python ../../scripts/patch_tauri_android_cli_bridge.py src-tauri/gen/android
+          tauri icon icon-source.svg
+          tauri android build --apk --target aarch64
+      - name: Verify APK exists
+        shell: bash
+        run: |
+          test -n "$(find apps/product-client/src-tauri/gen/android/app/build/outputs/apk -name '*.apk' -type f -print -quit)"

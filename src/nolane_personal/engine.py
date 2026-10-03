@@ -43,6 +43,7 @@ class LivingEngine:
         rest_scheduler: RestScheduler | None = None,
         consolidation_validator: ConsolidationValidator | None = None,
         enable_rest: bool = True,
+        memory_enabled: bool = True,
     ) -> None:
         self.store = store
         self.cortex = cortex or NullCortex()
@@ -53,6 +54,7 @@ class LivingEngine:
         self.rest_observer = rest_observer or DeterministicRestObserver(self.rest_scheduler.policy)
         self.consolidation_validator = consolidation_validator or ConsolidationValidator()
         self.enable_rest = bool(enable_rest)
+        self.memory_enabled = bool(memory_enabled)
         state = self.store.load_state()
         self.state = state if state is not None else self.store.initialize(LivingState())
 
@@ -61,6 +63,8 @@ class LivingEngine:
         self.state = advance_time(deepcopy(self.state), dt)
 
     def _relevant_memories(self, query: str, limit: int = 6) -> list[MemoryRecord]:
+        if not self.memory_enabled:
+            return []
         return rank_memories(self.store.memories(limit=300), query, limit=limit)
 
     def _rest_source_memories(self) -> list[MemoryRecord]:
@@ -160,7 +164,7 @@ class LivingEngine:
             source_event_id=event.event_id,
             created_at=event.at,
         )
-        memories = [memory] if text.strip() else []
+        memories = [memory] if text.strip() and self.memory_enabled else []
         self.state = self.store.commit_transition(event, self.state, memories)
 
         receipt, observer_error = self._run_observer(text, event)

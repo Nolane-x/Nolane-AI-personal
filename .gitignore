@@ -20,3 +20,18 @@ runtime-data/
 Thumbs.db
 .vscode/
 .idea/
+
+# Product client generated targets and release binaries
+apps/product-client/src-tauri/target/
+apps/product-client/src-tauri/gen/
+apps/product-client/src-tauri/resources/release-assets.json
+apps/product-client/src-tauri/resources/runtime/*
+!apps/product-client/src-tauri/resources/runtime/README.md
+apps/product-client/src-tauri/resources/model/*
+!apps/product-client/src-tauri/resources/model/README.md
+apps/product-client/src-tauri/resources/tokenizer/*
+!apps/product-client/src-tauri/resources/tokenizer/README.md
+dist/
+build/
+artifacts/product-ui/
+apps/product-client/src-tauri/icons/

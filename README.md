@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.41.0
+## Current executable milestone: Living Runtime v0.42.0
 
 The runtime now contains two very different compute scales:
 
@@ -12,6 +12,44 @@ The runtime now contains two very different compute scales:
 - **Tiny Living Core**: a recurrent 32D-latent model with only **14,515 parameters** by default.
 
 L0 persistent runtime is complete. L1 validated social-observer engineering is complete. L2 has a **frozen held-out promotion court** and remains **UNPROMOTED** until real replay evidence passes it. L3 has persistent neural latent continuity in **shadow-only mode** across restarts. L4 adds audited REST/consolidation. L5 provides counterfactual Qwen3 hidden-state surgery. L6 adds a trainable Personal Cortex. L7 adds a **Hybrid Recurrent Cortex** whose state recurs through tokens and can persist across calls. L8 adds a separate **Depth-Recurrent Living Bridge** whose state recurs across selected Qwen decoder layers inside each forward. L9 crosses the boundary where selected Qwen decoder blocks can be genuinely bypassed. L10 turns that into Progressive Transformer-Depth Replacement. L11 collapses contiguous Transformer regions into recurrent islands. L12 adds a Selective State-Space Cortex. L13 adds a **Shrinking Qwen Scaffold**. L14 pushes the decoder down to a minimal 1+1 anchor shell. L15 removes the Transformer decoder entirely from native inference. L16 exports every remaining inference tensor into a standalone Nolane-owned checkpoint. L17 factorizes and distills the inherited dense language boundary. L18 adds an **Adaptive Rank Frontier** that searches progressively smaller ranks and keeps only ranks that pass development compression/quality gates before the selected artifact is exposed to held-out promotion courts. L19 adds an **int8 Quantized Factor Runtime** that stores the selected low-rank factors as row-wise int8 + scales and dequantizes vocabulary chunks only when computing logits. L20 adds a **Real Qwen3-0.6B Weight Court** that downloads and executes the exact pinned checkpoint, catches model-lock drift, and runs the factorization/int8 mechanics on learned weights from the full model. L21 adds a **Real Candidate Evidence Pipeline** that fail-closes the complete L15→L16→L18→L19 training/evaluation/promotion chain and refuses to fabricate missing personal evidence. L22 adds a **shared End-to-End Evidence Harness**: CI executes the same canonical 17-stage contract with synthetic non-authority artifacts, verifies artifact SHA-256 coverage, proves first-failure stop behavior, and rejects stage-order drift. L23 adds an **Approved Evidence Pack Builder** that accepts only explicitly approved, non-sensitive local VI/EN examples, freezes their train/dev/test protocol, and binds the pack into L21 without copying raw private text into audit receipts. L24 adds a **Local Review Queue** so conversation exports become review candidates with `approved:false` by construction; a separate explicit decisions file is required before L23 can accept anything. L25 adds a **Local Evidence Intake Pipeline** that cryptographically binds the queue, review decisions, reviewed source, approved pack, dataset and frozen protocol into one privacy-preserving lineage receipt that L21 can consume. L26 adds an **Interactive Local Reviewer** so a human can review candidates one-by-one, resume safely, and persist immutable explicit decisions without any model/network call or automatic approval. L27 adds a **Local Evidence Workbench** that unifies queue import, review progress, L25 finalization and L21 readiness into one hash-bound local workspace without moving the human-consent boundary. L28 adds an **Evidence Quality & Leakage Court**: source-group-aware train/dev/test splitting, cross-split source leakage checks, exact/near-duplicate detection, and a quality receipt that L23/L25/L27/L21 all bind and reverify. L29 adds a **Held-out Group Robustness Court** so global held-out averages cannot hide a severe regression on one independent conversation group; L15/L17-L18/L19 quality and promotion now require that worst-group court. All learned architecture paths remain unpromoted until matched real evidence decides whether they earn production authority.
+
+### v0.42 Windows + Android product client
+
+v0.42 starts turning the research/runtime system into a deliberately small personal product surface.
+
+The product UI follows the repository's Nolane UI Intelligence (NUI) lifecycle rather than treating a successful build as UI completion. The selected **Ember Quiet** direction keeps only four things permanently visible: identity, AI power state, transcript and composer. Orange is reserved for living/primary state rather than decorative chrome.
+
+The client lives in `apps/product-client/` and uses a shared Tauri v2 host for Windows and Android.
+
+**Windows path**
+
+- the installer owns the app UI, Python sidecar runtime, approved factorized Nolane checkpoint and tokenizer assets;
+- the bundled sidecar binds only to a random loopback port;
+- the UI reads power truth from the runtime instead of simulating an ON state;
+- AI OFF unloads the model while keeping local transcript/state readable;
+- WebView2 uses Tauri's offline installer mode so first installation does not require a second runtime download;
+- release staging verifies the exact model SHA-256 and refuses incomplete runtime/tokenizer assets.
+
+**Android path**
+
+- the same responsive chat surface and Rust host compile as an Android APK target;
+- remote pairing is HTTPS-only except loopback and the pairing token is not persisted in plaintext;
+- Android does **not** claim local inference yet. Until the mobile inference or secure pairing court closes, an unpaired Android client is visibly unavailable rather than pretending to contain the desktop model.
+
+**Personalization**
+
+The chat remains visually quiet while behavior can change deeply through preferred name, language, response length, conversational style, initiative, local memory and one bounded personal instruction. Disabling memory changes the actual LivingEngine retrieval/write policy; it is not a cosmetic toggle.
+
+The product release court is `.github/workflows/product-client.yml`:
+
+- product runtime/privacy/API tests;
+- Playwright desktop + mobile viewport court;
+- reduced-motion and minimum touch-target checks;
+- Windows native Tauri build;
+- Android `tauri android init/build` APK court;
+- fail-closed release asset staging.
+
+See `docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md`.
 
 ### Persistent runtime
 

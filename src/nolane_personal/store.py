@@ -137,6 +137,34 @@ class LivingStore:
                 )
         return state
 
+    def conversation_messages(self, limit: int = 200) -> list[dict[str, object]]:
+        rows = self.db.execute(
+            """
+            SELECT event_id, at, kind, payload_json
+            FROM events
+            WHERE kind IN ('user_message', 'assistant_speech')
+            ORDER BY rowid DESC
+            LIMIT ?
+            """,
+            (max(0, int(limit)),),
+        ).fetchall()
+        messages: list[dict[str, object]] = []
+        for row in reversed(rows):
+            payload = json.loads(row["payload_json"])
+            text = str(payload.get("text", "")).strip()
+            if not text:
+                continue
+            messages.append(
+                {
+                    "event_id": str(row["event_id"]),
+                    "at": str(row["at"]),
+                    "role": "user" if row["kind"] == "user_message" else "assistant",
+                    "text": text,
+                    "intent": payload.get("intent"),
+                }
+            )
+        return messages
+
     def memories(self, limit: int = 200) -> list[MemoryRecord]:
         rows = self.db.execute("SELECT * FROM memories ORDER BY created_at DESC LIMIT ?", (max(0, int(limit)),)).fetchall()
         return [

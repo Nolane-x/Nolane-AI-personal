@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="warm" cx="36%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#fffdf9"/>
+      <stop offset="1" stop-color="#f2ede6"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="38%" cy="32%" r="72%">
+      <stop offset="0" stop-color="#ff9a5f"/>
+      <stop offset="0.48" stop-color="#f26a2e"/>
+      <stop offset="1" stop-color="#d94f1c"/>
+    </radialGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#warm)"/>
+  <circle cx="512" cy="512" r="216" fill="#f26a2e" opacity=".16" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="176" fill="url(#ember)"/>
+  <path
+    d="M406 640V384h55l118 158V384h61v256h-55L467 482v158z"
+    fill="#fffaf5"
+  />
+</svg>

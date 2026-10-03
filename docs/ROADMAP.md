@@ -1389,3 +1389,62 @@ Engineering substrate: **MIXED-PLASTICITY-RELEASE-PATH-READY / REAL-DATA-CLOSURE
 
 L41 closes the mechanical release path for recurrent-cortex plasticity while preserving the older L35/L31 path. The remaining closure is empirical, not another synthetic authority shortcut.
 
+## L42 — Product Client & Distribution Surface
+
+Engineering target: **WINDOWS-ONE-CLICK + ANDROID-SHELL / COURT-PENDING UNTIL CI CLOSES**.
+
+- [x] bind product UI work to NUI ARTIFACT_WORK lifecycle
+- [x] task-profile checksum and routed UI obligations
+- [x] NUI V12.1 reference execution capsule
+- [x] three materially different visual directions recorded
+- [x] select restrained Ember Quiet visual system
+- [x] orange semantic living/action accent
+- [x] responsive Windows + Android chat shell
+- [x] persistent transcript surface
+- [x] explicit AI OFF / STARTING / ON / THINKING / ERROR semantics
+- [x] backend-truth power control
+- [x] deep personalization sheet hidden from primary chat surface
+- [x] preferred name/language/length/style/initiative profile
+- [x] memory toggle changes real LivingEngine memory retrieval/write policy
+- [x] product history API separated from memory policy
+- [x] standalone factorized Nolane product cortex adapter
+- [x] product inference does not require a Qwen model object
+- [x] local Python sidecar API with loopback default
+- [x] non-loopback sidecar requires explicit auth token
+- [x] Tauri v2 native host
+- [x] Windows hidden sidecar process lifecycle
+- [x] Windows random loopback runtime port
+- [x] 256-bit per-launch loopback API authentication
+- [x] WebView never receives the loopback auth token
+- [x] Windows resource checks for sidecar/model/tokenizer/ceremony
+- [x] Windows offline WebView2 installer mode
+- [x] PyInstaller onedir product-runtime specification
+- [x] fail-closed release asset staging with exact model SHA-256
+- [x] release staging requires COMPLETE L36 promotion ceremony
+- [x] product sidecar reverifies L36 ceremony at startup
+- [x] release ceremony bundled beside model
+- [x] Windows Product Release workflow
+- [x] release workflow performs real power-on + chat inference smoke
+- [x] release workflow builds NSIS and uploads installer artifact
+- [x] Android Tauri target source path
+- [x] remote Android endpoint requires HTTPS except loopback
+- [x] pairing token remains memory-only in current Android shell
+- [x] browser desktop/mobile viewport court source
+- [x] rendered desktop/mobile screenshot evidence upload
+- [x] reduced-motion court source
+- [x] >=44px primary touch-target court source
+- [x] Windows native build CI job
+- [x] Android APK init/build CI job
+- [ ] Product Client Court PASS on branch head
+- [x] record two NUI critique/correction cycles with re-observation obligations
+- [ ] close both cycles with final-head rendered CI evidence
+- [ ] build release Windows sidecar with actual torch/transformers runtime
+- [ ] stage an approved real factorized checkpoint + tokenizer into installer
+- [ ] produce installable Windows NSIS/MSI release artifact
+- [ ] smoke test installed Windows product on a clean VM
+- [ ] implement Android local inference OR cryptographically secure pairing transport
+- [ ] run Android IME/safe-area court on emulator/device
+- [ ] only then call Android chat production-complete
+
+L42 deliberately refuses to equate a responsive mobile shell with mobile AI inference. Windows distribution can close independently once real release assets and a clean-install court pass.
+
