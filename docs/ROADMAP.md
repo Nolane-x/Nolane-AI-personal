@@ -1594,6 +1594,8 @@ v1 hardening target: **NO NEW PRIMARY SURFACE / RETRY + CRASH SAFETY**.
 - [x] unregistered window gaps fail closed
 - [x] cursor corruption fail-closed regression court
 - [x] no new primary UI surface
+- [x] ProductRuntime store explicitly serialized for threaded sidecar HTTP
+- [x] authenticated HTTP power -> chat -> history regression court
 - [ ] L47 CI PASS
 - [ ] merge v0.47
 - [ ] begin v1 release-readiness closure
