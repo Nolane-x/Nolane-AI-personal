@@ -52,7 +52,7 @@ fn main() {
 
     let after_chat = read_mobile_memory_store(&memory_path)
         .expect("read post-chat memory store");
-    assert_eq!(after_chat.records.len(), 4);
+    assert!(after_chat.records.len() >= 5);
     let episodic = after_chat
         .records
         .iter()
@@ -72,8 +72,24 @@ fn main() {
     let status = host
         .api("GET", "/v1/status", None)
         .expect("status after chats");
-    assert_eq!(status["memory"]["records"], 4);
+    assert_eq!(
+        status["memory"]["records"].as_u64().unwrap() as usize,
+        after_chat.records.len()
+    );
     assert_eq!(status["memory"]["links"], 0);
+    let observer_memories = after_chat
+        .records
+        .iter()
+        .filter(|record| {
+            record
+                .metadata
+                .get("proposed_by_observer")
+                .and_then(|value| value.as_bool())
+                == Some(true)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(observer_memories.len(), 1);
+    assert_eq!(observer_memories[0].kind, "preference");
     let last_user = status["lifecycle"]["last_user_event_ms"]
         .as_u64()
         .expect("last user timestamp");
@@ -98,7 +114,7 @@ fn main() {
 
     let after_rest = read_mobile_memory_store(&memory_path)
         .expect("read post-rest memory store");
-    assert!(after_rest.records.len() >= 5);
+    assert!(after_rest.records.len() > after_chat.records.len());
     assert!(after_rest.links.len() >= 2);
     assert!(after_rest.records.iter().any(|record| {
         record
