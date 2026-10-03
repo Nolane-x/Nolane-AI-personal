@@ -1600,3 +1600,24 @@ v1 hardening target: **NO NEW PRIMARY SURFACE / RETRY + CRASH SAFETY**.
 - [ ] merge v0.47
 - [ ] begin v1 release-readiness closure
 
+## L48 — Startup Readiness Self-Test
+
+v1 readiness target: **NO FALSE AI-ON / NO NEW PRIMARY UI**.
+
+- [x] data-directory durable write probe
+- [x] SQLite quick_check
+- [x] SQLite rollback write probe with no persistent metadata
+- [x] production checkpoint/tokenizer/ceremony preflight
+- [x] sidecar critical preflight before HTTP listen
+- [x] authenticated detailed readiness endpoint
+- [x] compact readiness summary in normal runtime status
+- [x] learning-registry health is advisory, not core-chat fatal
+- [x] production cortex requires self_test before phase ON
+- [x] factorized cortex performs one-token real generation smoke
+- [x] zero-token/invalid-shape neural smoke fails closed
+- [x] failed cortex smoke closes the partially loaded cortex
+- [x] Product Client Court includes neural self-test regression tests
+- [ ] L48 CI PASS
+- [ ] merge v0.48
+- [ ] clean-install release readiness court
+
