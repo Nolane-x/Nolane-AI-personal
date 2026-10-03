@@ -8,7 +8,7 @@ description = "Native tokenizer and autoregressive host for Nolane mobile infere
 
 [dependencies]
 nolane-mobile-kernel = { path = "../nolane-mobile-kernel" }
-tokenizers = { version = "0.23.2", default-features = false }
+tokenizers = { version = "0.23.2", default-features = false, features = ["fancy-regex"] }
 thiserror = "2"
 
 [dev-dependencies]
