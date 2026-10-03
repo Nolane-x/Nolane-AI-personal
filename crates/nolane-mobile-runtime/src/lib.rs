@@ -530,27 +530,31 @@ impl SeededNucleusSampler {
         let top_p_q32 = round_half_up_positive(
             self.top_p * SAMPLER_PROBABILITY_SCALE as f64,
         )?.min(SAMPLER_PROBABILITY_SCALE);
+        let scale = SAMPLER_PROBABILITY_SCALE as u128;
         let threshold = (
             total as u128 * top_p_q32 as u128
-            / SAMPLER_PROBABILITY_SCALE as u128
-        ) as u64;
+            + scale - 1
+        ) / scale;
+        let threshold = threshold
+            .max(1)
+            .min(total as u128) as u64;
 
         let mut retained = Vec::new();
-        let mut cumulative_before = 0u64;
+        let mut cumulative = 0u64;
         for token_id in ranked {
             let weight = weights[token_id];
             if weight == 0 {
                 continue;
             }
-            if cumulative_before > threshold {
-                break;
-            }
             retained.push((token_id, weight));
-            cumulative_before = cumulative_before
+            cumulative = cumulative
                 .checked_add(weight)
                 .ok_or_else(|| RuntimeError::Invalid(
                     "top-p cumulative mass overflow".into(),
                 ))?;
+            if cumulative >= threshold {
+                break;
+            }
         }
         if retained.is_empty() {
             return Err(RuntimeError::Invalid(
