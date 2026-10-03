@@ -27,6 +27,12 @@ from nolane_personal.mobile_prompt_contract import (
     sha256_file,
     write_product_prompt_contract,
 )
+from nolane_personal.mobile_persistent_state import (
+    build_persistent_mobile_state,
+    write_persistent_mobile_state,
+)
+from nolane_personal.product_profile import ProductProfile
+from nolane_personal.state import LivingState, OpenThread
 from nolane_personal.seeded_sampling import (
     SAMPLER_SCHEMA,
     SeededNucleusSampler,
@@ -233,6 +239,46 @@ def main() -> int:
                 "Standalone seeded generation drifted from mobile token-step "
                 f"sampler: standalone={standalone_new} mobile={sampled}"
             )
+
+    mobile_profile = ProductProfile(
+        preferred_name="Thuận",
+        language="vi",
+        response_length="compact",
+        conversation_style="natural",
+        personal_instruction="Nói ngắn gọn và nhớ dự án.",
+    )
+    mobile_state = LivingState(identity_id="identity-v055-mobile")
+    mobile_state.relationship.closeness = 0.71
+    mobile_state.relationship.trust = 0.82
+    mobile_state.relationship.familiarity = 0.63
+    mobile_state.relationship.interaction_count = 17
+    mobile_state.affect.valence = 0.2
+    mobile_state.affect.energy = 0.4
+    mobile_state.affect.playfulness = 0.1
+    mobile_state.affect.concern = 0.05
+    mobile_state.affect.irritation = 0.0
+    mobile_state.open_threads = [
+        OpenThread(
+            thread_id="v055",
+            topic="Hoàn thành persistent mobile state bridge",
+        )
+    ]
+    persistent_payload = build_persistent_mobile_state(
+        source_checkpoint_sha256=SOURCE_SHA,
+        latent=latent[0].tolist(),
+        profile=mobile_profile,
+        state=mobile_state,
+        memories=[
+            "Người dùng đang xây Nolane.",
+            "Tiếp tục hoàn thành v0.55 trước LocalMobile.",
+        ],
+    )
+    write_persistent_mobile_state(
+        root / "persistent-state.json",
+        persistent_payload,
+        expected_source_checkpoint_sha256=SOURCE_SHA,
+        expected_latent_dim=4,
+    )
 
     payload = {
         "schema": "NOLANE-V050-MOBILE-RUST-GOLDEN-V1",
