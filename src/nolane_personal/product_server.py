@@ -122,6 +122,12 @@ class ProductHandler(BaseHTTPRequestHandler):
                 return
             if not self._require_auth():
                 return
+            if path == "/v1/preflight":
+                self._json(
+                    HTTPStatus.OK,
+                    self.server.runtime.preflight(),
+                )
+                return
             if path == "/v1/status":
                 self._json(
                     HTTPStatus.OK,
