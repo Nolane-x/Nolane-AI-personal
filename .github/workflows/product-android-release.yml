@@ -1,0 +1,162 @@
+name: Android Product Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_url:
+        description: "HTTPS URL for the promoted factorized-nolane.pt"
+        required: true
+        type: string
+      model_sha256:
+        description: "Exact SHA-256 from the approved release candidate"
+        required: true
+        type: string
+      ceremony_url:
+        description: "HTTPS URL for its COMPLETE L36 promotion ceremony JSON"
+        required: true
+        type: string
+      tokenizer_zip_url:
+        description: "HTTPS URL for tokenizer assets zip"
+        required: true
+        type: string
+      tokenizer_zip_sha256:
+        description: "SHA-256 of tokenizer zip"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  android-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      NDK_VERSION: "27.2.12479018"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Validate release URLs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from urllib.parse import urlparse
+          values = [
+              "${{ inputs.model_url }}",
+              "${{ inputs.ceremony_url }}",
+              "${{ inputs.tokenizer_zip_url }}",
+          ]
+          for value in values:
+              if urlparse(value).scheme != "https":
+                  raise SystemExit(f"Release assets must use HTTPS: {value}")
+          PY
+
+      - name: Download release evidence and assets
+        shell: bash
+        run: |
+          mkdir -p release-input/tokenizer
+          curl --fail --location --retry 4             "${{ inputs.model_url }}"             --output release-input/factorized-nolane.pt
+          curl --fail --location --retry 4             "${{ inputs.ceremony_url }}"             --output release-input/promotion-ceremony.json
+          curl --fail --location --retry 4             "${{ inputs.tokenizer_zip_url }}"             --output release-input/tokenizer.zip
+
+          MODEL_HASH="$(sha256sum release-input/factorized-nolane.pt | awk '{print $1}')"
+          TOKENIZER_HASH="$(sha256sum release-input/tokenizer.zip | awk '{print $1}')"
+          test "$MODEL_HASH" = "$(echo "${{ inputs.model_sha256 }}" | tr '[:upper:]' '[:lower:]')"
+          test "$TOKENIZER_HASH" = "$(echo "${{ inputs.tokenizer_zip_sha256 }}" | tr '[:upper:]' '[:lower:]')"
+          python -m zipfile -e release-input/tokenizer.zip release-input/tokenizer
+
+      - name: Verify product version consistency
+        shell: bash
+        run: |
+          python scripts/check_product_version.py
+
+      - name: Install release build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[product]'
+
+      - name: Export checkpoint-bound native mobile package
+        run: |
+          python scripts/export_mobile_factorized.py             --checkpoint release-input/factorized-nolane.pt             --checkpoint-sha256 "${{ inputs.model_sha256 }}"             --output-dir release-input/mobile-package
+
+      - name: Freeze exact product prompt contract
+        run: |
+          python scripts/freeze_mobile_release_prompt.py             --tokenizer-dir release-input/tokenizer             --output release-input/prompt-contract.json
+
+      - name: Build neutral checkpoint-bound bootstrap state
+        run: |
+          python scripts/build_mobile_release_bootstrap.py             --checkpoint release-input/factorized-nolane.pt             --checkpoint-sha256 "${{ inputs.model_sha256 }}"             --output release-input/bootstrap-state.json
+
+      - name: Stage COMPLETE-L36-authorized LocalMobile bundle
+        run: |
+          python scripts/stage_mobile_release_assets.py             --mobile-package-dir release-input/mobile-package             --tokenizer-dir release-input/tokenizer             --prompt-contract release-input/prompt-contract.json             --bootstrap-state release-input/bootstrap-state.json             --ceremony release-input/promotion-ceremony.json             --resources apps/product-client/src-tauri/resources/mobile
+
+      - name: Strict native authority smoke
+        run: |
+          cargo run --quiet             --manifest-path crates/nolane-mobile-runtime/Cargo.toml             --example verify_authorized_localmobile_release             -- apps/product-client/src-tauri/resources/mobile
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"             "ndk;$NDK_VERSION"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: Install pinned Tauri CLI
+        run: npm install --global @tauri-apps/cli@2.12.0
+
+      - name: Build authority-bound Android APK
+        working-directory: apps/product-client
+        shell: bash
+        run: |
+          tauri icon icon-source.svg
+          tauri android init --ci --skip-targets-install
+          python ../../scripts/patch_tauri_android_cli_bridge.py src-tauri/gen/android
+          tauri icon icon-source.svg
+          tauri android build --apk --target aarch64
+
+      - name: Verify release outputs
+        shell: bash
+        run: |
+          APK="$(find apps/product-client/src-tauri/gen/android/app/build/outputs/apk -name '*.apk' -type f -print -quit)"
+          test -n "$APK"
+          test -f apps/product-client/src-tauri/resources/mobile/localmobile-manifest.json
+          test -f apps/product-client/src-tauri/resources/mobile/promotion-ceremony.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(
+              Path("apps/product-client/src-tauri/resources/mobile/localmobile-manifest.json")
+              .read_text(encoding="utf-8")
+          )
+          assert manifest["authority"] == "L36_COMPLETE_PROMOTION_CEREMONY"
+          assert manifest["release_claims"]["l36_complete"] is True
+          assert manifest["release_claims"]["device_court_complete"] is False
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nolane-android-authority-bound-release
+          if-no-files-found: error
+          path: |
+            apps/product-client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            apps/product-client/src-tauri/resources/mobile/localmobile-manifest.json
+            apps/product-client/src-tauri/resources/mobile/promotion-ceremony.json
