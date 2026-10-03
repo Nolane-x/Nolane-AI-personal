@@ -699,6 +699,36 @@ impl LocalMobileProductRuntime {
         self.profile_json()
     }
 
+    fn generate_product_with_policy(
+        &self,
+        mode: &str,
+        intent: &str,
+        user_text: Option<&str>,
+        seed: u64,
+        max_new_tokens: Option<usize>,
+    ) -> Result<crate::GenerationResult, RuntimeError> {
+        let mut payload = self.runtime.persistent_product_payload(
+            mode,
+            intent,
+            user_text,
+        )?;
+        if !self.meta.memory_enabled {
+            payload.memories.clear();
+        }
+        if let Some(limit) = max_new_tokens {
+            let prompt = self.runtime.render_product_prompt(&payload)?;
+            self.runtime.generate_seeded(
+                &prompt,
+                limit,
+                seed,
+                PRODUCT_SAMPLING_TEMPERATURE,
+                PRODUCT_SAMPLING_TOP_P,
+            )
+        } else {
+            self.runtime.generate_product_seeded(&payload, seed)
+        }
+    }
+
     fn advance_lifecycle_to(
         &mut self,
         at_ms: u64,
@@ -1035,28 +1065,13 @@ impl LocalMobileProductRuntime {
                 .unwrap_or("casual_reconnect");
             let mut rng = OsRng;
             let seed = rng.next_u64();
-            let generated = if let Some(limit) = max_new_tokens {
-                let payload = self.runtime.persistent_product_payload(
-                    "initiative",
-                    intent,
-                    None,
-                )?;
-                let prompt = self.runtime.render_product_prompt(&payload)?;
-                self.runtime.generate_seeded(
-                    &prompt,
-                    limit,
-                    seed,
-                    PRODUCT_SAMPLING_TEMPERATURE,
-                    PRODUCT_SAMPLING_TOP_P,
-                )?
-            } else {
-                self.runtime.generate_persistent_product_seeded(
-                    "initiative",
-                    intent,
-                    None,
-                    seed,
-                )?
-            };
+            let generated = self.generate_product_with_policy(
+                "initiative",
+                intent,
+                None,
+                seed,
+                max_new_tokens,
+            )?;
             speech = generated.text.trim().to_string();
             if !speech.is_empty() {
                 let ordinal = self.meta.state_version.saturating_add(1);
@@ -1146,29 +1161,13 @@ impl LocalMobileProductRuntime {
 
         let mut rng = OsRng;
         let seed = rng.next_u64();
-        let generated = match max_new_tokens {
-            Some(limit) => {
-                let payload = self.runtime.persistent_product_payload(
-                    "reply",
-                    "conversation",
-                    Some(clean),
-                )?;
-                let prompt = self.runtime.render_product_prompt(&payload)?;
-                self.runtime.generate_seeded(
-                    &prompt,
-                    limit,
-                    seed,
-                    PRODUCT_SAMPLING_TEMPERATURE,
-                    PRODUCT_SAMPLING_TOP_P,
-                )?
-            }
-            None => self.runtime.generate_persistent_product_seeded(
-                "reply",
-                "conversation",
-                Some(clean),
-                seed,
-            )?,
-        };
+        let generated = self.generate_product_with_policy(
+            "reply",
+            "conversation",
+            Some(clean),
+            seed,
+            max_new_tokens,
+        )?;
         let reply = generated.text.trim().to_string();
 
         let ordinal = self.meta.state_version.saturating_add(1);
