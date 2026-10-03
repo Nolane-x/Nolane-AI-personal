@@ -31,6 +31,11 @@ on:
       - "scripts/export_mobile_factorized.py"
       - "scripts/build_mobile_rust_fixture.py"
       - "scripts/build_real_mobile_tokenizer_fixture.py"
+      - "scripts/build_synthetic_mobile_release_ceremony.py"
+      - "scripts/stage_mobile_release_assets.py"
+      - "scripts/build_mobile_release_bootstrap.py"
+      - "scripts/freeze_mobile_release_prompt.py"
+      - "scripts/verify_android_emulator_localchat.sh"
       - "crates/nolane-mobile-kernel/**"
       - "crates/nolane-mobile-runtime/**"
       - "tests/product_ui_browser.py"
@@ -38,6 +43,7 @@ on:
       - "tests/test_product_release_assets.py"
       - ".github/workflows/product-client.yml"
       - ".github/workflows/product-windows-release.yml"
+      - ".github/workflows/product-android-release.yml"
       - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
       - "docs/V042-NUI-CRITIQUE-LEDGER.md"
       - "docs/ROADMAP.md"
@@ -67,6 +73,11 @@ on:
       - "scripts/export_mobile_factorized.py"
       - "scripts/build_mobile_rust_fixture.py"
       - "scripts/build_real_mobile_tokenizer_fixture.py"
+      - "scripts/build_synthetic_mobile_release_ceremony.py"
+      - "scripts/stage_mobile_release_assets.py"
+      - "scripts/build_mobile_release_bootstrap.py"
+      - "scripts/freeze_mobile_release_prompt.py"
+      - "scripts/verify_android_emulator_localchat.sh"
       - "crates/nolane-mobile-kernel/**"
       - "crates/nolane-mobile-runtime/**"
       - "tests/product_ui_browser.py"
@@ -74,6 +85,7 @@ on:
       - "tests/test_product_release_assets.py"
       - ".github/workflows/product-client.yml"
       - ".github/workflows/product-windows-release.yml"
+      - ".github/workflows/product-android-release.yml"
       - "docs/V042-PRODUCT-CLIENT-NUI-CONTRACT.md"
       - "docs/V042-NUI-CRITIQUE-LEDGER.md"
       - "docs/ROADMAP.md"
@@ -206,6 +218,85 @@ jobs:
         run: |
           cargo check --manifest-path crates/nolane-mobile-kernel/Cargo.toml --target aarch64-linux-android
           cargo check --manifest-path crates/nolane-mobile-runtime/Cargo.toml --target aarch64-linux-android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v058-localmobile-court-bundle
+          if-no-files-found: error
+          path: artifacts/mobile-release-staged/**
+
+  android-emulator-apk:
+    name: Android x86_64 emulator APK
+    needs: mobile-native
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: "27.2.12479018"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-linux-android
+      - uses: actions/download-artifact@v4
+        with:
+          name: v058-localmobile-court-bundle
+          path: apps/product-client/src-tauri/resources/mobile
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;$NDK_VERSION"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+      - name: Install pinned Tauri CLI
+        run: npm install --global @tauri-apps/cli@2.12.0
+      - name: Build packaged x86_64 emulator APK
+        working-directory: apps/product-client
+        shell: bash
+        run: |
+          tauri icon icon-source.svg
+          tauri android init --ci --skip-targets-install
+          python ../../scripts/patch_tauri_android_cli_bridge.py src-tauri/gen/android
+          tauri icon icon-source.svg
+          tauri android build --apk --target x86_64
+      - name: Verify x86_64 APK exists
+        shell: bash
+        run: |
+          test -n "$(find apps/product-client/src-tauri/gen/android/app/build/outputs/apk -name '*.apk' -type f -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v058-emulator-apk
+          if-no-files-found: error
+          path: apps/product-client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+  android-emulator:
+    name: Android emulator local-chat restart court
+    needs: android-emulator-apk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: v058-emulator-apk
+          path: artifacts/v058-emulator-apk
+      - name: Emulator boot + packaged LocalMobile restart court
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash scripts/verify_android_emulator_localchat.sh artifacts/v058-emulator-apk
 
   android:
     name: Android APK court
