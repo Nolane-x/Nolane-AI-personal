@@ -1448,3 +1448,37 @@ Engineering target: **WINDOWS-ONE-CLICK + ANDROID-SHELL / COURT-PENDING UNTIL CI
 
 L42 deliberately refuses to equate a responsive mobile shell with mobile AI inference. Windows distribution can close independently once real release assets and a clean-install court pass.
 
+## L43 — Real Longitudinal Learning Execution
+
+Scientific execution target: **5+-WINDOW REAL CORTEX LEARNING / NO SELF-PROMOTION AUTHORITY**.
+
+- [x] require at least five recurrent-cortex learning cycles
+- [x] accept only verified L23 approved-evidence packs
+- [x] require complete source-group lineage for every real pack
+- [x] retention/adaptation source groups disjoint within each cycle
+- [x] adaptation protocols unique across cycles
+- [x] adaptation source groups fresh across cycles
+- [x] fixed long-horizon panel isolated from every train/rehearsal group
+- [x] evidence thresholds may be tightened but never loosened
+- [x] per-cycle L38 update uses exact previous artifact as parent
+- [x] resumable immutable cycle journal
+- [x] resumed cycle must reverify native L38 receipt + checkpoint SHA + parent
+- [x] initial-vs-final fixed-panel retention court
+- [x] learned-window forgetting matrix for every cycle with future updates
+- [x] final cycle excluded from self-comparison and protected by immediate L30
+- [x] recompute complete L39 chain after all cycles
+- [x] privacy-preserving longitudinal report
+- [x] training executor cannot call L40 or grant itself promotion authority
+- [x] validate-only mode before expensive training
+- [ ] Product v0.42 merge becomes the base for L43 PR
+- [ ] L43 CI PASS
+- [ ] collect at least five real approved adaptation windows
+- [ ] freeze one completely isolated real fixed panel
+- [ ] execute 5+ real L38 cycles
+- [ ] obtain real L43 PASS
+- [ ] human review of longitudinal evidence
+- [ ] separately issue L40 authorization only if evidence merits promotion
+- [ ] complete real L33/L34/L36 production ceremony on that trained checkpoint
+
+L43 is the point where “Nolane learns over time” becomes an empirical claim rather than an architectural capability. A synthetic fixture cannot close these unchecked items.
+
