@@ -7,6 +7,7 @@ from .deep_recurrent_cortex import (
     DeepRecurrentCortexConfig,
     DeepRecurrentStateSpaceCortex,
 )
+from .seeded_sampling import SeededNucleusSampler
 
 
 @dataclass(slots=True)
@@ -260,10 +261,24 @@ class StandaloneNolaneLM:
         do_sample: bool,
         temperature: float,
         top_p: float,
+        sampler: SeededNucleusSampler | None = None,
     ):
         torch = self.cortex.torch
         if not do_sample:
             return torch.argmax(logits, dim=-1, keepdim=True)
+        if sampler is not None:
+            if logits.ndim != 2 or logits.shape[0] != 1:
+                raise ValueError(
+                    "seeded standalone sampling requires [1, vocab] logits"
+                )
+            token_id = sampler.sample(
+                logits[0].detach().float().cpu().tolist()
+            )
+            return torch.tensor(
+                [[token_id]],
+                dtype=torch.long,
+                device=logits.device,
+            )
         temperature = max(float(temperature), 1e-5)
         probs = torch.softmax(logits / temperature, dim=-1)
         if 0.0 < float(top_p) < 1.0:
@@ -291,6 +306,7 @@ class StandaloneNolaneLM:
         do_sample: bool = False,
         temperature: float = 0.8,
         top_p: float = 0.9,
+        sampling_seed: int | None = None,
         eos_token_id: int | None = None,
         pad_token_id: int | None = None,
     ):
@@ -306,6 +322,15 @@ class StandaloneNolaneLM:
         self.eval()
         generated = input_ids.clone()
         state = None
+        sampler = (
+            None
+            if sampling_seed is None or not do_sample
+            else SeededNucleusSampler(
+                state=int(sampling_seed),
+                temperature=temperature,
+                top_p=top_p,
+            )
+        )
         with torch.no_grad():
             first = self.forward(input_ids=generated, state=None)
             state = first.state
@@ -316,6 +341,7 @@ class StandaloneNolaneLM:
                     do_sample=do_sample,
                     temperature=temperature,
                     top_p=top_p,
+                    sampler=sampler,
                 )
                 generated = torch.cat([generated, next_token], dim=1)
                 if eos_token_id is not None and bool(
