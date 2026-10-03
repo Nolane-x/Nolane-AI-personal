@@ -13,6 +13,7 @@ from .store import canonical_json, payload_digest
 QUEUE_SCHEMA = "NOLANE-L24-LOCAL-REVIEW-QUEUE-V1"
 DECISION_SCHEMA = "NOLANE-L24-REVIEW-DECISIONS-V1"
 FINAL_SCHEMA = "NOLANE-L24-REVIEWED-EVIDENCE-SOURCE-V1"
+MAX_CORRECTED_TARGET_CHARS = 8000
 
 
 @dataclass(slots=True)
@@ -359,11 +360,28 @@ def _load_decisions(path: str | Path) -> dict[str, dict[str, Any]]:
             weight = float(row.get("weight", 1.0))
             if not 0.25 <= weight <= 4.0:
                 raise ValueError(f"{source}:{lineno}: weight outside allowed range")
+            corrected_raw = row.get("corrected_target")
+            corrected_target = None
+            if corrected_raw is not None:
+                corrected_target = _normalize_text(corrected_raw)
+                if not corrected_target:
+                    raise ValueError(
+                        f"{source}:{lineno}: corrected_target cannot be empty"
+                    )
+                if len(corrected_target) > MAX_CORRECTED_TARGET_CHARS:
+                    raise ValueError(
+                        f"{source}:{lineno}: corrected_target exceeds character limit"
+                    )
+                if not row["approved"] or row["sensitive"]:
+                    raise ValueError(
+                        f"{source}:{lineno}: corrected_target is only valid for approved non-sensitive decisions"
+                    )
             decisions[candidate_id] = {
                 "approved": bool(row["approved"]),
                 "sensitive": bool(row["sensitive"]),
                 "language": language,
                 "weight": weight,
+                "corrected_target": corrected_target,
             }
     if not decisions:
         raise ValueError("review decisions file is empty")
@@ -421,7 +439,11 @@ def apply_review_decisions(
                     sensitive += 1
                 row = {
                     "prompt": candidate["prompt"],
-                    "target": candidate["target"],
+                    "target": (
+                        decision["corrected_target"]
+                        if decision["corrected_target"] is not None
+                        else candidate["target"]
+                    ),
                     "language": language,
                     "weight": decision["weight"],
                     "approved": bool(decision["approved"]),
@@ -449,6 +471,7 @@ def apply_review_decisions(
         "stats": asdict(stats),
         "privacy": {
             "reviewed_source_contains_raw_text": True,
+            "decisions_may_contain_user_corrected_target": True,
             "manifest_contains_raw_text": False,
             "local_only_recommended": True,
         },
