@@ -4,7 +4,7 @@
 
 The initial language cortex is **Qwen3-0.6B**, but identity, time, memory, initiative and relationship continuity belong to the Living Runtime rather than to prompt history.
 
-## Current executable milestone: Living Runtime v0.52.0
+## Current executable milestone: Living Runtime v0.53.0
 
 The runtime now contains two very different compute scales:
 
@@ -1480,6 +1480,18 @@ Instead of embedding a Jinja chat-template runtime or manually copying Qwen mark
 CI requires both a synthetic end-to-end prompt→generation trajectory and an exact pinned Qwen3 tokenizer/template court. Android still is not called product-complete until dynamic product state/profile/memory payloads, sampling, LocalMobile Tauri routing, authorized release assets and emulator/device courts close.
 
 See `docs/V052-FROZEN-PRODUCT-PROMPT-CONTRACT.md`.
+
+### v0.53 Product Payload Parity
+
+v0.53 keeps the product surface unchanged and removes a desktop/Android behavior split below the UI.
+
+The product personalization/state/memory context is now first represented as a structured `NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1` payload, then rendered by both desktop Python and native Rust. The native runtime must match desktop on the user payload byte-for-byte, the full frozen Qwen chat prompt byte-for-byte, exact token IDs and response-length token budget.
+
+The old Python-specific `repr(list)` formatting for open threads has been replaced with compact UTF-8 JSON so quotes, backslashes and Unicode have one cross-language representation. Reply/initiative modes, 4-thread and 8-memory bounds, language/style guidance and compact/balanced/expansive generation budgets are all explicit and fail-closed.
+
+This does not yet claim end-to-end Android local chat. Seeded sampling parity, persistent local product state, Tauri LocalMobile wiring and emulator/device release courts remain open.
+
+See `docs/V053-PRODUCT-PAYLOAD-PARITY.md`.
 
 ## Bootstrap Qwen
 
