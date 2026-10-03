@@ -42,6 +42,8 @@ The web layer never receives the loopback authentication token.
 
 On Android, the same Tauri/web UI compiles as an APK. Android deliberately remains fail-closed until either local mobile inference or a cryptographically secure paired runtime is available. A remote target must use HTTPS except for loopback and its pairing token is memory-only.
 
+v0.50 adds the local-inference foundation underneath that shell: a Python-free mobile package (`contract.json + weights.safetensors`) and a pure-Rust one-token factorized/recurrent kernel. CI compares Rust logits/state against a deterministic Python golden trajectory and also compiles the kernel for `aarch64-linux-android`. Tokenization, autoregressive sampling and Tauri local-runtime wiring are still open, so the APK is not yet claimed production-complete.
+
 ## Browser UI court
 
 The frontend includes a deterministic browser-preview backend only for UI verification. It is never packaged as inference authority.
