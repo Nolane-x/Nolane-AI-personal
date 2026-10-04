@@ -1202,3 +1202,611 @@ summary:focus-visible {
     transition-duration: 1ms !important;
   }
 }
+
+/* v0.60 NUI multilingual + observable mind polish */
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.language-switcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface) 88%, transparent),
+      color-mix(in srgb, var(--surface) 68%, transparent)
+    );
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+  color: var(--muted);
+  transition:
+    border-color 160ms var(--ease),
+    background 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+
+.language-switcher:hover,
+.language-switcher:focus-within {
+  border-color: color-mix(in srgb, var(--orange) 34%, var(--line));
+  background: color-mix(in srgb, var(--orange) 5%, var(--surface));
+}
+
+.language-switcher:active {
+  transform: scale(.985);
+}
+
+.language-globe {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--orange-strong);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.language-switcher select {
+  max-width: 122px;
+  min-height: 38px;
+  padding: 0 22px 0 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.mind-state-button {
+  --mind-aura: color-mix(in srgb, var(--orange) 20%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 11px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--orange) 18%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--orange) 4%, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.24);
+  transition:
+    transform 160ms var(--ease),
+    border-color 160ms var(--ease),
+    background 160ms var(--ease);
+}
+
+.mind-state-button[hidden] {
+  display: none;
+}
+
+.mind-state-button:hover {
+  border-color: color-mix(in srgb, var(--orange) 40%, var(--line));
+  background: color-mix(in srgb, var(--orange) 8%, var(--surface));
+}
+
+.mind-state-button:active {
+  transform: scale(.985);
+}
+
+.mind-orb,
+.mind-hero-orb,
+.thinking-orb {
+  position: relative;
+  display: inline-block;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 30%, rgba(255,255,255,.96) 0 9%, transparent 10%),
+    radial-gradient(circle at 44% 42%, #ffb36b 0 22%, #f47a28 45%, #bb4316 76%, #692211 100%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--orange) 48%, white),
+    0 0 16px var(--mind-aura);
+}
+
+.mind-orb {
+  width: 20px;
+  height: 20px;
+}
+
+.mind-state-label {
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.mind-state-button[data-mood="concerned"],
+.mind-state-button[data-mood="low"] {
+  --mind-aura: rgba(195, 109, 67, .22);
+}
+
+.mind-state-button[data-mood="irritated"] {
+  --mind-aura: rgba(191, 61, 35, .30);
+}
+
+.mind-state-button[data-mood="playful"],
+.mind-state-button[data-mood="warm"] {
+  --mind-aura: rgba(255, 145, 44, .32);
+}
+
+.thinking-row {
+  display: flex;
+  align-items: center;
+  margin: -4px 0 20px 27px;
+}
+
+.thinking-capsule {
+  --mind-aura: color-mix(in srgb, var(--orange) 20%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(92%, 420px);
+  min-height: 48px;
+  padding: 7px 12px 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--orange) 20%, var(--line));
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--orange) 7%, var(--surface-raised)),
+      color-mix(in srgb, var(--surface) 82%, transparent)
+    );
+  color: var(--text);
+  cursor: pointer;
+  box-shadow:
+    0 8px 26px rgba(74, 48, 30, .055),
+    inset 0 1px 0 rgba(255,255,255,.35);
+  text-align: left;
+  animation: message-in 180ms var(--ease) both;
+}
+
+.thinking-capsule:hover {
+  border-color: color-mix(in srgb, var(--orange) 38%, var(--line));
+}
+
+.thinking-orb {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  animation: mind-breathe 2.3s ease-in-out infinite;
+}
+
+.thinking-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.thinking-copy strong {
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: -.012em;
+}
+
+.thinking-copy small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thinking-capsule .thinking-dots {
+  margin-left: 4px;
+}
+
+.mind-dialog {
+  width: min(720px, calc(100vw - 26px));
+  max-height: min(780px, calc(100dvh - 34px));
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--orange) 17%, var(--line-strong));
+  border-radius: 30px;
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--orange) 3%, var(--surface-solid)),
+      var(--surface-solid) 42%
+    );
+  color: var(--text);
+  box-shadow:
+    0 30px 90px rgba(35, 23, 15, .22),
+    inset 0 1px 0 rgba(255,255,255,.34);
+  overflow: hidden;
+}
+
+.mind-dialog::backdrop {
+  background: rgba(18, 15, 12, .32);
+  backdrop-filter: blur(10px) saturate(110%);
+}
+
+.mind-sheet {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: inherit;
+  overflow: hidden;
+}
+
+.mind-ambient {
+  position: absolute;
+  top: -120px;
+  right: -90px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--orange) 15%, transparent),
+    transparent 66%
+  );
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.mind-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 26px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mind-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mind-hero-orb {
+  --mind-aura: color-mix(in srgb, var(--orange) 25%, transparent);
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  animation: mind-breathe 3.4s ease-in-out infinite;
+}
+
+.mind-title-group h2 {
+  margin: 2px 0 0;
+  font-size: 23px;
+  line-height: 1.12;
+  letter-spacing: -.038em;
+}
+
+.mind-disclaimer {
+  max-width: 460px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.mind-body {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  padding: 20px 24px 26px;
+  overflow-y: auto;
+}
+
+.mind-hero-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 90px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--orange) 19%, var(--line));
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--orange) 9%, var(--surface)),
+      color-mix(in srgb, var(--surface) 74%, transparent)
+    );
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+}
+
+.mind-kicker {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.mind-mood {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1;
+  letter-spacing: -.045em;
+}
+
+.emotion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.emotion-chip,
+.mind-thread {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--orange) 14%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--orange) 5%, var(--surface));
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.mind-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mind-card {
+  min-height: 118px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+.mind-card-wide {
+  grid-column: 1 / -1;
+}
+
+.mind-card > strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -.015em;
+}
+
+.mind-card > small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.mind-progress {
+  height: 5px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.mind-progress span {
+  display: block;
+  width: 12%;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, var(--orange), color-mix(in srgb, var(--orange) 60%, white));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--orange) 25%, transparent);
+  transition: width 500ms var(--ease);
+}
+
+.mind-thread-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.mind-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.relationship-card {
+  grid-column: 1 / -1;
+}
+
+.relationship-bars {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.relationship-bars > div {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.relationship-bars span {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.relationship-bars i {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.relationship-bars b {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--orange) 82%, white);
+  transition: width 420ms var(--ease);
+}
+
+[dir="rtl"] .identity-button,
+[dir="rtl"] .thinking-capsule,
+[dir="rtl"] .mind-card,
+[dir="rtl"] .mind-title-group {
+  text-align: right;
+}
+
+[dir="rtl"] .thinking-row {
+  margin-left: 0;
+  margin-right: 27px;
+}
+
+@keyframes mind-breathe {
+  0%, 100% {
+    transform: scale(.94);
+    filter: saturate(.94);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: saturate(1.08);
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .language-switcher {
+    min-height: 38px;
+    padding-left: 8px;
+    padding-right: 6px;
+  }
+
+  .language-switcher select {
+    max-width: 86px;
+    font-size: 11px;
+  }
+
+  .mind-state-button {
+    width: 38px;
+    min-height: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .mind-state-label {
+    display: none;
+  }
+
+  .mind-dialog {
+    width: 100vw;
+    max-width: none;
+    max-height: min(90dvh, 800px);
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    border-radius: 28px 28px 0 0;
+  }
+
+  .mind-header {
+    padding: 20px 18px 17px;
+  }
+
+  .mind-body {
+    padding: 16px 16px max(22px, env(safe-area-inset-bottom));
+  }
+
+  .mind-title-group {
+    gap: 11px;
+  }
+
+  .mind-hero-orb {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
+  .mind-title-group h2 {
+    font-size: 21px;
+  }
+
+  .mind-hero-card {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .emotion-chips {
+    justify-content: flex-start;
+  }
+
+  .mind-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mind-card,
+  .mind-card-wide,
+  .relationship-card {
+    grid-column: 1;
+  }
+
+  .thinking-row {
+    margin-left: 0;
+  }
+
+  [dir="rtl"] .thinking-row {
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    gap: 8px;
+  }
+
+  .identity-copy span {
+    display: none;
+  }
+
+  .language-globe {
+    display: none;
+  }
+
+  .language-switcher {
+    padding-left: 7px;
+  }
+
+  .language-switcher select {
+    max-width: 70px;
+    padding-right: 15px;
+  }
+
+  .power-status {
+    display: none;
+  }
+
+  .thinking-capsule {
+    max-width: 100%;
+  }
+}
+

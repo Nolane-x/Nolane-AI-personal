@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
@@ -15,31 +15,68 @@
         class="identity-button"
         id="profileButton"
         type="button"
-        aria-label="Cá nhân hóa"
+        aria-label="Personalize"
       >
         <span class="identity-mark" aria-hidden="true">N</span>
         <span class="identity-copy">
           <strong>Nolane</strong>
-          <span id="identitySubline">của riêng bạn</span>
+          <span id="identitySubline">yours</span>
         </span>
       </button>
 
-      <div class="power-zone">
-        <span class="power-status" id="powerStatusText">Đang tắt</span>
+      <div class="topbar-actions">
+        <label class="language-switcher" aria-label="Interface language">
+          <span class="language-globe" aria-hidden="true">◎</span>
+          <select id="uiLanguage" aria-label="Interface language">
+            <option value="en" selected>English</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="zh">中文</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="pt">Português</option>
+            <option value="it">Italiano</option>
+            <option value="th">ไทย</option>
+            <option value="id">Bahasa Indonesia</option>
+            <option value="ru">Русский</option>
+            <option value="ar">العربية</option>
+            <option value="hi">हिन्दी</option>
+            <option value="tr">Türkçe</option>
+            <option value="pl">Polski</option>
+            <option value="nl">Nederlands</option>
+          </select>
+        </label>
+
         <button
-          class="power-button"
-          id="powerButton"
+          class="mind-state-button"
+          id="mindStateButton"
           type="button"
-          role="switch"
-          aria-checked="false"
-          aria-label="Bật AI"
-          data-phase="off"
+          aria-label="Open Nolane mind state"
+          hidden
         >
-          <span class="ember" aria-hidden="true">
-            <span class="ember-core"></span>
-          </span>
-          <span class="power-label" id="powerButtonLabel">Bật AI</span>
+          <span class="mind-orb" id="mindOrb" aria-hidden="true"></span>
+          <span class="mind-state-label" id="mindStateLabel">Calm</span>
         </button>
+
+        <div class="power-zone">
+          <span class="power-status" id="powerStatusText">Off</span>
+          <button
+            class="power-button"
+            id="powerButton"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            aria-label="Start AI"
+            data-phase="off"
+          >
+            <span class="ember" aria-hidden="true">
+              <span class="ember-core"></span>
+            </span>
+            <span class="power-label" id="powerButtonLabel">Start AI</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -50,12 +87,12 @@
         role="log"
         aria-live="polite"
         aria-relevant="additions"
-        aria-label="Cuộc trò chuyện với Nolane"
+        aria-label="Conversation with Nolane"
       >
         <div class="empty-state" id="emptyState">
           <div class="empty-ember" aria-hidden="true"></div>
-          <p id="emptyTitle">Nolane đang nghỉ.</p>
-          <span id="emptyBody">Bật AI khi bạn muốn nói chuyện.</span>
+          <p id="emptyTitle">Nolane is resting.</p>
+          <span id="emptyBody">Start the AI whenever you want to talk.</span>
         </div>
       </section>
     </main>
@@ -63,25 +100,25 @@
     <div class="runtime-banner" id="runtimeBanner" role="status" hidden>
       <span class="runtime-banner-dot" aria-hidden="true"></span>
       <span id="runtimeBannerText"></span>
-      <button id="runtimeRetry" type="button" hidden>Thử lại</button>
+      <button id="runtimeRetry" type="button" hidden>Try again</button>
     </div>
 
     <form class="composer" id="composer" autocomplete="off">
-      <label class="sr-only" for="messageInput">Tin nhắn</label>
+      <label class="sr-only" for="messageInput">Message</label>
       <textarea
         id="messageInput"
         name="message"
         rows="1"
         maxlength="12000"
         enterkeyhint="send"
-        placeholder="Nhắn cho Nolane…"
+        placeholder="Message Nolane…"
         disabled
       ></textarea>
       <button
         class="send-button"
         id="sendButton"
         type="submit"
-        aria-label="Gửi"
+        aria-label="Send"
         disabled
       >
         <span aria-hidden="true">↑</span>
@@ -89,103 +126,171 @@
     </form>
   </div>
 
+  <dialog class="mind-dialog" id="mindDialog">
+    <div class="mind-sheet">
+      <div class="mind-ambient" aria-hidden="true"></div>
+      <header class="mind-header">
+        <div class="mind-title-group">
+          <span class="mind-hero-orb" id="mindHeroOrb" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow" id="mindEyebrow">Observable mind</p>
+            <h2 id="mindTitle">Inside Nolane</h2>
+            <p class="mind-disclaimer" id="mindDisclaimer">
+              A live view of state and activity — not raw private reasoning.
+            </p>
+          </div>
+        </div>
+        <button class="icon-button" type="button" id="closeMindButton" aria-label="Close">×</button>
+      </header>
+
+      <div class="mind-body">
+        <section class="mind-hero-card">
+          <div>
+            <span class="mind-kicker" id="mindMoodLabel">Mood</span>
+            <strong class="mind-mood" id="mindMood">Calm</strong>
+          </div>
+          <div class="emotion-chips" id="emotionChips"></div>
+        </section>
+
+        <section class="mind-grid">
+          <article class="mind-card mind-card-wide">
+            <span class="mind-kicker" id="mindActivityLabel">Activity</span>
+            <strong id="mindActivity">Ready to listen</strong>
+            <div class="mind-progress" aria-hidden="true">
+              <span id="mindProgressBar"></span>
+            </div>
+            <small id="mindActivityHint">Nolane's visible activity summary appears here while a reply is being formed.</small>
+          </article>
+
+          <article class="mind-card">
+            <span class="mind-kicker" id="mindIntentLabel">Intent</span>
+            <strong id="mindIntent">Conversation</strong>
+            <small id="mindIntentHint">Current behavioral direction</small>
+          </article>
+
+          <article class="mind-card">
+            <span class="mind-kicker" id="mindConfidenceLabel">Confidence</span>
+            <strong id="mindConfidence">Steady</strong>
+            <small id="mindConfidenceHint">Based on current uncertainty</small>
+          </article>
+
+          <article class="mind-card mind-card-wide">
+            <span class="mind-kicker" id="mindThreadsLabel">In mind</span>
+            <div class="mind-thread-list" id="mindThreads">
+              <span class="mind-empty" id="mindThreadsEmpty">No open thread right now.</span>
+            </div>
+          </article>
+
+          <article class="mind-card relationship-card">
+            <span class="mind-kicker" id="mindRelationshipLabel">Relationship</span>
+            <div class="relationship-bars">
+              <div><span id="mindClosenessLabel">Closeness</span><i><b id="closenessBar"></b></i></div>
+              <div><span id="mindTrustLabel">Trust</span><i><b id="trustBar"></b></i></div>
+              <div><span id="mindFamiliarityLabel">Familiarity</span><i><b id="familiarityBar"></b></i></div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
   <dialog class="personalization-dialog" id="personalizationDialog">
     <form method="dialog" class="sheet" id="profileForm">
       <div class="sheet-grabber" aria-hidden="true"></div>
       <header class="sheet-header">
         <div>
-          <p class="eyebrow" id="settingsEyebrow">Cá nhân hóa</p>
-          <h2 id="settingsTitle">Để Nolane hợp với bạn hơn</h2>
+          <p class="eyebrow" id="settingsEyebrow">Personalization</p>
+          <h2 id="settingsTitle">Make Nolane feel more like yours</h2>
         </div>
         <button
           class="icon-button"
           type="button"
           id="closeProfileButton"
-          aria-label="Đóng"
+          aria-label="Close"
         >×</button>
       </header>
 
       <div class="sheet-body">
         <label class="field">
-          <span id="preferredNameLabel">Nolane gọi bạn là</span>
+          <span id="preferredNameLabel">What Nolane calls you</span>
           <input
             id="preferredName"
             name="preferred_name"
             maxlength="80"
-            placeholder="Tên bạn thích"
+            placeholder="Your preferred name"
           />
         </label>
 
         <div class="field-grid">
           <label class="field">
-            <span id="languageLabel">Ngôn ngữ</span>
+            <span id="languageLabel">AI response language</span>
             <select id="language" name="language">
-              <option value="auto">Tự nhiên theo bạn</option>
+              <option value="auto">Follow you naturally</option>
               <option value="vi">Tiếng Việt</option>
               <option value="en">English</option>
             </select>
           </label>
 
           <label class="field">
-            <span id="lengthLabel">Độ dài trả lời</span>
+            <span id="lengthLabel">Response length</span>
             <select id="responseLength" name="response_length">
-              <option value="compact">Gọn</option>
-              <option value="balanced">Vừa đủ</option>
-              <option value="expansive">Chi tiết</option>
+              <option value="compact">Compact</option>
+              <option value="balanced">Balanced</option>
+              <option value="expansive">Detailed</option>
             </select>
           </label>
         </div>
 
         <div class="field-grid">
           <label class="field">
-            <span id="styleLabel">Cách nói</span>
+            <span id="styleLabel">Voice</span>
             <select id="conversationStyle" name="conversation_style">
-              <option value="natural">Tự nhiên</option>
-              <option value="warm">Ấm áp</option>
-              <option value="direct">Thẳng và rõ</option>
-              <option value="playful">Tinh nghịch</option>
+              <option value="natural">Natural</option>
+              <option value="warm">Warm</option>
+              <option value="direct">Direct and clear</option>
+              <option value="playful">Playful</option>
             </select>
           </label>
 
           <label class="field">
-            <span id="initiativeLabel">Chủ động</span>
+            <span id="initiativeLabel">Initiative</span>
             <select id="initiative" name="initiative">
-              <option value="off">Không chủ động</option>
-              <option value="gentle">Nhẹ nhàng</option>
-              <option value="active">Chủ động hơn</option>
+              <option value="off">Off</option>
+              <option value="gentle">Gentle</option>
+              <option value="active">Initiative hơn</option>
             </select>
           </label>
         </div>
 
         <label class="toggle-row">
           <span>
-            <strong id="memoryTitle">Nhớ về bạn</strong>
-            <small id="memoryBody">Dùng ký ức cục bộ để hiểu bạn theo thời gian.</small>
+            <strong id="memoryTitle">Remember you</strong>
+            <small id="memoryBody">Use local memories to understand you over time.</small>
           </span>
           <input id="memoryEnabled" type="checkbox" name="memory_enabled" />
           <span class="toggle-control" aria-hidden="true"></span>
         </label>
 
         <label class="field">
-          <span id="instructionLabel">Một điều Nolane nên luôn biết</span>
+          <span id="instructionLabel">One thing Nolane should always know</span>
           <textarea
             id="personalInstruction"
             name="personal_instruction"
             rows="3"
             maxlength="1200"
-            placeholder="Ví dụ: nói với mình như một người bạn, đừng quá khách sáo."
+            placeholder="Example: talk to me like a close friend; don't be overly formal."
           ></textarea>
         </label>
 
         <details class="advanced" id="learningDetails">
-          <summary id="learningAdvancedLabel">Học từ cuộc trò chuyện</summary>
+          <summary id="learningAdvancedLabel">Learn from conversations</summary>
           <div class="advanced-body">
             <p id="learningHint">
-              Chỉ những đoạn bạn tự duyệt mới có thể trở thành dữ liệu học. Mọi thứ được giữ cục bộ.
+              Only conversations you explicitly review can become learning data. Everything stays local.
             </p>
             <div class="learning-status-row">
               <span class="learning-status-dot" aria-hidden="true"></span>
-              <span id="learningSummary">Chưa có lượt duyệt.</span>
+              <span id="learningSummary">No review window yet.</span>
             </div>
             <div class="inline-actions">
               <button
@@ -193,7 +298,7 @@
                 type="button"
                 id="prepareLearningWindow"
               >
-                Chuẩn bị lượt duyệt
+                Prepare review
               </button>
               <button
                 class="text-button"
@@ -208,10 +313,10 @@
         </details>
 
         <details class="advanced" id="connectionDetails">
-          <summary id="advancedLabel">Nâng cao</summary>
+          <summary id="advancedLabel">Advanced</summary>
           <div class="advanced-body">
             <p id="connectionHint">
-              Android có thể kết nối tới runtime Nolane đã được ghép cặp.
+              Android can connect to a paired Nolane runtime.
             </p>
             <label class="field">
               <span>Runtime endpoint</span>
@@ -232,7 +337,7 @@
             </label>
             <div class="inline-actions">
               <button class="secondary-button" type="button" id="saveConnection">
-                Lưu kết nối
+                Save connection
               </button>
               <button class="text-button" type="button" id="clearConnection">
                 Xóa
@@ -255,14 +360,14 @@
     <div class="learning-sheet">
       <header class="sheet-header">
         <div>
-          <p class="eyebrow" id="learningEyebrow">Học có kiểm duyệt</p>
-          <h2 id="learningDialogTitle">Bạn quyết định Nolane được học gì</h2>
+          <p class="eyebrow" id="learningEyebrow">Reviewed learning</p>
+          <h2 id="learningDialogTitle">You decide what Nolane may learn</h2>
         </div>
         <button
           class="icon-button"
           type="button"
           id="closeLearningButton"
-          aria-label="Đóng"
+          aria-label="Close"
         >×</button>
       </header>
 
@@ -271,11 +376,11 @@
 
         <div class="review-turn" id="reviewCandidate" hidden>
           <div class="review-block">
-            <span class="review-role">Bạn</span>
+            <span class="review-role">You</span>
             <p id="reviewPrompt"></p>
           </div>
           <div class="review-block assistant-review">
-            <label class="review-role" for="reviewTarget">Nolane nên học</label>
+            <label class="review-role" for="reviewTarget">Nolane should learn</label>
             <textarea
               id="reviewTarget"
               class="review-target-editor"
@@ -284,12 +389,12 @@
               aria-describedby="reviewEditHint"
             ></textarea>
             <small class="review-edit-hint" id="reviewEditHint">
-              Bạn có thể sửa câu trả lời thành phiên bản bạn thật sự muốn Nolane học.
+              You có thể sửa câu trả lời thành phiên bản bạn thật sự muốn Nolane học.
             </small>
           </div>
 
           <label class="field review-language">
-            <span id="reviewLanguageLabel">Ngôn ngữ của đoạn này</span>
+            <span id="reviewLanguageLabel">AI response language của đoạn này</span>
             <select id="reviewLanguage">
               <option value="vi">Tiếng Việt</option>
               <option value="en">English</option>
@@ -299,9 +404,9 @@
 
         <div class="review-complete" id="reviewComplete" hidden>
           <div class="empty-ember" aria-hidden="true"></div>
-          <strong id="reviewCompleteTitle">Đã duyệt hết lượt này.</strong>
+          <strong id="reviewCompleteTitle">This review window is complete.</strong>
           <span id="reviewCompleteBody">
-            Bạn có thể đóng gói những đoạn đã duyệt thành evidence local.
+            You có thể đóng gói những đoạn đã duyệt thành evidence local.
           </span>
         </div>
       </div>
@@ -313,7 +418,7 @@
             type="button"
             id="markSensitive"
           >
-            Nhạy cảm
+            Sensitive
           </button>
           <button
             class="secondary-button"
@@ -336,7 +441,7 @@
           id="finalizeLearning"
           hidden
         >
-          Đóng gói dữ liệu đã duyệt
+          Package reviewed data
         </button>
       </footer>
     </div>
