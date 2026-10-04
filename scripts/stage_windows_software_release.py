@@ -72,7 +72,7 @@ def main() -> int:
     llama_dest = runtime_dest / "llama"
     shutil.copytree(llama_source, llama_dest, dirs_exist_ok=True)
 
-    model_dest_path = model_dest / "Qwen3-0.6B-Q8_0.gguf"
+    model_dest_path = model_dest / "Qwen3-1.7B-Q8_0.gguf"
     shutil.copy2(model_source, model_dest_path)
 
     staged_runtime = runtime_dest / "nolane-product-runtime.exe"
