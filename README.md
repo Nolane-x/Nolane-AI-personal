@@ -123,14 +123,14 @@ Remote pairing remains an explicit development/fallback path and is not silently
 
 The Windows production language cortex is **Qwen3.5-2B**. Qwen3-0.6B has been retired from every active product/runtime path after failing the product-quality bar. Its lock remains only under `config/legacy-qwen3-0.6b-model.lock.json` so historical research courts stay reproducible.
 
-The production Windows release pins the upstream Qwen checkpoint and an exact Q8_0 GGUF conversion:
+The production Windows release pins the upstream Qwen checkpoint and the recommended Q4_K_M GGUF conversion:
 
 ```text
 upstream: Qwen/Qwen3.5-2B
 revision: 15852e8c16360a2fea060d615a32b45270f8a8fc
 GGUF: bartowski/Qwen_Qwen3.5-2B-GGUF
-GGUF revision: 7d26695454df6de5fbcce2e58681e62dae06ce43
-file: Qwen_Qwen3.5-2B-Q8_0.gguf
+GGUF revision: 8de6479d2743924f9dc499e3654d4e51ea0d4b9d
+file: Qwen_Qwen3.5-2B-Q4_K_M.gguf
 license: Apache-2.0
 ```
 
