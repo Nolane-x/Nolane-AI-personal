@@ -294,7 +294,26 @@ fn canonical_json_bytes(
 
 fn persistent_state_typed_projection(
     state: &PersistentMobileState,
+    include_assistant_name: bool,
 ) -> serde_json::Value {
+    let profile = if include_assistant_name {
+        serde_json::json!({
+            "preferred_name": &state.profile.preferred_name,
+            "assistant_name": &state.profile.assistant_name,
+            "language": &state.profile.language,
+            "response_length": &state.profile.response_length,
+            "conversation_style": &state.profile.conversation_style,
+            "personal_instruction": &state.profile.personal_instruction,
+        })
+    } else {
+        serde_json::json!({
+            "preferred_name": &state.profile.preferred_name,
+            "language": &state.profile.language,
+            "response_length": &state.profile.response_length,
+            "conversation_style": &state.profile.conversation_style,
+            "personal_instruction": &state.profile.personal_instruction,
+        })
+    };
     serde_json::json!({
         "source_checkpoint_sha256": &state.source_checkpoint_sha256,
         "latent_f32_bits": state
@@ -302,13 +321,7 @@ fn persistent_state_typed_projection(
             .iter()
             .map(|value| value.to_bits())
             .collect::<Vec<u32>>(),
-        "profile": {
-            "preferred_name": &state.profile.preferred_name,
-            "language": &state.profile.language,
-            "response_length": &state.profile.response_length,
-            "conversation_style": &state.profile.conversation_style,
-            "personal_instruction": &state.profile.personal_instruction,
-        },
+        "profile": profile,
         "state": {
             "identity_id": &state.state.identity_id,
             "relationship": {
@@ -332,8 +345,10 @@ fn persistent_state_typed_projection(
 
 fn persistent_state_typed_digest(
     state: &PersistentMobileState,
+    include_assistant_name: bool,
 ) -> Result<String, RuntimeError> {
-    let projection = persistent_state_typed_projection(state);
+    let projection =
+        persistent_state_typed_projection(state, include_assistant_name);
     Ok(sha256_hex(&canonical_json_bytes(projection)?))
 }
 
@@ -394,7 +409,10 @@ pub fn read_persistent_mobile_state(
             sha256_hex(&canonical_json_bytes(state_value)?)
         }
         Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1) => {
-            persistent_state_typed_digest(&state)?
+            persistent_state_typed_digest(&state, false)?
+        }
+        Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2) => {
+            persistent_state_typed_digest(&state, true)?
         }
         Some(other) => {
             return Err(RuntimeError::Invalid(format!(
@@ -432,10 +450,11 @@ pub fn write_persistent_mobile_state(
     // values stable across write -> restart -> read.
     let persisted_state: PersistentMobileState =
         serde_json::from_value(state_value.clone())?;
-    let state_sha256 = persistent_state_typed_digest(&persisted_state)?;
+    let state_sha256 =
+        persistent_state_typed_digest(&persisted_state, true)?;
     let envelope = serde_json::json!({
         "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
-        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2,
         "state_sha256": state_sha256,
         "state": state_value,
     });
@@ -641,6 +660,12 @@ impl ProductPayloadInput {
         {
             return Err(RuntimeError::Invalid(
                 "initiative product payload must not contain user_text".into(),
+            ));
+        }
+        let assistant_name = self.profile.assistant_name.trim();
+        if assistant_name.is_empty() || assistant_name.chars().count() > 32 {
+            return Err(RuntimeError::Invalid(
+                "assistant name must contain 1..32 characters".into(),
             ));
         }
         let _ = language_guidance(&self.profile.language)?;
@@ -1417,6 +1442,7 @@ mod tests {
         ProductPayloadState,
         SeededNucleusSampler,
         PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+        PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2,
         PERSISTENT_MOBILE_STATE_SCHEMA,
     };
     use serde_json::{json, Value};
@@ -1496,7 +1522,7 @@ mod tests {
         );
         assert_eq!(
             raw["integrity"].as_str(),
-            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2)
         );
         assert!(raw["state_sha256"].as_str().unwrap().len() == 64);
         assert!(
@@ -1557,7 +1583,7 @@ mod tests {
             serde_json::from_slice(&fs::read(&second_path).unwrap()).unwrap();
         assert_eq!(
             raw["integrity"].as_str(),
-            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2)
         );
     }
 
