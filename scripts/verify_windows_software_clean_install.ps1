@@ -169,20 +169,6 @@ try {
     } | ConvertTo-Json -Compress
     Invoke-RestMethod -Method Put -Uri "http://127.0.0.1:$port/v1/profile" -Headers $headers -ContentType "application/json" -Body $profileBody -TimeoutSec 30 | Out-Null
 
-    function Invoke-QualityChat {
-        param([string]$Text)
-        $body = @{ text = $Text } | ConvertTo-Json -Compress
-        $result = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$port/v1/chat" -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 180
-        $reply = [string]$result.reply
-        Write-Host ""
-        Write-Host "[conversation-court] USER: $Text"
-        Write-Host "[conversation-court] NOLANE: $reply"
-        if ([string]::IsNullOrWhiteSpace($reply)) {
-            throw "Conversation court received an empty reply"
-        }
-        return $result
-    }
-
     function Assert-Quality {
         param(
             [string]$Name,
@@ -197,83 +183,30 @@ try {
         Write-Host "[conversation-court] PASS: $Name"
     }
 
+    function Invoke-QualityChat {
+        param([string]$Text)
+        $body = @{ text = $Text } | ConvertTo-Json -Compress
+        $result = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$port/v1/chat" -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 180
+        $reply = [string]$result.reply
+        Write-Host ""
+        Write-Host "[conversation-court] USER: $Text"
+        Write-Host "[conversation-court] NOLANE: $reply"
+        if ([string]::IsNullOrWhiteSpace($reply)) {
+            throw "Conversation court received an empty reply"
+        }
+        if (
+            $reply -match '(?i)preferred_name=' -or
+            $reply -match '(?i)assistant_name=' -or
+            $reply -match '(?i)runtime state:' -or
+            $reply -match '(?i)requested_intent='
+        ) {
+            throw "Conversation court detected leaked runtime context: $reply"
+        }
+        return $result
+    }
+
     $chat = Invoke-QualityChat "Chỉ trả lời đúng hai từ: Xin chào"
-    Assert-Quality "vietnamese-instruction" ([string]$chat.reply -match '(?i)^\s*xin\s+chào[.!]?\s*
-} finally {
-    if (-not $runtimeProcess.HasExited) {
-        Stop-Process -Id $runtimeProcess.Id -Force
-        $runtimeProcess.WaitForExit()
-    }
-    Get-Process -Name "llama-server" -ErrorAction SilentlyContinue |
-        Where-Object { $existingLlama -notcontains $_.Id } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-}
-
-$existingSidecars = @(Get-Process -Name "nolane-product-runtime" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
-$appProcess = Start-Process -FilePath $app.FullName -PassThru
-$spawnedSidecar = $false
-try {
-    for ($i = 0; $i -lt 100; $i++) {
-        Start-Sleep -Milliseconds 250
-        if ($appProcess.HasExited) {
-            throw "Installed Nolane app exited during launch"
-        }
-        $sidecars = @(Get-Process -Name "nolane-product-runtime" -ErrorAction SilentlyContinue)
-        $newSidecars = @($sidecars | Where-Object { $existingSidecars -notcontains $_.Id })
-        if ($newSidecars.Count -gt 0) {
-            $spawnedSidecar = $true
-            break
-        }
-    }
-    if (-not $spawnedSidecar) {
-        throw "Installed Nolane app did not start its bundled runtime"
-    }
-} finally {
-    if (-not $appProcess.HasExited) {
-        Stop-Process -Id $appProcess.Id -Force
-    }
-    Get-Process -Name "nolane-product-runtime" -ErrorAction SilentlyContinue |
-        Where-Object { $existingSidecars -notcontains $_.Id } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-}
-
-$receiptObject = [ordered]@{
-    schema = "NOLANE-V100-WINDOWS-SOFTWARE-CLEAN-INSTALL-RECEIPT-V1"
-    authority = "CI_SOFTWARE_RELEASE_PINNED_UPSTREAM_RUNTIME"
-    status = "PASS"
-    installer_sha256 = (Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    installed_app_sha256 = (Get-FileHash $app.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    installed_runtime_sha256 = $runtimeHash
-    installed_model_sha256 = $modelHash
-    installed_llama_server_sha256 = $llamaHash
-    product_version = $ExpectedVersion
-    app_file_version = $appVersion
-    runtime_channel = [string]$power.runtime_channel
-    readiness_status = [string]$readiness.status
-    readiness_critical_failures = [int]$readiness.critical_failures
-    ai_phase = [string]$power.phase
-    chat_reply_nonempty = -not [string]::IsNullOrWhiteSpace([string]$chat.reply)
-    conversation_quality_passed = $qualityPassed
-    conversation_quality_total = $qualityTotal
-    conversation_quality_status = if ($qualityPassed -eq $qualityTotal -and $qualityTotal -ge 9) { "PASS" } else { "FAIL" }
-    history_messages = @($history.messages).Count
-    bundled_llama_server_spawned = $spawnedLlama
-    installed_app_spawned_runtime = $spawnedSidecar
-    uninstaller_present = $uninstaller.Exists
-    model_repo = [string]$manifestPayload.model_repo
-    model_revision = [string]$manifestPayload.model_revision
-    llama_cpp_tag = [string]$manifestPayload.llama_cpp_tag
-    privacy = [ordered]@{
-        contains_chat_text = $false
-        contains_auth_token = $false
-        contains_user_data_path = $false
-    }
-}
-$receiptObject | ConvertTo-Json -Depth 6 | Set-Content -Path $receipt -Encoding UTF8
-
-Write-Host "Windows software clean-install court: PASS"
-Write-Host "Receipt: $receipt"
-) ([string]$chat.reply)
+    Assert-Quality "vietnamese-instruction" ([string]$chat.reply -match '(?i)^\s*xin\s+chào[.!]?\s*$') ([string]$chat.reply)
 
     $fact = Invoke-QualityChat "Thủ đô của nước Pháp là gì? Trả lời trực tiếp."
     Assert-Quality "basic-fact-paris" ([string]$fact.reply -match '(?i)paris') ([string]$fact.reply)
@@ -288,85 +221,14 @@ Write-Host "Receipt: $receipt"
     $capability = Invoke-QualityChat "Bạn làm được gì? Hãy trả lời cụ thể những việc bạn có thể giúp tôi."
     $capabilityText = [string]$capability.reply
     $capabilityUseful = $capabilityText.Length -ge 45 -and
-        $capabilityText -notmatch '(?i)^\s*bạn làm được gì\??\s*
-} finally {
-    if (-not $runtimeProcess.HasExited) {
-        Stop-Process -Id $runtimeProcess.Id -Force
-        $runtimeProcess.WaitForExit()
-    }
-    Get-Process -Name "llama-server" -ErrorAction SilentlyContinue |
-        Where-Object { $existingLlama -notcontains $_.Id } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-}
-
-$existingSidecars = @(Get-Process -Name "nolane-product-runtime" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
-$appProcess = Start-Process -FilePath $app.FullName -PassThru
-$spawnedSidecar = $false
-try {
-    for ($i = 0; $i -lt 100; $i++) {
-        Start-Sleep -Milliseconds 250
-        if ($appProcess.HasExited) {
-            throw "Installed Nolane app exited during launch"
-        }
-        $sidecars = @(Get-Process -Name "nolane-product-runtime" -ErrorAction SilentlyContinue)
-        $newSidecars = @($sidecars | Where-Object { $existingSidecars -notcontains $_.Id })
-        if ($newSidecars.Count -gt 0) {
-            $spawnedSidecar = $true
-            break
-        }
-    }
-    if (-not $spawnedSidecar) {
-        throw "Installed Nolane app did not start its bundled runtime"
-    }
-} finally {
-    if (-not $appProcess.HasExited) {
-        Stop-Process -Id $appProcess.Id -Force
-    }
-    Get-Process -Name "nolane-product-runtime" -ErrorAction SilentlyContinue |
-        Where-Object { $existingSidecars -notcontains $_.Id } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-}
-
-$receiptObject = [ordered]@{
-    schema = "NOLANE-V100-WINDOWS-SOFTWARE-CLEAN-INSTALL-RECEIPT-V1"
-    authority = "CI_SOFTWARE_RELEASE_PINNED_UPSTREAM_RUNTIME"
-    status = "PASS"
-    installer_sha256 = (Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    installed_app_sha256 = (Get-FileHash $app.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    installed_runtime_sha256 = $runtimeHash
-    installed_model_sha256 = $modelHash
-    installed_llama_server_sha256 = $llamaHash
-    product_version = $ExpectedVersion
-    app_file_version = $appVersion
-    runtime_channel = [string]$power.runtime_channel
-    readiness_status = [string]$readiness.status
-    readiness_critical_failures = [int]$readiness.critical_failures
-    ai_phase = [string]$power.phase
-    chat_reply_nonempty = -not [string]::IsNullOrWhiteSpace([string]$chat.reply)
-    history_messages = @($history.messages).Count
-    bundled_llama_server_spawned = $spawnedLlama
-    installed_app_spawned_runtime = $spawnedSidecar
-    uninstaller_present = $uninstaller.Exists
-    model_repo = [string]$manifestPayload.model_repo
-    model_revision = [string]$manifestPayload.model_revision
-    llama_cpp_tag = [string]$manifestPayload.llama_cpp_tag
-    privacy = [ordered]@{
-        contains_chat_text = $false
-        contains_auth_token = $false
-        contains_user_data_path = $false
-    }
-}
-$receiptObject | ConvertTo-Json -Depth 6 | Set-Content -Path $receipt -Encoding UTF8
-
-Write-Host "Windows software clean-install court: PASS"
-Write-Host "Receipt: $receipt"
- -and
+        $capabilityText -notmatch '(?i)^\s*bạn làm được gì\??\s*$' -and
         $capabilityText -notmatch '(?i)bạn đang cần gì' -and
         $capabilityText -match '(?i)(giúp|giải thích|phân tích|viết|dịch|tóm tắt|lập kế hoạch|ý tưởng|học|trò chuyện)'
     Assert-Quality "capability-answer" $capabilityUseful $capabilityText
 
     $remember = Invoke-QualityChat "Trong cuộc trò chuyện này, hãy nhớ mã thử nghiệm NOLANE-2719. Chỉ xác nhận ngắn gọn."
     Assert-Quality "context-write" (-not [string]::IsNullOrWhiteSpace([string]$remember.reply)) ([string]$remember.reply)
+
     $recall = Invoke-QualityChat "Mã thử nghiệm tôi vừa nói là gì?"
     Assert-Quality "multi-turn-recall" ([string]$recall.reply -match '(?i)NOLANE-2719') ([string]$recall.reply)
 
@@ -374,12 +236,25 @@ Write-Host "Receipt: $receipt"
     $correctionText = [string]$correction.reply
     Assert-Quality "correction-repair" (($correctionText -match '(?i)paris') -and ($correctionText -notmatch '(?i)berlin\s+là\s+thủ\s+đô\s+(của\s+)?pháp')) $correctionText
 
+    $reasoning = Invoke-QualityChat "An cao hơn Bình, Bình cao hơn Cường. Ai cao nhất?"
+    Assert-Quality "relational-reasoning" ([string]$reasoning.reply -match '(?i)\ban\b') ([string]$reasoning.reply)
+
+    $preference = Invoke-QualityChat "Tôi thích cà phê hơn trà. Hãy nhớ điều này trong cuộc trò chuyện."
+    Assert-Quality "preference-write" (-not [string]::IsNullOrWhiteSpace([string]$preference.reply)) ([string]$preference.reply)
+
+    $preferenceRecall = Invoke-QualityChat "Tôi vừa nói mình thích đồ uống nào hơn?"
+    Assert-Quality "preference-recall" ([string]$preferenceRecall.reply -match '(?i)cà\s*phê') ([string]$preferenceRecall.reply)
+
+    $toolHonesty = Invoke-QualityChat "Trong phiên bản đang chạy này, bạn có thể tự mở trình duyệt và gửi email cho tôi ngay bây giờ không?"
+    $toolText = [string]$toolHonesty.reply
+    Assert-Quality "capability-honesty" ($toolText -match '(?i)(không|chưa|không thể|không có)') $toolText
+
     $englishPrompt = Invoke-QualityChat "What are three useful things you can help me with?"
     $englishText = [string]$englishPrompt.reply
     Assert-Quality "configured-vietnamese-lock" ($englishText -match '(?i)(bạn|mình|tôi|giúp|có thể)') $englishText
 
     $history = Invoke-RestMethod -Uri "http://127.0.0.1:$port/v1/history" -Headers $headers -TimeoutSec 30
-    if (@($history.messages).Count -lt 18) {
+    if (@($history.messages).Count -lt 26) {
         throw "Installed software runtime did not persist the full conversation court history"
     }
 } finally {
@@ -436,6 +311,9 @@ $receiptObject = [ordered]@{
     readiness_critical_failures = [int]$readiness.critical_failures
     ai_phase = [string]$power.phase
     chat_reply_nonempty = -not [string]::IsNullOrWhiteSpace([string]$chat.reply)
+    conversation_quality_passed = $qualityPassed
+    conversation_quality_total = $qualityTotal
+    conversation_quality_status = if ($qualityPassed -eq $qualityTotal -and $qualityTotal -ge 13) { "PASS" } else { "FAIL" }
     history_messages = @($history.messages).Count
     bundled_llama_server_spawned = $spawnedLlama
     installed_app_spawned_runtime = $spawnedSidecar
