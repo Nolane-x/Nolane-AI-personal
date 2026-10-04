@@ -8,7 +8,7 @@
   Windows · Android · Local memory · Proactive conversation · Persistent identity · Apache-2.0
 </p>
 
-> **v1.0.0** turns the research runtime into a deliberately small personal product. Nolane keeps a persistent identity, relationship state, memories, unfinished threads and initiative while its language cortex remains a bounded component rather than the owner of the person-like state.
+> **v1.0.1** promotes Qwen3.5-2B as the production Windows language cortex and hardens real conversation quality while keeping the same deliberately small personal product surface. Nolane keeps a persistent identity, relationship state, memories, unfinished threads and initiative while its language cortex remains a bounded component rather than the owner of the person-like state.
 
 ## Languages
 
@@ -214,4 +214,4 @@ Apache-2.0. See [LICENSE](LICENSE).
 
 ---
 
-Nolane AI Personal is an experimental personal-AI system and research platform. v1.0 focuses on making continuity, memory, relationship and initiative feel coherent while keeping the interface deliberately quiet.
+Nolane AI Personal is an experimental personal-AI system and research platform. v1.0.1 focuses on making continuity, memory, relationship and initiative feel coherent while keeping the interface deliberately quiet.
