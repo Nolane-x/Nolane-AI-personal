@@ -142,7 +142,7 @@ def software_manifest(model: Path, server: Path) -> dict:
         "product_version": "1.0.0",
         "runtime_channel": "software-v1-gguf",
         "model_repo": "Qwen/Qwen3-0.6B-GGUF",
-        "model_revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+        "model_revision": "1eaf4d9657fe65ad10a51eab76a8db5b363bddaa",
         "model_filename": model.name,
         "model_sha256": sha256(model),
         "llama_cpp_repo": "ggml-org/llama.cpp",
