@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from .cortex import Cortex, NullCortex
 from .engine import LivingEngine
-from .product_cortex import FactorizedProductCortex
+from .gguf_product_cortex import GgufProductCortex
 from .product_profile import ProductProfile, ProductProfileStore
 from .product_learning_workspace import ProductLearningWorkspace
 from .promotion_ceremony import verify_promotion_ceremony_receipt
@@ -33,6 +33,9 @@ class ProductRuntime:
         cortex_factory: CortexFactory | None = None,
         enable_rest: bool = True,
         release_ceremony: str | Path | None = None,
+        software_model: str | Path | None = None,
+        llama_server: str | Path | None = None,
+        software_manifest: str | Path | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -62,6 +65,34 @@ class ProductRuntime:
         self.release_ceremony = (
             None if release_ceremony is None else Path(release_ceremony)
         )
+        self.software_model = (
+            None if software_model is None else Path(software_model)
+        )
+        self.llama_server = (
+            None if llama_server is None else Path(llama_server)
+        )
+        self.software_manifest = (
+            None if software_manifest is None else Path(software_manifest)
+        )
+        software_values = (
+            self.software_model,
+            self.llama_server,
+            self.software_manifest,
+        )
+        if any(value is not None for value in software_values) and not all(
+            value is not None for value in software_values
+        ):
+            raise ValueError(
+                "software release mode requires model, llama-server and manifest"
+            )
+        if all(value is not None for value in software_values) and (
+            self.release_ceremony is not None
+            or self.checkpoint is not None
+            or self.tokenizer_path is not None
+        ):
+            raise ValueError(
+                "software GGUF mode and L36 factorized mode are mutually exclusive"
+            )
         self._release_checkpoint_sha256: str | None = None
         self._release_checkpoint_stat: tuple[int, int] | None = None
         if self.release_ceremony is not None:
@@ -126,6 +157,50 @@ class ProductRuntime:
                 "release_assets",
                 True,
                 "external cortex factory configured",
+            )
+
+        if self.software_model is not None:
+            if (
+                self.llama_server is None
+                or self.software_manifest is None
+                or not self.software_model.is_file()
+                or not self.llama_server.is_file()
+                or not self.software_manifest.is_file()
+            ):
+                return self._check_row(
+                    "release_assets",
+                    False,
+                    "software release model/runtime/manifest is incomplete",
+                )
+            try:
+                manifest = json.loads(
+                    self.software_manifest.read_text(encoding="utf-8")
+                )
+                if manifest.get("schema") != "NOLANE-V100-WINDOWS-SOFTWARE-RELEASE-V1":
+                    raise ValueError("software release manifest schema mismatch")
+                if manifest.get("authority") != "CI_SOFTWARE_RELEASE_PINNED_UPSTREAM_RUNTIME":
+                    raise ValueError("software release authority mismatch")
+                model_sha = hashlib.sha256(
+                    self.software_model.read_bytes()
+                ).hexdigest()
+                server_sha = hashlib.sha256(
+                    self.llama_server.read_bytes()
+                ).hexdigest()
+                if manifest.get("model_sha256") != model_sha:
+                    raise ValueError("software model digest mismatch")
+                if manifest.get("llama_server_sha256") != server_sha:
+                    raise ValueError("llama-server digest mismatch")
+                self._release_checkpoint_sha256 = model_sha
+            except Exception as exc:
+                return self._check_row(
+                    "release_assets",
+                    False,
+                    f"{type(exc).__name__}: {exc}",
+                )
+            return self._check_row(
+                "release_assets",
+                True,
+                "pinned GGUF model and llama.cpp runtime verified",
             )
 
         if self.checkpoint is None:
@@ -332,6 +407,17 @@ class ProductRuntime:
         identity_id: str,
         profile_getter: Callable[[], ProductProfile],
     ) -> Cortex:
+        if self.software_model is not None:
+            if self.llama_server is None:
+                raise FileNotFoundError(
+                    "software release llama-server is not configured"
+                )
+            return GgufProductCortex(
+                model_path=self.software_model,
+                llama_server_path=self.llama_server,
+                profile_getter=profile_getter,
+            )
+
         if self.checkpoint is None:
             raise FileNotFoundError(
                 "release model checkpoint is not configured"
@@ -340,7 +426,13 @@ class ProductRuntime:
             raise FileNotFoundError(
                 "release tokenizer assets are not configured"
             )
-        return FactorizedProductCortex(
+        # Keep the certified factorized path out of the lean software
+        # PyInstaller dependency graph. The full product spec includes it.
+        import importlib
+
+        module = importlib.import_module("nolane_personal.product_cortex")
+        factorized = module.FactorizedProductCortex
+        return factorized(
             checkpoint=self.checkpoint,
             tokenizer_path=self.tokenizer_path,
             latent_path=self.data_dir / "latent.json",
@@ -443,7 +535,16 @@ class ProductRuntime:
                 "memory_enabled": bool(self.profile.memory_enabled),
                 "initiative": self.profile.initiative,
                 "model_checkpoint_sha256": self._model_checkpoint_sha256,
-                "device": self.device,
+                "device": (
+                    "cpu"
+                    if self.software_model is not None
+                    else self.device
+                ),
+                "runtime_channel": (
+                    "software-v1-gguf"
+                    if self.software_model is not None
+                    else "certified-l36-factorized"
+                ),
                 "mind": {
                     "schema": "NOLANE-OBSERVABLE-MIND-V1",
                     "raw_reasoning_exposed": False,
