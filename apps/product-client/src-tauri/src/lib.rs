@@ -211,6 +211,13 @@ fn spawn_windows_runtime(
     let model_checkpoint = model_dir.join("factorized-nolane.pt");
     let tokenizer_dir = resource_dir.join("resources").join("tokenizer");
     let ceremony_path = model_dir.join("promotion-ceremony.json");
+    let software_model = model_dir.join("Qwen3-0.6B-Q8_0.gguf");
+    let software_manifest = model_dir.join("software-release.json");
+    let llama_server = resource_dir
+        .join("resources")
+        .join("runtime")
+        .join("llama")
+        .join("llama-server.exe");
 
     if !runtime_exe.is_file() {
         return Err(format!(
@@ -218,23 +225,21 @@ fn spawn_windows_runtime(
             runtime_exe.display()
         ));
     }
-    if !model_checkpoint.is_file() {
-        return Err(format!(
-            "Release model is missing: {}",
-            model_checkpoint.display()
-        ));
-    }
-    if !tokenizer_dir.is_dir() {
-        return Err(format!(
-            "Release tokenizer is missing: {}",
-            tokenizer_dir.display()
-        ));
-    }
-    if !ceremony_path.is_file() {
-        return Err(format!(
-            "Release promotion ceremony is missing: {}",
-            ceremony_path.display()
-        ));
+
+    let certified_ready = model_checkpoint.is_file()
+        && tokenizer_dir.is_dir()
+        && ceremony_path.is_file();
+    let software_ready = software_model.is_file()
+        && software_manifest.is_file()
+        && llama_server.is_file();
+
+    if !certified_ready && !software_ready {
+        return Err(
+            "No complete Windows inference channel is bundled. Expected either "
+                .to_string()
+                + "factorized model + tokenizer + COMPLETE ceremony, or "
+                + "pinned GGUF model + llama.cpp + software manifest.",
+        );
     }
 
     let port = portpicker::pick_unused_port()
@@ -253,15 +258,31 @@ fn spawn_windows_runtime(
         .arg("--port")
         .arg(port.to_string())
         .arg("--data-dir")
-        .arg(data_dir)
-        .arg("--model-bundle")
-        .arg(&model_dir)
-        .arg("--tokenizer")
-        .arg(&tokenizer_dir)
-        .arg("--ceremony")
-        .arg(&ceremony_path)
-        .arg("--device")
-        .arg("auto")
+        .arg(data_dir);
+
+    if certified_ready {
+        command
+            .arg("--model-bundle")
+            .arg(&model_dir)
+            .arg("--tokenizer")
+            .arg(&tokenizer_dir)
+            .arg("--ceremony")
+            .arg(&ceremony_path)
+            .arg("--device")
+            .arg("auto");
+    } else {
+        command
+            .arg("--software-model")
+            .arg(&software_model)
+            .arg("--llama-server")
+            .arg(&llama_server)
+            .arg("--software-manifest")
+            .arg(&software_manifest)
+            .arg("--device")
+            .arg("cpu");
+    }
+
+    command
         .arg("--auth-token")
         .arg(&auth_token)
         .stdin(Stdio::null())
