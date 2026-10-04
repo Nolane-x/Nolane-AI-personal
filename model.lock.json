@@ -13,5 +13,5 @@
     "path": "models/Qwen3-1.7B",
     "commit_weights": false
   },
-  "purpose": "Active 2B-class language/cognition scaffold for Nolane AI Personal. Qwen3-0.6B is retired from active runtime use."
+  "purpose": "Research-compatibility scaffold for the existing Qwen3 Transformer surgery and mobile-tokenizer evidence path. Not the Windows production model; production uses Qwen3.5-2B from config/windows-software-runtime-lock.json. Qwen3-0.6B remains legacy-only."
 }
