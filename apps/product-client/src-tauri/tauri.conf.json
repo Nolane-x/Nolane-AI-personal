@@ -39,7 +39,10 @@
         "type": "offlineInstaller",
         "silent": true
       },
-      "bundleVCRuntime": true
+      "bundleVCRuntime": true,
+      "nsis": {
+        "compression": "zlib"
+      }
     }
   }
 }
