@@ -292,9 +292,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=46831)
     p.add_argument("--data-dir", required=True)
-    p.add_argument("--model-bundle", required=True)
-    p.add_argument("--tokenizer", required=True)
-    p.add_argument("--ceremony", required=True)
+    p.add_argument("--model-bundle")
+    p.add_argument("--tokenizer")
+    p.add_argument("--ceremony")
+    p.add_argument("--software-model")
+    p.add_argument("--llama-server")
+    p.add_argument("--software-manifest")
     p.add_argument(
         "--device",
         default="auto",
@@ -311,12 +314,69 @@ def main() -> int:
             "non-loopback product runtime requires --auth-token"
         )
 
+    software_mode = any(
+        value
+        for value in (
+            args.software_model,
+            args.llama_server,
+            args.software_manifest,
+        )
+    )
+    certified_mode = any(
+        value
+        for value in (
+            args.model_bundle,
+            args.tokenizer,
+            args.ceremony,
+        )
+    )
+    if software_mode and certified_mode:
+        raise SystemExit(
+            "choose exactly one runtime channel: software GGUF or certified L36"
+        )
+    if software_mode and not all(
+        (
+            args.software_model,
+            args.llama_server,
+            args.software_manifest,
+        )
+    ):
+        raise SystemExit(
+            "software runtime requires --software-model, --llama-server "
+            "and --software-manifest"
+        )
+    if not software_mode and not all(
+        (
+            args.model_bundle,
+            args.tokenizer,
+            args.ceremony,
+        )
+    ):
+        raise SystemExit(
+            "certified runtime requires --model-bundle, --tokenizer and --ceremony"
+        )
+
     runtime = ProductRuntime(
         Path(args.data_dir),
-        checkpoint=Path(args.model_bundle),
-        tokenizer_path=Path(args.tokenizer),
+        checkpoint=(
+            None if software_mode else Path(args.model_bundle)
+        ),
+        tokenizer_path=(
+            None if software_mode else Path(args.tokenizer)
+        ),
         device=args.device,
-        release_ceremony=Path(args.ceremony),
+        release_ceremony=(
+            None if software_mode else Path(args.ceremony)
+        ),
+        software_model=(
+            Path(args.software_model) if software_mode else None
+        ),
+        llama_server=(
+            Path(args.llama_server) if software_mode else None
+        ),
+        software_manifest=(
+            Path(args.software_manifest) if software_mode else None
+        ),
     )
     readiness = runtime.preflight()
     if readiness["status"] != "PASS":
