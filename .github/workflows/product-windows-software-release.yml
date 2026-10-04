@@ -62,8 +62,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release-input | Out-Null
-          $modelUrl = "https://huggingface.co/$env:MODEL_REPO/resolve/$env:MODEL_REVISION/$env:MODEL_FILE?download=true"
-          $llamaUrl = "https://github.com/ggml-org/llama.cpp/releases/download/$env:LLAMA_TAG/$env:LLAMA_ASSET"
+          $modelUrl = "https://huggingface.co/$($env:MODEL_REPO)/resolve/$($env:MODEL_REVISION)/$($env:MODEL_FILE)?download=true"
+          $llamaUrl = "https://github.com/ggml-org/llama.cpp/releases/download/$($env:LLAMA_TAG)/$($env:LLAMA_ASSET)"
           curl.exe --fail --location --retry 4 --output "release-input/$env:MODEL_FILE" $modelUrl
           if ($LASTEXITCODE -ne 0) { throw "Pinned Qwen GGUF download failed" }
           curl.exe --fail --location --retry 4 --output "release-input/llama.zip" $llamaUrl
