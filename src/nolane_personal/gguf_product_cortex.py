@@ -219,6 +219,91 @@ class GgufProductCortex:
         return None
 
     @classmethod
+    def _simple_relation_contract(
+        cls,
+        user_text: str | None,
+    ) -> tuple[str, str, tuple[str, ...]] | None:
+        raw = str(user_text or "").strip()
+        if not raw:
+            return None
+        name = r"([^\W\d_][\w-]{0,79})"
+        adjectives = (
+            "cao", "thấp", "lớn", "nhỏ", "nặng", "nhẹ",
+            "nhanh", "chậm", "già", "trẻ", "dài", "ngắn",
+            "mạnh", "yếu", "đắt", "rẻ",
+        )
+        for adjective in adjectives:
+            if re.search(
+                rf"(?iu)\b{re.escape(adjective)}\s+nhất\b",
+                raw,
+            ) is None:
+                continue
+            pairs = re.findall(
+                rf"(?iu)\b{name}\s+{re.escape(adjective)}\s+hơn\s+{name}\b",
+                raw,
+            )
+            if len(pairs) < 2:
+                continue
+            display: dict[str, str] = {}
+            sources: set[str] = set()
+            targets: set[str] = set()
+            for left, right in pairs:
+                left_key = left.casefold()
+                right_key = right.casefold()
+                display.setdefault(left_key, left)
+                display.setdefault(right_key, right)
+                sources.add(left_key)
+                targets.add(right_key)
+            roots = sorted(sources - targets)
+            if len(roots) != 1:
+                continue
+            participants = tuple(
+                display[key]
+                for key in sorted(display)
+            )
+            return display[roots[0]], adjective, participants
+        return None
+
+    @classmethod
+    def _relation_reply_is_correct(
+        cls,
+        *,
+        text: str,
+        contract: tuple[str, str, tuple[str, ...]],
+    ) -> bool:
+        expected, adjective, participants = contract
+        stripped = text.strip()
+        expected_re = re.escape(expected)
+        adjective_re = re.escape(adjective)
+        bare_expected = (
+            re.sub(r"[.!?]+$", "", stripped).strip().casefold()
+            == expected.casefold()
+        )
+        explicit_expected = re.search(
+            rf"(?iu)\b{expected_re}\b.{{0,28}}\b{adjective_re}\s+nhất\b",
+            stripped,
+        ) is not None
+        wrong_extreme = any(
+            participant.casefold() != expected.casefold()
+            and re.search(
+                rf"(?iu)\b{re.escape(participant)}\b.{{0,28}}"
+                rf"\b{adjective_re}\s+nhất\b",
+                stripped,
+            ) is not None
+            for participant in participants
+        )
+        expected_negated = re.search(
+            rf"(?iu)\b{expected_re}\b.{{0,16}}\bkhông\b.{{0,16}}"
+            rf"\b{adjective_re}\s+nhất\b",
+            stripped,
+        ) is not None
+        return (
+            (bare_expected or explicit_expected)
+            and not wrong_extreme
+            and not expected_negated
+        )
+
+    @classmethod
     def _quality_issues(
         cls,
         *,
@@ -238,6 +323,18 @@ class GgufProductCortex:
         exact_reply = cls._requested_exact_reply(request.user_text)
         if exact_reply is not None and text.strip() != exact_reply:
             issues.append("exact_reply_mismatch")
+
+        relation_contract = cls._simple_relation_contract(
+            request.user_text
+        )
+        if (
+            relation_contract is not None
+            and not cls._relation_reply_is_correct(
+                text=text,
+                contract=relation_contract,
+            )
+        ):
+            issues.append("simple_relation_inconsistent")
 
         lowered = text.casefold()
         leaked_markers = (
@@ -353,6 +450,9 @@ class GgufProductCortex:
             text=text,
         )
         exact_reply = self._requested_exact_reply(request.user_text)
+        relation_contract = self._simple_relation_contract(
+            request.user_text
+        )
         if issues:
             repair_messages = [dict(message) for message in messages]
             repair_messages[0] = {
@@ -381,6 +481,14 @@ class GgufProductCortex:
                         + "and answer it directly. Do not ask the recall "
                         + "question back to the user."
                     )
+                    + (
+                        ""
+                        if "simple_relation_inconsistent" not in issues
+                        else "\nThis is a simple transitive relation problem. "
+                        + "Preserve every 'X ... hơn Y' direction exactly, "
+                        + "derive the ordering again, and answer the requested "
+                        + "extreme without reversing the relation."
+                    )
                 ),
             }
             repair_temperature = (
@@ -404,6 +512,14 @@ class GgufProductCortex:
                 # formatting contract. Do not let personalization add names,
                 # punctuation, explanations or other extra text.
                 text = exact_reply
+            elif (
+                relation_contract is not None
+                and "simple_relation_inconsistent" in issues
+            ):
+                expected, adjective, _participants = relation_contract
+                # A tiny deterministic relation kernel is safer than allowing
+                # a small language model to reverse a clearly stated chain.
+                text = f"{expected} {adjective} nhất."
         return CortexReply(text, intent=request.intent)
 
     def self_test(self) -> dict[str, object]:
