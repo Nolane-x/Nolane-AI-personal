@@ -219,6 +219,67 @@ class GgufProductCortex:
         return None
 
     @classmethod
+    def _recent_preference_contract(
+        cls,
+        request: CortexRequest,
+    ) -> tuple[str, str] | None:
+        query = cls._normalized_text(request.user_text or "")
+        recall_signals = (
+            "vừa nói", "vừa bảo", "vừa nhắc", "tôi đã nói", "mình đã nói",
+            "what did i just", "what did i say", "i just said", "i just told",
+        )
+        preference_signals = (
+            "thích", "ưa", "prefer", "like", "favorite", "favourite",
+        )
+        if (
+            not any(signal in query for signal in recall_signals)
+            or not any(signal in query for signal in preference_signals)
+        ):
+            return None
+
+        for message in reversed(request.recent_messages):
+            if message.get("role") != "user":
+                continue
+            content = str(message.get("content", "")).strip()
+            if not content:
+                continue
+
+            vi_match = re.search(
+                r"(?iu)\b(?:tôi|mình|tớ|em|anh|ta)\s+"
+                r"(?:rất\s+)?(?:thích|ưa)\s+(.{1,80}?)\s+hơn\s+"
+                r"(.{1,80}?)(?:[.!?]|$)",
+                content,
+            )
+            if vi_match is not None:
+                preferred = vi_match.group(1).strip(" \t\n\r,;:'\"“”‘’")
+                other = vi_match.group(2).strip(" \t\n\r,;:'\"“”‘’")
+                if preferred and other:
+                    return preferred, other
+
+            en_match = re.search(
+                r"(?iu)\bi\s+(?:really\s+)?(?:prefer|like)\s+"
+                r"(.{1,80}?)\s+(?:to|more\s+than)\s+"
+                r"(.{1,80}?)(?:[.!?]|$)",
+                content,
+            )
+            if en_match is not None:
+                preferred = en_match.group(1).strip(" \t\n\r,;:'\"“”‘’")
+                other = en_match.group(2).strip(" \t\n\r,;:'\"“”‘’")
+                if preferred and other:
+                    return preferred, other
+        return None
+
+    @classmethod
+    def _preference_reply_is_correct(
+        cls,
+        *,
+        text: str,
+        contract: tuple[str, str],
+    ) -> bool:
+        preferred, _other = contract
+        return cls._normalized_text(preferred) in cls._normalized_text(text)
+
+    @classmethod
     def _simple_arithmetic_contract(
         cls,
         user_text: str | None,
@@ -441,6 +502,16 @@ class GgufProductCortex:
         if any(marker in lowered for marker in leaked_markers):
             issues.append("runtime_context_leak")
 
+        preference_contract = cls._recent_preference_contract(request)
+        if (
+            preference_contract is not None
+            and not cls._preference_reply_is_correct(
+                text=text,
+                contract=preference_contract,
+            )
+        ):
+            issues.append("preference_recall_incomplete")
+
         recall_prompts = (
             "vừa nói",
             "vừa bảo",
@@ -543,6 +614,7 @@ class GgufProductCortex:
             text=text,
         )
         exact_reply = self._requested_exact_reply(request.user_text)
+        preference_contract = self._recent_preference_contract(request)
         arithmetic_contract = self._simple_arithmetic_contract(
             request.user_text
         )
@@ -567,6 +639,14 @@ class GgufProductCortex:
                         else "\nThe user required an exact literal reply. "
                         + "Output exactly this text and nothing else: "
                         + json.dumps(exact_reply, ensure_ascii=False)
+                    )
+                    + (
+                        ""
+                        if "preference_recall_incomplete" not in issues
+                        else "\nThe user is asking you to recall a preference "
+                        + "they stated in the recent conversation. Recover the "
+                        + "actual preferred item from the role-aware history "
+                        + "and name it explicitly; do not answer vaguely."
                     )
                     + (
                         ""
@@ -598,6 +678,7 @@ class GgufProductCortex:
                 0.0
                 if (
                     "recall_askback" in issues
+                    or "preference_recall_incomplete" in issues
                     or "simple_arithmetic_inconsistent" in issues
                     or "simple_relation_inconsistent" in issues
                 )
@@ -621,6 +702,14 @@ class GgufProductCortex:
                 # formatting contract. Do not let personalization add names,
                 # punctuation, explanations or other extra text.
                 text = exact_reply
+            elif (
+                preference_contract is not None
+                and "preference_recall_incomplete" in issues
+            ):
+                preferred, other = preference_contract
+                # Recent explicit preferences are structured facts from the
+                # conversation, so do not let the LLM erase the key entity.
+                text = f"Bạn thích {preferred} hơn {other}."
             elif (
                 arithmetic_contract is not None
                 and "simple_arithmetic_inconsistent" in issues
