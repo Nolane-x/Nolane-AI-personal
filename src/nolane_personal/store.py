@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -87,6 +88,15 @@ class LivingStore:
             CREATE INDEX IF NOT EXISTS idx_snapshots_version ON snapshots(version);
             CREATE INDEX IF NOT EXISTS idx_memory_links_parent ON memory_links(parent_memory_id);
             CREATE INDEX IF NOT EXISTS idx_memory_links_child ON memory_links(child_memory_id);
+            CREATE TABLE IF NOT EXISTS memory_controls (
+                control_id TEXT PRIMARY KEY,
+                memory_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                at TEXT NOT NULL,
+                before_sha256 TEXT,
+                after_sha256 TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_memory_controls_memory ON memory_controls(memory_id, at DESC);
             """
         )
         self.db.commit()
@@ -188,6 +198,159 @@ class LivingStore:
             )
             for row in rows
         ]
+
+    def _memory_control_id(self, memory_id: str, action: str, at: str) -> str:
+        return hashlib.sha256(
+            f"{memory_id}:{action}:{at}".encode("utf-8")
+        ).hexdigest()
+
+    def _memory_payload_digest(
+        self,
+        *,
+        text: str,
+        kind: str,
+        salience: float,
+        confidence: float,
+        metadata: dict,
+    ) -> str:
+        return payload_digest(
+            {
+                "text": text,
+                "kind": kind,
+                "salience": float(salience),
+                "confidence": float(confidence),
+                "metadata": metadata,
+            }
+        )
+
+    def keep_memory(self, memory_id: str) -> MemoryRecord:
+        row = self.db.execute(
+            "SELECT * FROM memories WHERE memory_id=?",
+            (str(memory_id),),
+        ).fetchone()
+        if row is None:
+            raise ValueError("unknown memory")
+        metadata = json.loads(row["metadata_json"])
+        before = self._memory_payload_digest(
+            text=row["text"],
+            kind=row["kind"],
+            salience=row["salience"],
+            confidence=row["confidence"],
+            metadata=metadata,
+        )
+        at = datetime.now(timezone.utc).isoformat()
+        metadata["user_kept"] = True
+        metadata["user_kept_at"] = at
+        salience = max(0.85, float(row["salience"]))
+        after = self._memory_payload_digest(
+            text=row["text"],
+            kind=row["kind"],
+            salience=salience,
+            confidence=row["confidence"],
+            metadata=metadata,
+        )
+        with self.db:
+            self.db.execute(
+                "UPDATE memories SET salience=?, metadata_json=? WHERE memory_id=?",
+                (salience, canonical_json(metadata), str(memory_id)),
+            )
+            self.db.execute(
+                "INSERT INTO memory_controls(control_id,memory_id,action,at,before_sha256,after_sha256) VALUES(?,?,?,?,?,?)",
+                (
+                    self._memory_control_id(str(memory_id), "keep", at),
+                    str(memory_id),
+                    "keep",
+                    at,
+                    before,
+                    after,
+                ),
+            )
+        return self.memory_by_ids([memory_id])[str(memory_id)]
+
+    def edit_memory(self, memory_id: str, text: str) -> MemoryRecord:
+        clean = str(text).strip()
+        if not clean:
+            raise ValueError("memory text is empty")
+        if len(clean) > 4000:
+            raise ValueError("memory text is too long")
+        row = self.db.execute(
+            "SELECT * FROM memories WHERE memory_id=?",
+            (str(memory_id),),
+        ).fetchone()
+        if row is None:
+            raise ValueError("unknown memory")
+        metadata = json.loads(row["metadata_json"])
+        before = self._memory_payload_digest(
+            text=row["text"],
+            kind=row["kind"],
+            salience=row["salience"],
+            confidence=row["confidence"],
+            metadata=metadata,
+        )
+        at = datetime.now(timezone.utc).isoformat()
+        metadata["user_edited"] = True
+        metadata["user_edited_at"] = at
+        after = self._memory_payload_digest(
+            text=clean,
+            kind=row["kind"],
+            salience=row["salience"],
+            confidence=row["confidence"],
+            metadata=metadata,
+        )
+        with self.db:
+            self.db.execute(
+                "UPDATE memories SET text=?, metadata_json=? WHERE memory_id=?",
+                (clean, canonical_json(metadata), str(memory_id)),
+            )
+            self.db.execute(
+                "INSERT INTO memory_controls(control_id,memory_id,action,at,before_sha256,after_sha256) VALUES(?,?,?,?,?,?)",
+                (
+                    self._memory_control_id(str(memory_id), "edit", at),
+                    str(memory_id),
+                    "edit",
+                    at,
+                    before,
+                    after,
+                ),
+            )
+        return self.memory_by_ids([memory_id])[str(memory_id)]
+
+    def delete_memory(self, memory_id: str) -> bool:
+        row = self.db.execute(
+            "SELECT * FROM memories WHERE memory_id=?",
+            (str(memory_id),),
+        ).fetchone()
+        if row is None:
+            return False
+        metadata = json.loads(row["metadata_json"])
+        before = self._memory_payload_digest(
+            text=row["text"],
+            kind=row["kind"],
+            salience=row["salience"],
+            confidence=row["confidence"],
+            metadata=metadata,
+        )
+        at = datetime.now(timezone.utc).isoformat()
+        with self.db:
+            self.db.execute(
+                "DELETE FROM memory_links WHERE parent_memory_id=? OR child_memory_id=?",
+                (str(memory_id), str(memory_id)),
+            )
+            self.db.execute(
+                "DELETE FROM memories WHERE memory_id=?",
+                (str(memory_id),),
+            )
+            self.db.execute(
+                "INSERT INTO memory_controls(control_id,memory_id,action,at,before_sha256,after_sha256) VALUES(?,?,?,?,?,NULL)",
+                (
+                    self._memory_control_id(str(memory_id), "delete", at),
+                    str(memory_id),
+                    "delete",
+                    at,
+                    before,
+                ),
+            )
+        return True
 
     def memory_by_ids(self, memory_ids: Iterable[str]) -> dict[str, MemoryRecord]:
         ids = list(dict.fromkeys(str(x) for x in memory_ids))
