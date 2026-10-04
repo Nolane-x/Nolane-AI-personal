@@ -69,7 +69,7 @@ if ($installerProcess.ExitCode -ne 0) {
     throw "NSIS clean install failed with exit code $($installerProcess.ExitCode)"
 }
 
-$app = Find-OneFile -Root $installRoot -Filter "Nolane.exe" -Label "Nolane.exe"
+$app = Find-OneFile -Root $installRoot -Filter "nolane-product-client.exe" -Label "nolane-product-client.exe"
 $model = Find-OneFile -Root $installRoot -Filter "Qwen3-0.6B-Q8_0.gguf" -Label "pinned Qwen GGUF model"
 $manifest = Find-OneFile -Root $installRoot -Filter "software-release.json" -Label "software release manifest"
 $runtime = Find-OneFile -Root $installRoot -Filter "nolane-product-runtime.exe" -Label "Nolane product runtime"
