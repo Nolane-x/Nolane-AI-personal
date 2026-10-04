@@ -345,3 +345,62 @@ def test_quality_guard_enforces_explicit_exact_literal_reply():
     reply = cortex.generate(request)
 
     assert reply.utterance == "Xin chào"
+
+
+def test_quality_guard_repairs_recent_turn_recall_askback():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Bạn vừa nói mình thích đồ uống gì?",
+        "Bạn thích cà phê hơn trà.",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Tôi vừa nói mình thích đồ uống nào hơn?",
+        state=LivingState(identity_id="recall-repair"),
+        recent_messages=[
+            {
+                "role": "user",
+                "content": "Tôi thích cà phê hơn trà. Hãy nhớ điều này.",
+            },
+            {
+                "role": "assistant",
+                "content": "Được rồi, tôi sẽ nhớ rằng bạn thích cà phê hơn trà.",
+            },
+        ],
+    )
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Bạn vừa nói mình thích đồ uống gì?",
+    )
+    assert "recall_askback" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Bạn thích cà phê hơn trà."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "recent-turn recall question" in calls[1]["messages"][0]["content"]
