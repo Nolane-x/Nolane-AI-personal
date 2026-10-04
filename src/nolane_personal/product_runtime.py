@@ -20,6 +20,14 @@ from .store import LivingStore
 CortexFactory = Callable[[str, Callable[[], ProductProfile]], Cortex]
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 class ProductRuntime:
     """Thread-safe local product facade over the persistent LivingEngine."""
 
@@ -180,12 +188,21 @@ class ProductRuntime:
                     raise ValueError("software release manifest schema mismatch")
                 if manifest.get("authority") != "CI_SOFTWARE_RELEASE_PINNED_UPSTREAM_RUNTIME":
                     raise ValueError("software release authority mismatch")
-                model_sha = hashlib.sha256(
-                    self.software_model.read_bytes()
-                ).hexdigest()
-                server_sha = hashlib.sha256(
-                    self.llama_server.read_bytes()
-                ).hexdigest()
+                software_stat = self.software_model.stat()
+                software_fingerprint = (
+                    int(software_stat.st_size),
+                    int(software_stat.st_mtime_ns),
+                )
+                if (
+                    self._release_checkpoint_sha256 is not None
+                    and self._release_checkpoint_stat == software_fingerprint
+                ):
+                    model_sha = self._release_checkpoint_sha256
+                else:
+                    model_sha = _sha256_file(self.software_model)
+                    self._release_checkpoint_sha256 = model_sha
+                    self._release_checkpoint_stat = software_fingerprint
+                server_sha = _sha256_file(self.llama_server)
                 if manifest.get("model_sha256") != model_sha:
                     raise ValueError("software model digest mismatch")
                 if manifest.get("llama_server_sha256") != server_sha:
@@ -262,9 +279,7 @@ class ProductRuntime:
             ):
                 actual_sha = self._release_checkpoint_sha256
             else:
-                actual_sha = hashlib.sha256(
-                    checkpoint.read_bytes()
-                ).hexdigest()
+                actual_sha = _sha256_file(checkpoint)
                 self._release_checkpoint_sha256 = actual_sha
                 self._release_checkpoint_stat = fingerprint
 
