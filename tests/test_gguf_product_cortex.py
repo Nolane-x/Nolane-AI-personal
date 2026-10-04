@@ -44,7 +44,7 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
     tmp_path,
     monkeypatch,
 ):
-    model = tmp_path / "Qwen3-0.6B-Q8_0.gguf"
+    model = tmp_path / "Qwen3-1.7B-Q8_0.gguf"
     model.write_bytes(b"pinned-qwen-gguf")
     server = tmp_path / "llama-server.exe"
     server.write_bytes(b"llama-server")
@@ -70,11 +70,22 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
         )
         if url.endswith("/health"):
             return {"status": "ok"}
+        messages = (payload or {}).get("messages", [])
+        user_text = " ".join(
+            str(message.get("content", ""))
+            for message in messages
+            if isinstance(message, dict) and message.get("role") == "user"
+        )
+        content = (
+            "Paris"
+            if "Thủ đô của nước Pháp" in user_text
+            else "Xin chào từ Nolane."
+        )
         return {
             "choices": [
                 {
                     "message": {
-                        "content": "Xin chào từ Nolane.",
+                        "content": content,
                     }
                 }
             ]
@@ -128,6 +139,7 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
 
     smoke = cortex.self_test()
     assert smoke["status"] == "PASS"
+    assert smoke["basic_fact_probe"] == "PASS"
     assert smoke["checkpoint_sha256"] == sha256(model)
     assert smoke["runtime"] == "llama.cpp"
 
@@ -141,9 +153,9 @@ def software_manifest(model: Path, server: Path) -> dict:
         "authority": "CI_SOFTWARE_RELEASE_PINNED_UPSTREAM_RUNTIME",
         "product_version": "1.0.0",
         "runtime_channel": "software-v1-gguf",
-        "model_repo": "Qwen/Qwen3-0.6B-GGUF",
+        "model_repo": "Qwen/Qwen3-1.7B-GGUF",
         "model_revision": "main",
-        "model_source_file_commit": "1eaf4d9657fe65ad10a51eab76a8db5b363bddaa",
+        "model_source_file_commit": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
         "model_filename": model.name,
         "model_sha256": sha256(model),
         "llama_cpp_repo": "ggml-org/llama.cpp",
@@ -161,7 +173,7 @@ def software_manifest(model: Path, server: Path) -> dict:
 
 
 def test_product_runtime_accepts_hash_bound_software_release_assets(tmp_path):
-    model = tmp_path / "Qwen3-0.6B-Q8_0.gguf"
+    model = tmp_path / "Qwen3-1.7B-Q8_0.gguf"
     model.write_bytes(b"software-model")
     server = tmp_path / "llama-server.exe"
     server.write_bytes(b"software-server")
@@ -197,7 +209,7 @@ def test_product_runtime_accepts_hash_bound_software_release_assets(tmp_path):
 
 
 def test_product_runtime_rejects_partial_software_mode(tmp_path):
-    model = tmp_path / "Qwen3-0.6B-Q8_0.gguf"
+    model = tmp_path / "Qwen3-1.7B-Q8_0.gguf"
     model.write_bytes(b"model")
     with pytest.raises(ValueError, match="requires model, llama-server and manifest"):
         ProductRuntime(
