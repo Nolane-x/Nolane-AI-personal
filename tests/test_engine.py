@@ -75,4 +75,8 @@ def test_engine_supplies_role_aware_recent_dialogue_without_current_duplication(
         row["content"] != "Tên mình là gì?"
         for row in request.recent_messages
     )
+    assert all(
+        memory.text != "Tên mình là gì?"
+        for memory in request.memories
+    )
     store.close()
