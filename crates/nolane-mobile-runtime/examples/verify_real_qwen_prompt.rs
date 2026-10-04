@@ -34,10 +34,10 @@ fn main() {
         fixture.schema,
         "NOLANE-V052-REAL-QWEN-PROMPT-FIXTURE-V1"
     );
-    assert_eq!(fixture.repo_id, "Qwen/Qwen3-0.6B");
+    assert_eq!(fixture.repo_id, "Qwen/Qwen3-1.7B");
     assert_eq!(
         fixture.revision,
-        "c1899de289a04d12100db370d81485cdf75e47ca"
+        "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
     );
 
     let contract = FrozenPromptContract::load(
