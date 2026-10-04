@@ -121,26 +121,22 @@ Remote pairing remains an explicit development/fallback path and is not silently
 
 ## Language cortex and model assets
 
-The active language cortex is now the **Qwen3-1.7B 2B-class** model. Qwen3-0.6B has been retired from active product/runtime use after failing the product-quality bar. Its lock remains only under `config/legacy-qwen3-0.6b-model.lock.json` so historical research courts stay reproducible.
+The Windows production language cortex is **Qwen3.5-2B**. Qwen3-0.6B has been retired from every active product/runtime path after failing the product-quality bar. Its lock remains only under `config/legacy-qwen3-0.6b-model.lock.json` so historical research courts stay reproducible.
 
-Model weights are intentionally **not committed to GitHub**.
-
-To reproduce the pinned active upstream checkpoint:
-
-```bash
-python -m pip install -r requirements-model.txt
-python scripts/download_model.py
-```
-
-The active upstream model is pinned to:
+The production Windows release pins the upstream Qwen checkpoint and an exact Q8_0 GGUF conversion:
 
 ```text
-Qwen/Qwen3-1.7B
-revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+upstream: Qwen/Qwen3.5-2B
+revision: 15852e8c16360a2fea060d615a32b45270f8a8fc
+GGUF: bartowski/Qwen_Qwen3.5-2B-GGUF
+GGUF revision: 7d26695454df6de5fbcce2e58681e62dae06ce43
+file: Qwen_Qwen3.5-2B-Q8_0.gguf
 license: Apache-2.0
 ```
 
-The Windows software release uses the official Qwen3-1.7B Q8_0 GGUF through the pinned local llama.cpp runtime.
+The GGUF is hash-pinned and runs through the pinned local llama.cpp runtime. The repository's root `model.lock.json` remains a Qwen3-1.7B research-compatibility scaffold for the existing Transformer surgery/mobile tokenizer research path; it is not the Windows production model.
+
+Model weights are intentionally **not committed to GitHub**. Historical Qwen3-0.6B evidence stays reproducible but can no longer be selected accidentally by the normal product/runtime path.
 
 ## Developer quick start
 
