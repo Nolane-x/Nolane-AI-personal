@@ -23,7 +23,7 @@ _LENGTH_TOKENS = {
     "expansive": 256,
 }
 
-_SERVER_ALIAS = "nolane-qwen3-0.6b"
+_SERVER_ALIAS = "nolane-qwen3-2b"
 
 
 def _sha256_file(path: Path) -> str:
@@ -201,7 +201,7 @@ class GgufProductCortex:
         text = self._chat(
             messages,
             max_tokens=_LENGTH_TOKENS[profile.response_length],
-            temperature=0.78,
+            temperature=0.55,
             top_p=0.9,
         )
         return CortexReply(text, intent=request.intent)
@@ -222,9 +222,32 @@ class GgufProductCortex:
             temperature=0.0,
             top_p=1.0,
         )
+        factual = self._chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Answer the factual question directly. No reasoning, "
+                        "no explanation, no extra text."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": "Thủ đô của nước Pháp là gì?",
+                },
+            ],
+            max_tokens=8,
+            temperature=0.0,
+            top_p=1.0,
+        )
+        if "paris" not in factual.casefold():
+            raise RuntimeError(
+                "semantic smoke failed: basic factual probe did not answer Paris"
+            )
         return {
             "status": "PASS",
             "reply_nonempty": bool(text.strip()),
+            "basic_fact_probe": "PASS",
             "checkpoint_sha256": self.checkpoint_sha256,
             "device": "cpu",
             "runtime": "llama.cpp",
