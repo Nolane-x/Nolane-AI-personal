@@ -113,6 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="artifacts/nolane-v1-software-artifacts"
+          VERSION="${{ steps.version.outputs.version }}"
           mkdir -p "$ROOT/evidence/ui" "$ROOT/evidence/localmobile-court"
 
           WINDOWS_EXE="$(find artifacts/v1-downloads/windows -type f -name '*.exe' -print -quit)"
@@ -123,15 +124,15 @@ jobs:
           test -n "$ARM64_APK"
           test -n "$X86_APK"
 
-          cp "$WINDOWS_EXE" "$ROOT/Nolane-v1.0.0-windows-native-court.exe"
-          cp "$ARM64_APK" "$ROOT/Nolane-v1.0.0-android-arm64.apk"
-          cp "$X86_APK" "$ROOT/Nolane-v1.0.0-android-x86_64-emulator.apk"
+          cp "$WINDOWS_EXE" "$ROOT/Nolane-v${VERSION}-windows-native-court.exe"
+          cp "$ARM64_APK" "$ROOT/Nolane-v${VERSION}-android-arm64.apk"
+          cp "$X86_APK" "$ROOT/Nolane-v${VERSION}-android-x86_64-emulator.apk"
           cp artifacts/v1-ci-closure.json "$ROOT/v1-ci-closure.json"
           cp -R artifacts/v1-downloads/ui/. "$ROOT/evidence/ui/"
           cp -R artifacts/v1-downloads/localmobile-court/. "$ROOT/evidence/localmobile-court/"
 
           cat > "$ROOT/ARTIFACTS.md" <<EOF
-          # Nolane AI Personal v1.0 software artifacts
+          # Nolane AI Personal v${VERSION} software artifacts
 
           Product version: ${{ steps.version.outputs.version }}
           Commit: ${{ github.event.workflow_run.head_sha }}
