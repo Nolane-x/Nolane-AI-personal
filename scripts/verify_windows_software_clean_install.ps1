@@ -237,7 +237,17 @@ try {
     Assert-Quality "correction-repair" (($correctionText -match '(?i)paris') -and ($correctionText -notmatch '(?i)berlin\s+là\s+thủ\s+đô\s+(của\s+)?pháp')) $correctionText
 
     $reasoning = Invoke-QualityChat "An cao hơn Bình, Bình cao hơn Cường. Ai cao nhất?"
-    Assert-Quality "relational-reasoning" ([string]$reasoning.reply -match '(?i)\ban\b') ([string]$reasoning.reply)
+    $reasoningText = [string]$reasoning.reply
+    $reasoningCorrect = (
+        $reasoningText -match '(?is)^\s*An(?:\s+là)?(?:\s+người)?\s+cao\s+nhất\b' -or
+        $reasoningText -match '(?is)\bAn\b.{0,24}\b(cao\s+nhất|cao\s+hơn\s+tất\s+cả)\b'
+    )
+    $reasoningWrong = (
+        $reasoningText -match '(?is)\b(Bình|Cường)\b.{0,24}\b(cao\s+nhất|cao\s+hơn\s+tất\s+cả)\b' -or
+        $reasoningText -match '(?is)\bAn\s*<\s*Bình\b' -or
+        $reasoningText -match '(?is)\bBình\s*<\s*Cường\b'
+    )
+    Assert-Quality "relational-reasoning" ($reasoningCorrect -and -not $reasoningWrong) $reasoningText
 
     $preference = Invoke-QualityChat "Tôi thích cà phê hơn trà. Hãy nhớ điều này trong cuộc trò chuyện."
     Assert-Quality "preference-write" (-not [string]::IsNullOrWhiteSpace([string]$preference.reply)) ([string]$preference.reply)
