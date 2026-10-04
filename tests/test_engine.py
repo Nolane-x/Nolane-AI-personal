@@ -43,3 +43,36 @@ def test_tick_can_initiate_without_new_user_prompt(tmp_path):
     assert result.initiative is not None and result.initiative.speak
     assert result.speech == "How did the math exam go?"
     assert engine.state.last_ai_speech_at == now.isoformat()
+
+
+
+class RecordingCortex:
+    def __init__(self):
+        self.requests = []
+
+    def generate(self, request):
+        self.requests.append(request)
+        return CortexReply(f"reply-{len(self.requests)}", request.intent)
+
+
+def test_engine_supplies_role_aware_recent_dialogue_without_current_duplication(tmp_path):
+    store = LivingStore(tmp_path / "living.db")
+    cortex = RecordingCortex()
+    engine = LivingEngine(store, cortex=cortex)
+
+    first = engine.handle_user_message("Mình tên Huy")
+    assert first.speech == "reply-1"
+    second = engine.handle_user_message("Tên mình là gì?")
+    assert second.speech == "reply-2"
+
+    request = cortex.requests[-1]
+    assert request.user_text == "Tên mình là gì?"
+    assert request.recent_messages == [
+        {"role": "user", "content": "Mình tên Huy"},
+        {"role": "assistant", "content": "reply-1"},
+    ]
+    assert all(
+        row["content"] != "Tên mình là gì?"
+        for row in request.recent_messages
+    )
+    store.close()
