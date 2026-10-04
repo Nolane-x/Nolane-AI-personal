@@ -1,0 +1,148 @@
+name: Windows Software Installer
+
+on:
+  push:
+    branches:
+      - main
+      - release/v1-software-installer
+    paths:
+      - "src/nolane_personal/gguf_product_cortex.py"
+      - "src/nolane_personal/product_runtime.py"
+      - "src/nolane_personal/product_server.py"
+      - "src/nolane_personal/product_prompt_payload.py"
+      - "apps/product-client/**"
+      - "packaging/nolane-product-runtime-software.spec"
+      - "scripts/stage_windows_software_release.py"
+      - "scripts/verify_windows_software_clean_install.ps1"
+      - "config/windows-software-runtime-lock.json"
+      - ".github/workflows/product-windows-software-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-software-installer:
+    name: Windows one-click software installer
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify software runtime unit courts
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pytest -q tests/test_gguf_product_cortex.py tests/test_product_runtime.py
+          python -m compileall -q src/nolane_personal/gguf_product_cortex.py src/nolane_personal/product_runtime.py src/nolane_personal/product_server.py scripts/stage_windows_software_release.py
+
+      - name: Resolve pinned software runtime
+        shell: pwsh
+        run: |
+          $lock = Get-Content config/windows-software-runtime-lock.json -Raw | ConvertFrom-Json
+          if ($lock.schema -ne "NOLANE-V100-WINDOWS-SOFTWARE-RUNTIME-LOCK-V1") { throw "Unsupported software runtime lock schema" }
+          "MODEL_REPO=$($lock.model.repo)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MODEL_REVISION=$($lock.model.revision)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MODEL_FILE=$($lock.model.filename)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MODEL_SHA256=$($lock.model.sha256)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "LLAMA_TAG=$($lock.llama_cpp.tag)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "LLAMA_ASSET=$($lock.llama_cpp.asset)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "LLAMA_SHA256=$($lock.llama_cpp.sha256)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Download exact Qwen GGUF and llama.cpp
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-input | Out-Null
+          $modelUrl = "https://huggingface.co/$env:MODEL_REPO/resolve/$env:MODEL_REVISION/$env:MODEL_FILE?download=true"
+          $llamaUrl = "https://github.com/ggml-org/llama.cpp/releases/download/$env:LLAMA_TAG/$env:LLAMA_ASSET"
+          curl.exe --fail --location --retry 4 --output "release-input/$env:MODEL_FILE" $modelUrl
+          if ($LASTEXITCODE -ne 0) { throw "Pinned Qwen GGUF download failed" }
+          curl.exe --fail --location --retry 4 --output "release-input/llama.zip" $llamaUrl
+          if ($LASTEXITCODE -ne 0) { throw "Pinned llama.cpp download failed" }
+          $modelHash = (Get-FileHash "release-input/$env:MODEL_FILE" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $llamaHash = (Get-FileHash "release-input/llama.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($modelHash -ne $env:MODEL_SHA256.ToLowerInvariant()) { throw "Pinned Qwen GGUF SHA-256 mismatch" }
+          if ($llamaHash -ne $env:LLAMA_SHA256.ToLowerInvariant()) { throw "Pinned llama.cpp archive SHA-256 mismatch" }
+          Expand-Archive -Path "release-input/llama.zip" -DestinationPath "release-input/llama" -Force
+          if (-not (Test-Path "release-input/llama/llama-server.exe")) { throw "Pinned llama.cpp archive does not contain llama-server.exe" }
+
+      - name: Resolve product version
+        shell: pwsh
+        run: |
+          $versions = python scripts/check_product_version.py | ConvertFrom-Json
+          "PRODUCT_VERSION=$($versions.python)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build lean Nolane product runtime
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller
+          pyinstaller --clean --noconfirm packaging/nolane-product-runtime-software.spec
+          if (-not (Test-Path "dist/nolane-product-runtime/nolane-product-runtime.exe")) { throw "Lean Nolane runtime executable missing" }
+
+      - name: Stage pinned one-click resources
+        shell: pwsh
+        run: |
+          python scripts/stage_windows_software_release.py --runtime-dir dist/nolane-product-runtime --model "release-input/$env:MODEL_FILE" --llama-dir release-input/llama --product-version "$env:PRODUCT_VERSION" --model-repo "$env:MODEL_REPO" --model-revision "$env:MODEL_REVISION" --llama-tag "$env:LLAMA_TAG"
+
+      - name: Parse clean-install court
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "scripts/verify_windows_software_clean_install.ps1"), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; throw "Windows software clean-install court PowerShell syntax invalid" }
+
+      - name: Install pinned Tauri CLI
+        shell: pwsh
+        run: npm install --global @tauri-apps/cli@2.12.0
+
+      - name: Generate product icons
+        working-directory: apps/product-client
+        shell: pwsh
+        run: tauri icon icon-source.svg
+
+      - name: Build one-click NSIS installer
+        working-directory: apps/product-client
+        shell: pwsh
+        run: tauri build --bundles nsis
+
+      - name: Normalize installer filename
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/windows-software-release | Out-Null
+          $installer = Get-ChildItem "apps/product-client/src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "NSIS installer was not produced" }
+          $normalized = "artifacts/windows-software-release/Nolane-AI-Personal-$env:PRODUCT_VERSION-Setup.exe"
+          Copy-Item $installer.FullName $normalized -Force
+          "INSTALLER_PATH=$normalized" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Clean-install real local chat court
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:RUNNER_TEMP "nolane-software-clean-install"
+          $receipt = "artifacts/windows-software-release/windows-software-clean-install.json"
+          & scripts/verify_windows_software_clean_install.ps1 -Installer $env:INSTALLER_PATH -InstallDir $installDir -ExpectedVersion $env:PRODUCT_VERSION -ReceiptPath $receipt
+
+      - name: Freeze release evidence and checksums
+        shell: pwsh
+        run: |
+          Copy-Item "apps/product-client/src-tauri/resources/model/software-release.json" "artifacts/windows-software-release/software-release.json" -Force
+          $paths = @($env:INSTALLER_PATH, "artifacts/windows-software-release/software-release.json", "artifacts/windows-software-release/windows-software-clean-install.json")
+          $rows = foreach ($path in $paths) { $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant(); "$hash  $([System.IO.Path]::GetFileName($path))" }
+          $rows | Set-Content "artifacts/windows-software-release/SHA256SUMS-WINDOWS.txt" -Encoding utf8
+          Get-Content "artifacts/windows-software-release/windows-software-clean-install.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nolane-windows-setup-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 90
+          path: artifacts/windows-software-release/**
