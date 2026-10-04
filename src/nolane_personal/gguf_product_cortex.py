@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import secrets
 import socket
 import subprocess
@@ -200,6 +201,24 @@ class GgufProductCortex:
         return " ".join(str(value).strip().casefold().split())
 
     @classmethod
+    def _requested_exact_reply(cls, user_text: str | None) -> str | None:
+        raw = str(user_text or "").strip()
+        if not raw:
+            return None
+        patterns = (
+            r"(?is)\\bchỉ\\s+trả\\s+lời\\s+đúng(?:\\s+[^:\\s]+){0,6}\\s*:\\s*(.+?)\\s*$",
+            r"(?is)\\b(?:reply|answer)\\s+(?:with\\s+)?exactly(?:\\s+[^:\\s]+){0,6}\\s*:\\s*(.+?)\\s*$",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, raw)
+            if match is None:
+                continue
+            candidate = match.group(1).strip().strip("\\\"'“”‘’")
+            if candidate and len(candidate) <= 240 and "\\n" not in candidate:
+                return candidate
+        return None
+
+    @classmethod
     def _quality_issues(
         cls,
         *,
@@ -215,6 +234,10 @@ class GgufProductCortex:
             issues.append("empty")
         if user_text and normalized == user_text:
             issues.append("user_echo")
+
+        exact_reply = cls._requested_exact_reply(request.user_text)
+        if exact_reply is not None and text.strip() != exact_reply:
+            issues.append("exact_reply_mismatch")
 
         lowered = text.casefold()
         leaked_markers = (
@@ -312,6 +335,7 @@ class GgufProductCortex:
             request=request,
             text=text,
         )
+        exact_reply = self._requested_exact_reply(request.user_text)
         if issues:
             repair_messages = [dict(message) for message in messages]
             repair_messages[0] = {
@@ -324,6 +348,13 @@ class GgufProductCortex:
                     + ". Regenerate the answer from scratch. Answer the "
                     + "actual user request directly, completely, naturally, "
                     + "and without mentioning this quality check."
+                    + (
+                        ""
+                        if exact_reply is None
+                        else "\nThe user required an exact literal reply. "
+                        + "Output exactly this text and nothing else: "
+                        + json.dumps(exact_reply, ensure_ascii=False)
+                    )
                 ),
             }
             repaired = self._chat(
@@ -337,8 +368,13 @@ class GgufProductCortex:
                 request=request,
                 text=repaired,
             )
-            if len(repaired_issues) <= len(issues):
+            if len(repaired_issues) < len(issues):
                 text = repaired
+            elif exact_reply is not None and "exact_reply_mismatch" in issues:
+                # An explicit exact-output instruction is a deterministic
+                # formatting contract. Do not let personalization add names,
+                # punctuation, explanations or other extra text.
+                text = exact_reply
         return CortexReply(text, intent=request.intent)
 
     def self_test(self) -> dict[str, object]:
