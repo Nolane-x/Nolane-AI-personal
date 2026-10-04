@@ -1,5 +1,9 @@
 name: Windows Software Installer
 
+concurrency:
+  group: windows-software-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
