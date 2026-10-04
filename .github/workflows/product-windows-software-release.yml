@@ -16,6 +16,18 @@ on:
       - "scripts/verify_windows_software_clean_install.ps1"
       - "config/windows-software-runtime-lock.json"
       - ".github/workflows/product-windows-software-release.yml"
+  pull_request:
+    paths:
+      - "src/nolane_personal/gguf_product_cortex.py"
+      - "src/nolane_personal/product_runtime.py"
+      - "src/nolane_personal/product_server.py"
+      - "src/nolane_personal/product_prompt_payload.py"
+      - "apps/product-client/**"
+      - "packaging/nolane-product-runtime-software.spec"
+      - "scripts/stage_windows_software_release.py"
+      - "scripts/verify_windows_software_clean_install.ps1"
+      - "config/windows-software-runtime-lock.json"
+      - ".github/workflows/product-windows-software-release.yml"
   workflow_dispatch:
 
 permissions:
