@@ -45,6 +45,7 @@ def main() -> int:
     parser.add_argument("--product-version", required=True)
     parser.add_argument("--model-repo", required=True)
     parser.add_argument("--model-revision", required=True)
+    parser.add_argument("--model-source-commit", required=True)
     parser.add_argument("--llama-tag", required=True)
     args = parser.parse_args()
 
@@ -84,6 +85,7 @@ def main() -> int:
         "runtime_channel": "software-v1-gguf",
         "model_repo": str(args.model_repo),
         "model_revision": str(args.model_revision),
+        "model_source_file_commit": str(args.model_source_commit),
         "model_filename": model_dest_path.name,
         "model_sha256": sha256_file(model_dest_path),
         "llama_cpp_repo": "ggml-org/llama.cpp",
