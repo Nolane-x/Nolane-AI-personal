@@ -23,7 +23,7 @@ _LENGTH_TOKENS = {
     "expansive": 256,
 }
 
-_SERVER_ALIAS = "nolane-qwen3-2b"
+_SERVER_ALIAS = "nolane-qwen35-2b"
 
 
 def _sha256_file(path: Path) -> str:
