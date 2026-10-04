@@ -202,6 +202,20 @@ class ProductHandler(BaseHTTPRequestHandler):
                     self.server.runtime.tick(),
                 )
                 return
+            if self.path == "/v1/memory":
+                self._json(
+                    HTTPStatus.OK,
+                    self.server.runtime.memory_action(
+                        str(payload.get("action", "")),
+                        str(payload.get("memory_id", "")),
+                        text=(
+                            None
+                            if payload.get("text") is None
+                            else str(payload.get("text"))
+                        ),
+                    ),
+                )
+                return
             if self.path == "/v1/learning/windows":
                 self._json(
                     HTTPStatus.OK,
