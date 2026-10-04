@@ -188,12 +188,17 @@ class LivingEngine:
                 if message.get("role") in {"user", "assistant"}
                 and str(message.get("text", "")).strip()
             ]
+            relevant_memories = [
+                memory
+                for memory in self._relevant_memories(text)
+                if memory.source_event_id != event.event_id
+            ]
             reply_obj = self.cortex.generate(CortexRequest(
                 mode="reply",
                 intent="respond_to_user",
                 user_text=text,
                 state=deepcopy(self.state),
-                memories=self._relevant_memories(text),
+                memories=relevant_memories,
                 recent_messages=recent_messages,
             ))
             speech = reply_obj.utterance.strip()
