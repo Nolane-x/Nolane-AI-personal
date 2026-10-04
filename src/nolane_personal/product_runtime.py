@@ -471,6 +471,17 @@ class ProductRuntime:
                         for thread in state.open_threads
                         if thread.unresolved
                     ][-3:],
+                    "memories": [
+                        {
+                            "id": memory.memory_id,
+                            "text": memory.text,
+                            "kind": memory.kind,
+                            "confidence": memory.confidence,
+                            "salience": memory.salience,
+                            "kept": bool(memory.metadata.get("user_kept")),
+                        }
+                        for memory in self.store.memories(limit=5)
+                    ],
                 },
                 "readiness": (
                     None
@@ -532,6 +543,35 @@ class ProductRuntime:
                 self._rest_allowed and self.profile.memory_enabled
             )
             return self.profile.to_dict()
+
+    def memory_action(
+        self,
+        action: str,
+        memory_id: str,
+        *,
+        text: str | None = None,
+    ) -> dict[str, Any]:
+        with self._lock:
+            action = str(action).strip().lower()
+            memory_id = str(memory_id).strip()
+            if not memory_id:
+                raise ValueError("memory_id is required")
+            if action == "keep":
+                memory = self.store.keep_memory(memory_id)
+                result = {"id": memory.memory_id, "text": memory.text, "kept": True}
+            elif action == "edit":
+                memory = self.store.edit_memory(memory_id, text or "")
+                result = {"id": memory.memory_id, "text": memory.text, "kept": bool(memory.metadata.get("user_kept"))}
+            elif action == "delete":
+                if not self.store.delete_memory(memory_id):
+                    raise ValueError("unknown memory")
+                result = {"id": memory_id, "deleted": True}
+            else:
+                raise ValueError("unsupported memory action")
+            return {
+                "memory": result,
+                "mind": self.status()["mind"],
+            }
 
     def learning_windows(self) -> list[dict[str, Any]]:
         with self._lock:
