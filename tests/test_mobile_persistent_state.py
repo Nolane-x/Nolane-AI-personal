@@ -8,6 +8,7 @@ from nolane_personal.cortex import CortexRequest
 from nolane_personal.memory import MemoryRecord
 from nolane_personal.mobile_persistent_state import (
     PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+    PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2,
     PERSISTENT_MOBILE_STATE_SCHEMA,
     build_persistent_mobile_state,
     read_persistent_mobile_state,
@@ -22,6 +23,7 @@ from nolane_personal.store import payload_digest
 def fixture_state() -> tuple[ProductProfile, LivingState]:
     profile = ProductProfile(
         preferred_name="Thuận",
+        assistant_name="Nolane",
         language="vi",
         response_length="compact",
         conversation_style="natural",
@@ -71,10 +73,40 @@ def test_python_persistent_mobile_state_roundtrip(tmp_path):
     assert envelope["schema"] == PERSISTENT_MOBILE_STATE_SCHEMA
     assert (
         envelope["integrity"]
-        == PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1
+        == PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2
     )
     assert len(envelope["state_sha256"]) == 64
     assert not list(path.parent.glob("*.tmp"))
+
+
+def test_persistent_mobile_state_reads_legacy_v1_identity_default(tmp_path):
+    profile, state = fixture_state()
+    payload = build_persistent_mobile_state(
+        source_checkpoint_sha256="a" * 64,
+        latent=[0.125, -0.25, 0.5, 1.0],
+        profile=profile,
+        state=state,
+        memories=[],
+    )
+    legacy_payload = json.loads(json.dumps(payload))
+    legacy_payload["profile"].pop("assistant_name", None)
+    from nolane_personal.mobile_persistent_state import _typed_integrity_digest
+    envelope = {
+        "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
+        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+        "state_sha256": _typed_integrity_digest(
+            legacy_payload,
+            include_assistant_name=False,
+        ),
+        "state": legacy_payload,
+    }
+    path = tmp_path / "legacy-state.json"
+    path.write_text(
+        json.dumps(envelope, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    loaded = read_persistent_mobile_state(path)
+    assert loaded["profile"]["assistant_name"] == "Nolane"
 
 
 def test_persistent_state_projection_matches_product_payload_contract():
