@@ -70,7 +70,7 @@ if ($installerProcess.ExitCode -ne 0) {
 }
 
 $app = Find-OneFile -Root $installRoot -Filter "nolane-product-client.exe" -Label "nolane-product-client.exe"
-$model = Find-OneFile -Root $installRoot -Filter "Qwen_Qwen3.5-2B-Q8_0.gguf" -Label "pinned Qwen GGUF model"
+$model = Find-OneFile -Root $installRoot -Filter "Qwen_Qwen3.5-2B-Q4_K_M.gguf" -Label "pinned Qwen GGUF model"
 $manifest = Find-OneFile -Root $installRoot -Filter "software-release.json" -Label "software release manifest"
 $runtime = Find-OneFile -Root $installRoot -Filter "nolane-product-runtime.exe" -Label "Nolane product runtime"
 $llamaServer = Find-OneFile -Root $installRoot -Filter "llama-server.exe" -Label "llama.cpp server"
