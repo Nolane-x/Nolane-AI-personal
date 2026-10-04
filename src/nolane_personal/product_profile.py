@@ -10,12 +10,18 @@ from typing import Any
 from .store import canonical_json, payload_digest
 
 
-PROFILE_SCHEMA = "NOLANE-PRODUCT-PERSONALIZATION-V1"
+LEGACY_PROFILE_SCHEMA = "NOLANE-PRODUCT-PERSONALIZATION-V1"
+PROFILE_SCHEMA = "NOLANE-PRODUCT-PERSONALIZATION-V2"
+SUPPORTED_RESPONSE_LANGUAGES = {
+    "auto", "en", "vi", "zh", "ja", "ko", "es", "fr", "de",
+    "pt", "it", "th", "id", "ru", "ar", "hi", "tr", "pl", "nl",
+}
 
 
 @dataclass(slots=True)
 class ProductProfile:
     preferred_name: str = ""
+    assistant_name: str = "Nolane"
     language: str = "auto"
     response_length: str = "balanced"
     conversation_style: str = "natural"
@@ -26,7 +32,8 @@ class ProductProfile:
 
     def normalize(self) -> None:
         self.preferred_name = str(self.preferred_name).strip()[:80]
-        if self.language not in {"auto", "vi", "en"}:
+        self.assistant_name = str(self.assistant_name).strip()[:32] or "Nolane"
+        if self.language not in SUPPORTED_RESPONSE_LANGUAGES:
             self.language = "auto"
         if self.response_length not in {"compact", "balanced", "expansive"}:
             self.response_length = "balanced"
@@ -50,8 +57,10 @@ class ProductProfile:
     def from_dict(cls, payload: dict[str, Any]) -> "ProductProfile":
         body = dict(payload)
         supplied = body.pop("digest", None)
+        source_schema = str(body.get("schema", LEGACY_PROFILE_SCHEMA))
         profile = cls(
             preferred_name=str(body.get("preferred_name", "")),
+            assistant_name=str(body.get("assistant_name", "Nolane")),
             language=str(body.get("language", "auto")),
             response_length=str(body.get("response_length", "balanced")),
             conversation_style=str(body.get("conversation_style", "natural")),
@@ -63,7 +72,14 @@ class ProductProfile:
         profile.normalize()
         expected_body = asdict(profile)
         if supplied is not None and payload_digest(expected_body) != supplied:
-            raise ValueError("product personalization digest mismatch")
+            legacy_ok = False
+            if source_schema == LEGACY_PROFILE_SCHEMA and "assistant_name" not in body:
+                legacy_body = dict(expected_body)
+                legacy_body.pop("assistant_name", None)
+                legacy_body["schema"] = LEGACY_PROFILE_SCHEMA
+                legacy_ok = payload_digest(legacy_body) == supplied
+            if not legacy_ok:
+                raise ValueError("product personalization digest mismatch")
         return profile
 
 
@@ -107,6 +123,7 @@ class ProductProfileStore:
         profile = self.load()
         allowed = {
             "preferred_name",
+            "assistant_name",
             "language",
             "response_length",
             "conversation_style",
