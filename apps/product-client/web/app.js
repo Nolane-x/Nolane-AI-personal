@@ -76,6 +76,19 @@
     assistantAvatarImage: $("assistantAvatarImage"),
     assistantNameButton: $("assistantNameButton"),
     assistantNameInput: $("assistantNameInput"),
+    appShell: $("appShell"),
+    mindMemories: $("mindMemories"),
+    mindRelationshipStage: $("mindRelationshipStage"),
+    proactiveWrap: $("proactiveWrap"),
+    proactiveCapsule: $("proactiveCapsule"),
+    proactiveTitle: $("proactiveTitle"),
+    proactiveBody: $("proactiveBody"),
+    proactiveDismiss: $("proactiveDismiss"),
+    onboardingDialog: $("onboardingDialog"),
+    onboardingForm: $("onboardingForm"),
+    onboardingName: $("onboardingName"),
+    onboardingLocale: $("onboardingLocale"),
+    onboardingStyle: $("onboardingStyle"),
   };
 
   const strings = {
@@ -198,6 +211,31 @@
     changeAvatar: "Change AI avatar",
     renameAi: "Rename AI",
     aiName: "AI name",
+    memoryThreadsLabel: "Memory & threads",
+    openThreadsTitle: "Unfinished threads",
+    memoriesTitle: "What Nolane remembers",
+    noMemories: "No local memory yet.",
+    memoryKeep: "Keep",
+    memoryEdit: "Edit",
+    memorySave: "Save",
+    memoryCancel: "Cancel",
+    memoryDelete: "Forget",
+    memoryDeleteConfirm: "Forget?",
+    relationshipStageNew: "New",
+    relationshipStageFamiliar: "Familiar",
+    relationshipStageClose: "Close",
+    proactiveTitle: "Nolane has something to say",
+    proactiveThreadBody: "Still thinking about something unfinished.",
+    proactiveBody: "Tap to open. Ignore it and Nolane stays quiet.",
+    proactiveDismiss: "Dismiss",
+    onboardingEyebrow: "First meeting",
+    onboardingTitle: "Make Nolane yours in three small steps",
+    onboardingBody: "Only the essentials. You can change everything later.",
+    onboardingNameLabel: "What should Nolane call you?",
+    onboardingLanguageLabel: "Interface language",
+    onboardingStyleLabel: "How should Nolane talk?",
+    onboardingPrivacy: "Stored locally with your profile.",
+    onboardingStart: "Start talking",
   });
   Object.assign(strings.vi, {
     profileAria: "Cá nhân hóa",
@@ -254,6 +292,31 @@
     changeAvatar: "Đổi ảnh đại diện AI",
     renameAi: "Đổi tên AI",
     aiName: "Tên AI",
+    memoryThreadsLabel: "Ký ức & chuyện dang dở",
+    openThreadsTitle: "Chuyện còn dang dở",
+    memoriesTitle: "Nolane đang nhớ gì về bạn",
+    noMemories: "Chưa có ký ức cục bộ.",
+    memoryKeep: "Giữ",
+    memoryEdit: "Sửa",
+    memorySave: "Lưu",
+    memoryCancel: "Hủy",
+    memoryDelete: "Quên",
+    memoryDeleteConfirm: "Quên thật?",
+    relationshipStageNew: "Mới quen",
+    relationshipStageFamiliar: "Quen thuộc",
+    relationshipStageClose: "Gần gũi",
+    proactiveTitle: "Nolane có điều muốn nói",
+    proactiveThreadBody: "Nolane vẫn đang nghĩ về một chuyện còn dang dở.",
+    proactiveBody: "Bấm để mở. Bỏ qua thì Nolane sẽ im.",
+    proactiveDismiss: "Bỏ qua",
+    onboardingEyebrow: "Lần đầu gặp nhau",
+    onboardingTitle: "Biến Nolane thành của riêng bạn trong ba bước nhỏ",
+    onboardingBody: "Chỉ những điều cần thiết. Bạn có thể đổi lại bất cứ lúc nào.",
+    onboardingNameLabel: "Nolane nên gọi bạn là gì?",
+    onboardingLanguageLabel: "Ngôn ngữ giao diện",
+    onboardingStyleLabel: "Nolane nên nói chuyện thế nào?",
+    onboardingPrivacy: "Được lưu cục bộ cùng hồ sơ của bạn.",
+    onboardingStart: "Bắt đầu trò chuyện",
   });
 
   const compactLocales = {
@@ -484,9 +547,209 @@
   };
   Object.assign(strings, compactLocales);
 
+  const v1LocaleStrings = {
+    zh: {
+      memoryThreadsLabel: "记忆与未完话题", openThreadsTitle: "未完话题", memoriesTitle: "Nolane 记得的事",
+      noMemories: "还没有本地记忆。", memoryKeep: "保留", memoryEdit: "编辑", memorySave: "保存",
+      memoryCancel: "取消", memoryDelete: "忘记", memoryDeleteConfirm: "确认忘记？",
+      relationshipStageNew: "初识", relationshipStageFamiliar: "熟悉", relationshipStageClose: "亲近",
+      proactiveTitle: "Nolane 有话想说", proactiveThreadBody: "Nolane 还在想着一件没聊完的事。",
+      proactiveBody: "点按打开；忽略后 Nolane 会保持安静。", proactiveDismiss: "忽略",
+      onboardingEyebrow: "初次见面", onboardingTitle: "用三个小步骤让 Nolane 更属于你",
+      onboardingBody: "只设置必要内容，之后随时可以修改。", onboardingNameLabel: "Nolane 应该怎么称呼你？",
+      onboardingLanguageLabel: "界面语言", onboardingStyleLabel: "Nolane 应该怎样和你说话？",
+      onboardingPrivacy: "与个人设置一起保存在本地。", onboardingStart: "开始聊天"
+    },
+    ja: {
+      memoryThreadsLabel: "記憶と未完の話", openThreadsTitle: "続きのある話", memoriesTitle: "Nolane が覚えていること",
+      noMemories: "ローカル記憶はまだありません。", memoryKeep: "残す", memoryEdit: "編集", memorySave: "保存",
+      memoryCancel: "キャンセル", memoryDelete: "忘れる", memoryDeleteConfirm: "本当に忘れる？",
+      relationshipStageNew: "出会ったばかり", relationshipStageFamiliar: "慣れてきた", relationshipStageClose: "親しい",
+      proactiveTitle: "Nolane が話したいことがあります", proactiveThreadBody: "まだ終わっていない話を考えています。",
+      proactiveBody: "タップして開く。無視すれば Nolane は静かにしています。", proactiveDismiss: "閉じる",
+      onboardingEyebrow: "はじめまして", onboardingTitle: "3つの小さな設定で Nolane をあなたらしく",
+      onboardingBody: "必要なことだけ。あとでいつでも変更できます。", onboardingNameLabel: "Nolane に何と呼ばれたいですか？",
+      onboardingLanguageLabel: "表示言語", onboardingStyleLabel: "Nolane の話し方は？",
+      onboardingPrivacy: "プロフィールと一緒に端末内へ保存されます。", onboardingStart: "話し始める"
+    },
+    ko: {
+      memoryThreadsLabel: "기억과 이어갈 이야기", openThreadsTitle: "끝나지 않은 이야기", memoriesTitle: "Nolane이 기억하는 것",
+      noMemories: "아직 로컬 기억이 없습니다.", memoryKeep: "보관", memoryEdit: "수정", memorySave: "저장",
+      memoryCancel: "취소", memoryDelete: "잊기", memoryDeleteConfirm: "정말 잊을까요?",
+      relationshipStageNew: "처음", relationshipStageFamiliar: "익숙함", relationshipStageClose: "가까움",
+      proactiveTitle: "Nolane이 하고 싶은 말이 있어요", proactiveThreadBody: "끝나지 않은 이야기를 계속 생각하고 있어요.",
+      proactiveBody: "눌러서 열 수 있어요. 무시하면 조용히 있을게요.", proactiveDismiss: "무시",
+      onboardingEyebrow: "첫 만남", onboardingTitle: "세 단계로 Nolane을 나에게 맞추기",
+      onboardingBody: "꼭 필요한 것만 설정합니다. 나중에 언제든 바꿀 수 있어요.", onboardingNameLabel: "Nolane이 뭐라고 부르면 될까요?",
+      onboardingLanguageLabel: "인터페이스 언어", onboardingStyleLabel: "Nolane이 어떻게 말하면 좋을까요?",
+      onboardingPrivacy: "프로필과 함께 기기에 로컬 저장됩니다.", onboardingStart: "대화 시작"
+    },
+    es: {
+      memoryThreadsLabel: "Memoria y temas pendientes", openThreadsTitle: "Temas pendientes", memoriesTitle: "Lo que Nolane recuerda",
+      noMemories: "Aún no hay recuerdos locales.", memoryKeep: "Conservar", memoryEdit: "Editar", memorySave: "Guardar",
+      memoryCancel: "Cancelar", memoryDelete: "Olvidar", memoryDeleteConfirm: "¿Olvidar?",
+      relationshipStageNew: "Recién conocidos", relationshipStageFamiliar: "Familiar", relationshipStageClose: "Cercanos",
+      proactiveTitle: "Nolane quiere decirte algo", proactiveThreadBody: "Nolane sigue pensando en algo que quedó pendiente.",
+      proactiveBody: "Toca para abrir. Si lo ignoras, Nolane se queda en silencio.", proactiveDismiss: "Ignorar",
+      onboardingEyebrow: "Primer encuentro", onboardingTitle: "Haz tuyo a Nolane en tres pasos",
+      onboardingBody: "Solo lo esencial. Puedes cambiarlo todo después.", onboardingNameLabel: "¿Cómo quieres que te llame Nolane?",
+      onboardingLanguageLabel: "Idioma de la interfaz", onboardingStyleLabel: "¿Cómo debería hablar Nolane?",
+      onboardingPrivacy: "Se guarda localmente con tu perfil.", onboardingStart: "Empezar a hablar"
+    },
+    fr: {
+      memoryThreadsLabel: "Mémoire et sujets en cours", openThreadsTitle: "Sujets en cours", memoriesTitle: "Ce que Nolane retient",
+      noMemories: "Aucun souvenir local pour l’instant.", memoryKeep: "Garder", memoryEdit: "Modifier", memorySave: "Enregistrer",
+      memoryCancel: "Annuler", memoryDelete: "Oublier", memoryDeleteConfirm: "Oublier ?",
+      relationshipStageNew: "Nouvelle rencontre", relationshipStageFamiliar: "Familier", relationshipStageClose: "Proche",
+      proactiveTitle: "Nolane a quelque chose à vous dire", proactiveThreadBody: "Nolane pense encore à un sujet resté en suspens.",
+      proactiveBody: "Touchez pour ouvrir. Ignorez-le et Nolane restera discret.", proactiveDismiss: "Ignorer",
+      onboardingEyebrow: "Première rencontre", onboardingTitle: "Personnalisez Nolane en trois petites étapes",
+      onboardingBody: "Uniquement l’essentiel. Tout pourra être modifié ensuite.", onboardingNameLabel: "Comment Nolane doit-il vous appeler ?",
+      onboardingLanguageLabel: "Langue de l’interface", onboardingStyleLabel: "Comment Nolane doit-il vous parler ?",
+      onboardingPrivacy: "Enregistré localement avec votre profil.", onboardingStart: "Commencer"
+    },
+    de: {
+      memoryThreadsLabel: "Erinnerungen & offene Themen", openThreadsTitle: "Offene Themen", memoriesTitle: "Was Nolane sich merkt",
+      noMemories: "Noch keine lokalen Erinnerungen.", memoryKeep: "Behalten", memoryEdit: "Bearbeiten", memorySave: "Speichern",
+      memoryCancel: "Abbrechen", memoryDelete: "Vergessen", memoryDeleteConfirm: "Wirklich vergessen?",
+      relationshipStageNew: "Neu", relationshipStageFamiliar: "Vertraut", relationshipStageClose: "Nah",
+      proactiveTitle: "Nolane möchte etwas sagen", proactiveThreadBody: "Nolane denkt noch über etwas Unabgeschlossenes nach.",
+      proactiveBody: "Zum Öffnen tippen. Wenn du es ignorierst, bleibt Nolane still.", proactiveDismiss: "Ignorieren",
+      onboardingEyebrow: "Erstes Treffen", onboardingTitle: "Mach Nolane in drei Schritten zu deinem Begleiter",
+      onboardingBody: "Nur das Wesentliche. Alles lässt sich später ändern.", onboardingNameLabel: "Wie soll Nolane dich nennen?",
+      onboardingLanguageLabel: "Oberflächensprache", onboardingStyleLabel: "Wie soll Nolane mit dir sprechen?",
+      onboardingPrivacy: "Wird lokal mit deinem Profil gespeichert.", onboardingStart: "Gespräch starten"
+    },
+    pt: {
+      memoryThreadsLabel: "Memória e assuntos pendentes", openThreadsTitle: "Assuntos pendentes", memoriesTitle: "O que Nolane lembra",
+      noMemories: "Ainda não há memória local.", memoryKeep: "Manter", memoryEdit: "Editar", memorySave: "Salvar",
+      memoryCancel: "Cancelar", memoryDelete: "Esquecer", memoryDeleteConfirm: "Esquecer mesmo?",
+      relationshipStageNew: "Recém-conhecidos", relationshipStageFamiliar: "Familiar", relationshipStageClose: "Próximos",
+      proactiveTitle: "Nolane quer dizer algo", proactiveThreadBody: "Nolane ainda está pensando em algo inacabado.",
+      proactiveBody: "Toque para abrir. Se ignorar, Nolane fica em silêncio.", proactiveDismiss: "Ignorar",
+      onboardingEyebrow: "Primeiro encontro", onboardingTitle: "Deixe Nolane com a sua cara em três passos",
+      onboardingBody: "Só o essencial. Você pode mudar tudo depois.", onboardingNameLabel: "Como Nolane deve chamar você?",
+      onboardingLanguageLabel: "Idioma da interface", onboardingStyleLabel: "Como Nolane deve falar?",
+      onboardingPrivacy: "Salvo localmente com seu perfil.", onboardingStart: "Começar a conversar"
+    },
+    it: {
+      memoryThreadsLabel: "Memoria e fili aperti", openThreadsTitle: "Fili aperti", memoriesTitle: "Cosa ricorda Nolane",
+      noMemories: "Nessun ricordo locale per ora.", memoryKeep: "Conserva", memoryEdit: "Modifica", memorySave: "Salva",
+      memoryCancel: "Annulla", memoryDelete: "Dimentica", memoryDeleteConfirm: "Dimenticare?",
+      relationshipStageNew: "Appena conosciuti", relationshipStageFamiliar: "Familiari", relationshipStageClose: "Vicini",
+      proactiveTitle: "Nolane vuole dirti qualcosa", proactiveThreadBody: "Nolane sta ancora pensando a qualcosa rimasto in sospeso.",
+      proactiveBody: "Tocca per aprire. Se ignori, Nolane resta in silenzio.", proactiveDismiss: "Ignora",
+      onboardingEyebrow: "Primo incontro", onboardingTitle: "Rendi Nolane tuo in tre piccoli passi",
+      onboardingBody: "Solo l’essenziale. Potrai cambiare tutto in seguito.", onboardingNameLabel: "Come vuoi che Nolane ti chiami?",
+      onboardingLanguageLabel: "Lingua dell’interfaccia", onboardingStyleLabel: "Come dovrebbe parlare Nolane?",
+      onboardingPrivacy: "Salvato localmente insieme al profilo.", onboardingStart: "Inizia a parlare"
+    },
+    th: {
+      memoryThreadsLabel: "ความทรงจำและเรื่องที่ค้างไว้", openThreadsTitle: "เรื่องที่ค้างไว้", memoriesTitle: "สิ่งที่ Nolane จำได้",
+      noMemories: "ยังไม่มีความทรงจำในเครื่อง", memoryKeep: "เก็บไว้", memoryEdit: "แก้ไข", memorySave: "บันทึก",
+      memoryCancel: "ยกเลิก", memoryDelete: "ลืม", memoryDeleteConfirm: "ลืมจริงไหม?",
+      relationshipStageNew: "เพิ่งรู้จัก", relationshipStageFamiliar: "คุ้นเคย", relationshipStageClose: "ใกล้ชิด",
+      proactiveTitle: "Nolane มีบางอย่างอยากพูด", proactiveThreadBody: "Nolane ยังคิดถึงเรื่องที่คุยกันไม่จบ",
+      proactiveBody: "แตะเพื่อเปิด หากไม่สนใจ Nolane จะเงียบไว้", proactiveDismiss: "ไม่สนใจ",
+      onboardingEyebrow: "พบกันครั้งแรก", onboardingTitle: "ตั้งค่า Nolane ให้เป็นของคุณในสามขั้นตอน",
+      onboardingBody: "ตั้งค่าเฉพาะสิ่งจำเป็น และเปลี่ยนได้ภายหลัง", onboardingNameLabel: "อยากให้ Nolane เรียกคุณว่าอะไร?",
+      onboardingLanguageLabel: "ภาษาของอินเทอร์เฟซ", onboardingStyleLabel: "อยากให้ Nolane พูดแบบไหน?",
+      onboardingPrivacy: "เก็บไว้ในเครื่องพร้อมโปรไฟล์ของคุณ", onboardingStart: "เริ่มคุย"
+    },
+    id: {
+      memoryThreadsLabel: "Memori & hal yang belum selesai", openThreadsTitle: "Hal yang belum selesai", memoriesTitle: "Yang diingat Nolane",
+      noMemories: "Belum ada memori lokal.", memoryKeep: "Simpan", memoryEdit: "Edit", memorySave: "Simpan",
+      memoryCancel: "Batal", memoryDelete: "Lupakan", memoryDeleteConfirm: "Yakin lupakan?",
+      relationshipStageNew: "Baru kenal", relationshipStageFamiliar: "Akrab", relationshipStageClose: "Dekat",
+      proactiveTitle: "Nolane ingin mengatakan sesuatu", proactiveThreadBody: "Nolane masih memikirkan hal yang belum selesai.",
+      proactiveBody: "Ketuk untuk membuka. Abaikan dan Nolane akan tetap diam.", proactiveDismiss: "Abaikan",
+      onboardingEyebrow: "Pertemuan pertama", onboardingTitle: "Jadikan Nolane milikmu dalam tiga langkah",
+      onboardingBody: "Hanya yang penting. Semuanya bisa diubah nanti.", onboardingNameLabel: "Nolane sebaiknya memanggilmu apa?",
+      onboardingLanguageLabel: "Bahasa antarmuka", onboardingStyleLabel: "Bagaimana Nolane sebaiknya berbicara?",
+      onboardingPrivacy: "Disimpan lokal bersama profilmu.", onboardingStart: "Mulai mengobrol"
+    },
+    ru: {
+      memoryThreadsLabel: "Память и незавершённые темы", openThreadsTitle: "Незавершённые темы", memoriesTitle: "Что помнит Nolane",
+      noMemories: "Локальных воспоминаний пока нет.", memoryKeep: "Сохранить", memoryEdit: "Изменить", memorySave: "Сохранить",
+      memoryCancel: "Отмена", memoryDelete: "Забыть", memoryDeleteConfirm: "Точно забыть?",
+      relationshipStageNew: "Недавно знакомы", relationshipStageFamiliar: "Знакомы", relationshipStageClose: "Близки",
+      proactiveTitle: "Nolane хочет кое-что сказать", proactiveThreadBody: "Nolane всё ещё думает о незавершённой теме.",
+      proactiveBody: "Нажмите, чтобы открыть. Если проигнорировать, Nolane останется тихим.", proactiveDismiss: "Игнорировать",
+      onboardingEyebrow: "Первая встреча", onboardingTitle: "Настройте Nolane под себя за три шага",
+      onboardingBody: "Только самое важное. Всё можно изменить позже.", onboardingNameLabel: "Как Nolane должен вас называть?",
+      onboardingLanguageLabel: "Язык интерфейса", onboardingStyleLabel: "Как Nolane должен говорить?",
+      onboardingPrivacy: "Хранится локально вместе с профилем.", onboardingStart: "Начать разговор"
+    },
+    ar: {
+      memoryThreadsLabel: "الذكريات والمواضيع المفتوحة", openThreadsTitle: "مواضيع لم تكتمل", memoriesTitle: "ما يتذكره Nolane",
+      noMemories: "لا توجد ذكريات محلية بعد.", memoryKeep: "احتفاظ", memoryEdit: "تعديل", memorySave: "حفظ",
+      memoryCancel: "إلغاء", memoryDelete: "نسيان", memoryDeleteConfirm: "نسيان فعلًا؟",
+      relationshipStageNew: "تعارف جديد", relationshipStageFamiliar: "مألوف", relationshipStageClose: "قريب",
+      proactiveTitle: "لدى Nolane شيء يريد قوله", proactiveThreadBody: "ما زال Nolane يفكر في موضوع لم يكتمل.",
+      proactiveBody: "اضغط للفتح. إذا تجاهلته فسيبقى Nolane هادئًا.", proactiveDismiss: "تجاهل",
+      onboardingEyebrow: "اللقاء الأول", onboardingTitle: "اجعل Nolane مناسبًا لك في ثلاث خطوات",
+      onboardingBody: "الأساسيات فقط، ويمكن تغيير كل شيء لاحقًا.", onboardingNameLabel: "بماذا تريد أن يناديك Nolane؟",
+      onboardingLanguageLabel: "لغة الواجهة", onboardingStyleLabel: "كيف تريد أن يتحدث Nolane؟",
+      onboardingPrivacy: "يُحفظ محليًا مع ملفك الشخصي.", onboardingStart: "ابدأ الحديث"
+    },
+    hi: {
+      memoryThreadsLabel: "यादें और अधूरी बातें", openThreadsTitle: "अधूरी बातें", memoriesTitle: "Nolane क्या याद रखता है",
+      noMemories: "अभी कोई लोकल याद नहीं है।", memoryKeep: "रखें", memoryEdit: "संपादित करें", memorySave: "सहेजें",
+      memoryCancel: "रद्द करें", memoryDelete: "भूलें", memoryDeleteConfirm: "सच में भूलें?",
+      relationshipStageNew: "नई पहचान", relationshipStageFamiliar: "परिचित", relationshipStageClose: "करीबी",
+      proactiveTitle: "Nolane कुछ कहना चाहता है", proactiveThreadBody: "Nolane अभी भी एक अधूरी बात के बारे में सोच रहा है।",
+      proactiveBody: "खोलने के लिए टैप करें। अनदेखा करने पर Nolane शांत रहेगा।", proactiveDismiss: "अनदेखा",
+      onboardingEyebrow: "पहली मुलाकात", onboardingTitle: "तीन छोटे चरणों में Nolane को अपना बनाएं",
+      onboardingBody: "सिर्फ ज़रूरी बातें। बाद में सब बदल सकते हैं।", onboardingNameLabel: "Nolane आपको क्या कहकर बुलाए?",
+      onboardingLanguageLabel: "इंटरफ़ेस भाषा", onboardingStyleLabel: "Nolane कैसे बात करे?",
+      onboardingPrivacy: "आपकी प्रोफ़ाइल के साथ लोकल रूप से सहेजा जाता है।", onboardingStart: "बात शुरू करें"
+    },
+    tr: {
+      memoryThreadsLabel: "Hafıza ve açık konular", openThreadsTitle: "Yarım kalan konular", memoriesTitle: "Nolane'ın hatırladıkları",
+      noMemories: "Henüz yerel hafıza yok.", memoryKeep: "Sakla", memoryEdit: "Düzenle", memorySave: "Kaydet",
+      memoryCancel: "İptal", memoryDelete: "Unut", memoryDeleteConfirm: "Gerçekten unut?",
+      relationshipStageNew: "Yeni tanıştık", relationshipStageFamiliar: "Tanıdık", relationshipStageClose: "Yakın",
+      proactiveTitle: "Nolane bir şey söylemek istiyor", proactiveThreadBody: "Nolane yarım kalan bir şeyi hâlâ düşünüyor.",
+      proactiveBody: "Açmak için dokun. Görmezden gelirsen Nolane sessiz kalır.", proactiveDismiss: "Yoksay",
+      onboardingEyebrow: "İlk buluşma", onboardingTitle: "Üç küçük adımda Nolane'ı kendine göre ayarla",
+      onboardingBody: "Yalnızca gerekli olanlar. Sonra her şeyi değiştirebilirsin.", onboardingNameLabel: "Nolane sana nasıl hitap etsin?",
+      onboardingLanguageLabel: "Arayüz dili", onboardingStyleLabel: "Nolane nasıl konuşsun?",
+      onboardingPrivacy: "Profilinle birlikte yerel olarak saklanır.", onboardingStart: "Konuşmaya başla"
+    },
+    pl: {
+      memoryThreadsLabel: "Pamięć i otwarte wątki", openThreadsTitle: "Niedokończone wątki", memoriesTitle: "Co pamięta Nolane",
+      noMemories: "Brak lokalnych wspomnień.", memoryKeep: "Zachowaj", memoryEdit: "Edytuj", memorySave: "Zapisz",
+      memoryCancel: "Anuluj", memoryDelete: "Zapomnij", memoryDeleteConfirm: "Na pewno zapomnieć?",
+      relationshipStageNew: "Nowa znajomość", relationshipStageFamiliar: "Znajomi", relationshipStageClose: "Blisko",
+      proactiveTitle: "Nolane chce coś powiedzieć", proactiveThreadBody: "Nolane nadal myśli o niedokończonej sprawie.",
+      proactiveBody: "Dotknij, aby otworzyć. Zignoruj, a Nolane pozostanie cicho.", proactiveDismiss: "Ignoruj",
+      onboardingEyebrow: "Pierwsze spotkanie", onboardingTitle: "Dopasuj Nolane do siebie w trzech krokach",
+      onboardingBody: "Tylko najważniejsze rzeczy. Wszystko można później zmienić.", onboardingNameLabel: "Jak Nolane ma się do Ciebie zwracać?",
+      onboardingLanguageLabel: "Język interfejsu", onboardingStyleLabel: "Jak Nolane ma mówić?",
+      onboardingPrivacy: "Zapisywane lokalnie razem z profilem.", onboardingStart: "Zacznij rozmowę"
+    },
+    nl: {
+      memoryThreadsLabel: "Geheugen en open onderwerpen", openThreadsTitle: "Open onderwerpen", memoriesTitle: "Wat Nolane onthoudt",
+      noMemories: "Nog geen lokale herinneringen.", memoryKeep: "Bewaren", memoryEdit: "Bewerken", memorySave: "Opslaan",
+      memoryCancel: "Annuleren", memoryDelete: "Vergeten", memoryDeleteConfirm: "Echt vergeten?",
+      relationshipStageNew: "Net ontmoet", relationshipStageFamiliar: "Vertrouwd", relationshipStageClose: "Hecht",
+      proactiveTitle: "Nolane wil iets zeggen", proactiveThreadBody: "Nolane denkt nog aan iets dat niet af was.",
+      proactiveBody: "Tik om te openen. Negeer het en Nolane blijft stil.", proactiveDismiss: "Negeren",
+      onboardingEyebrow: "Eerste ontmoeting", onboardingTitle: "Maak Nolane van jou in drie kleine stappen",
+      onboardingBody: "Alleen het belangrijkste. Je kunt alles later wijzigen.", onboardingNameLabel: "Hoe moet Nolane je noemen?",
+      onboardingLanguageLabel: "Interfacetaal", onboardingStyleLabel: "Hoe moet Nolane praten?",
+      onboardingPrivacy: "Wordt lokaal bij je profiel opgeslagen.", onboardingStart: "Begin te praten"
+    }
+  };
+  Object.entries(v1LocaleStrings).forEach(([code, values]) => {
+    Object.assign(strings[code], values);
+  });
+
   const UI_LOCALE_KEY = "nolane.ui.locale.v1";
   const AI_NAME_KEY = "nolane.ui.ai-name.v1";
   const AI_AVATAR_KEY = "nolane.ui.ai-avatar.v1";
+  const ONBOARDING_KEY = "nolane.onboarding.v1";
+  const PROACTIVE_STATE_KEY = "nolane.proactive-state.v1";
   const supportedUiLocales = new Set([
     "en", "vi", "zh", "ja", "ko", "es", "fr", "de", "pt", "it",
     "th", "id", "ru", "ar", "hi", "tr", "pl", "nl",
@@ -515,6 +778,23 @@
       else localStorage.removeItem(key);
     } catch (_error) {
       // Identity skin persistence is best-effort in restricted webviews.
+    }
+  };
+
+  const readStoredJson = (key, fallback = {}) => {
+    try {
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : fallback;
+    } catch (_error) {
+      return fallback;
+    }
+  };
+
+  const writeStoredJson = (key, value) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (_error) {
+      // Best-effort UI state only; runtime truth remains authoritative.
     }
   };
 
@@ -550,6 +830,8 @@
   let learningCandidate = null;
   let thinkingStartedAt = 0;
   let thinkingTicker = null;
+  let pendingProactive = null;
+  let proactiveState = readStoredJson(PROACTIVE_STATE_KEY, {});
 
   const locale = () => uiLocale;
   const t = (key) =>
@@ -706,6 +988,16 @@
           familiarity: 0.10,
         },
         open_threads: [],
+        memories: [
+          {
+            id: "preview-memory-1",
+            text: "Bạn thích câu trả lời ngắn và tự nhiên.",
+            kind: "preference",
+            confidence: 0.88,
+            salience: 0.82,
+            kept: false,
+          },
+        ],
       },
     },
     profile: { ...profile, digest: "preview" },
@@ -734,6 +1026,25 @@
       mock.status.phase = body.enabled ? "on" : "off";
       mock.status.powered = Boolean(body.enabled);
       return { ...mock.status };
+    }
+    if (method === "POST" && path === "/v1/memory") {
+      const rows = mock.status.mind.memories || [];
+      const index = rows.findIndex((row) => row.id === body.memory_id);
+      if (index < 0) throw new Error("unknown memory");
+      if (body.action === "keep") {
+        rows[index].kept = true;
+        const [memory] = rows.splice(index, 1);
+        rows.unshift(memory);
+      } else if (body.action === "edit") {
+        const text = String(body.text || "").trim();
+        if (!text) throw new Error("memory text is empty");
+        rows[index].text = text.slice(0, 4000);
+      } else if (body.action === "delete") {
+        rows.splice(index, 1);
+      } else {
+        throw new Error("unsupported memory action");
+      }
+      return { mind: { ...mock.status.mind, memories: rows } };
     }
     if (method === "POST" && path === "/v1/chat") {
       if (!mock.status.powered) {
@@ -959,16 +1270,32 @@
     setText("mindIntentLabel", "intentLabel");
     setText("mindConfidenceLabel", "confidenceLabel");
     setText("mindConfidenceHint", "confidenceHint");
-    setText("mindThreadsLabel", "threadsLabel");
+    setText("mindThreadsLabel", "memoryThreadsLabel");
+    setText("openThreadsTitle", "openThreadsTitle");
+    setText("memoriesTitle", "memoriesTitle");
     setText("mindRelationshipLabel", "relationshipLabel");
     setText("mindClosenessLabel", "closeness");
     setText("mindTrustLabel", "trust");
     setText("mindFamiliarityLabel", "familiarity");
+    setText("onboardingEyebrow", "onboardingEyebrow");
+    $("onboardingTitle").textContent = ti("onboardingTitle");
+    setText("onboardingBody", "onboardingBody");
+    $("onboardingNameLabel").textContent = ti("onboardingNameLabel");
+    setText("onboardingLanguageLabel", "onboardingLanguageLabel");
+    $("onboardingStyleLabel").textContent = ti("onboardingStyleLabel");
+    setText("onboardingPrivacy", "onboardingPrivacy");
+    setText("onboardingStart", "onboardingStart");
+    if (els.onboardingLocale) els.onboardingLocale.value = locale();
+    if (els.proactiveDismiss) {
+      els.proactiveDismiss.setAttribute("aria-label", t("proactiveDismiss"));
+      els.proactiveDismiss.title = t("proactiveDismiss");
+    }
 
     renderAssistantIdentity();
     renderRuntime();
     renderMind();
     renderThinking();
+    renderProactive();
   }
 
   function phaseForUi() {
@@ -1137,6 +1464,9 @@
       threads: Array.isArray(mind.open_threads)
         ? mind.open_threads.filter(Boolean).slice(0, 3)
         : [],
+      memories: Array.isArray(mind.memories)
+        ? mind.memories.filter((row) => row && row.text).slice(0, 5)
+        : [],
       recentTopics: Array.isArray(working.recent_topics)
         ? working.recent_topics.filter(Boolean).slice(-3)
         : [],
@@ -1176,6 +1506,126 @@
     return { key: "activityShaping", progress: 82 };
   }
 
+  function relationshipStage(snapshot) {
+    const score =
+      0.45 * snapshot.familiarity +
+      0.35 * snapshot.closeness +
+      0.20 * snapshot.trust;
+    if (score >= 0.55) return t("relationshipStageClose");
+    if (score >= 0.22) return t("relationshipStageFamiliar");
+    return t("relationshipStageNew");
+  }
+
+  async function controlMemory(action, memoryId, text = null) {
+    try {
+      const result = await api("POST", "/v1/memory", {
+        action,
+        memory_id: memoryId,
+        text,
+      });
+      if (result?.mind) {
+        runtime = { ...runtime, mind: result.mind };
+      } else {
+        await refreshStatus();
+      }
+      renderMind();
+    } catch (error) {
+      showBanner(String(error?.message || error), false);
+    }
+  }
+
+  function memoryActionButton(label, action, memory) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "memory-action";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      if (action === "keep") void controlMemory("keep", memory.id);
+    });
+    return button;
+  }
+
+  function renderMemory(memory) {
+    const item = document.createElement("article");
+    item.className = "mind-memory";
+    if (memory.kept) item.dataset.kept = "true";
+
+    const text = document.createElement("p");
+    text.className = "mind-memory-text";
+    text.textContent = memory.text;
+
+    const actions = document.createElement("div");
+    actions.className = "memory-actions";
+
+    const keep = memoryActionButton(
+      (memory.kept ? "✓ " : "") + t("memoryKeep"),
+      "keep",
+      memory,
+    );
+    keep.disabled = Boolean(memory.kept);
+
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "memory-action";
+    edit.textContent = t("memoryEdit");
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "memory-action memory-danger";
+    remove.textContent = t("memoryDelete");
+    let deleteArmed = false;
+    let deleteTimer = null;
+    remove.addEventListener("click", () => {
+      if (!deleteArmed) {
+        deleteArmed = true;
+        remove.textContent = t("memoryDeleteConfirm");
+        deleteTimer = setTimeout(() => {
+          deleteArmed = false;
+          remove.textContent = t("memoryDelete");
+        }, 2600);
+        return;
+      }
+      if (deleteTimer) clearTimeout(deleteTimer);
+      void controlMemory("delete", memory.id);
+    });
+
+    actions.append(keep, edit, remove);
+    item.append(text, actions);
+
+    edit.addEventListener("click", () => {
+      if (item.querySelector(".memory-editor")) return;
+      const editor = document.createElement("div");
+      editor.className = "memory-editor";
+      const input = document.createElement("textarea");
+      input.rows = 2;
+      input.maxLength = 4000;
+      input.value = memory.text;
+      const editorActions = document.createElement("div");
+      editorActions.className = "memory-editor-actions";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "memory-action";
+      cancel.textContent = t("memoryCancel");
+      const save = document.createElement("button");
+      save.type = "button";
+      save.className = "memory-action memory-primary";
+      save.textContent = t("memorySave");
+      cancel.addEventListener("click", () => editor.remove());
+      save.addEventListener("click", () => {
+        const next = input.value.trim();
+        if (!next) return;
+        void controlMemory("edit", memory.id, next);
+      });
+      editorActions.append(cancel, save);
+      editor.append(input, editorActions);
+      item.append(editor);
+      input.focus();
+      input.select();
+    });
+
+    return item;
+  }
+
   function renderMind() {
     if (!els.mindStateButton) return;
     const powered = runtime.phase === "on" || sending;
@@ -1187,8 +1637,14 @@
     const moodLabel = moodText(mood);
     els.mindStateLabel.textContent = moodLabel;
     els.mindStateButton.dataset.mood = mood.toLowerCase();
+    els.mindOrb.dataset.mood = mood.toLowerCase();
     els.mindHeroOrb.dataset.mood = mood.toLowerCase();
     els.mindMood.textContent = moodLabel;
+    if (els.appShell) {
+      els.appShell.dataset.mood = mood.toLowerCase();
+      els.appShell.dataset.presence =
+        sending ? "thinking" : runtime.phase === "on" ? "present" : "resting";
+    }
 
     const activity = visibleActivity();
     els.mindActivity.textContent = t(activity.key);
@@ -1245,6 +1701,19 @@
       });
     }
 
+    els.mindMemories.replaceChildren();
+    if (!snapshot.memories.length) {
+      const empty = document.createElement("span");
+      empty.className = "mind-empty";
+      empty.textContent = t("noMemories");
+      els.mindMemories.appendChild(empty);
+    } else {
+      snapshot.memories.forEach((memory) => {
+        els.mindMemories.appendChild(renderMemory(memory));
+      });
+    }
+
+    els.mindRelationshipStage.textContent = relationshipStage(snapshot);
     els.closenessBar.style.width = Math.round(snapshot.closeness * 100) + "%";
     els.trustBar.style.width = Math.round(snapshot.trust * 100) + "%";
     els.familiarityBar.style.width = Math.round(snapshot.familiarity * 100) + "%";
@@ -1324,10 +1793,70 @@
     }
   }
 
+  function proactiveId(message) {
+    return String(
+      message?.event_id ||
+      [message?.at || "", message?.intent || "", message?.text || ""].join(":"),
+    );
+  }
+
+  function isProactiveMessage(message) {
+    if (!message || message.role === "user") return false;
+    const eventId = String(message.event_id || "");
+    const intent = String(message.intent || "");
+    return (
+      eventId.startsWith("local-mobile-i-") ||
+      Boolean(intent && intent !== "respond_to_user" && intent !== "conversation")
+    );
+  }
+
+  function rememberProactive(id, action) {
+    proactiveState[id] = action;
+    const entries = Object.entries(proactiveState);
+    if (entries.length > 80) {
+      proactiveState = Object.fromEntries(entries.slice(-60));
+    }
+    writeStoredJson(PROACTIVE_STATE_KEY, proactiveState);
+  }
+
+  function renderProactive() {
+    if (!els.proactiveWrap) return;
+    els.proactiveWrap.hidden = !pendingProactive;
+    if (!pendingProactive) return;
+    els.proactiveTitle.textContent = ti("proactiveTitle");
+    const intent = String(pendingProactive.intent || "");
+    els.proactiveBody.textContent = intent.startsWith("follow_up:")
+      ? ti("proactiveThreadBody")
+      : t("proactiveBody");
+    const orb = els.proactiveWrap.querySelector(".proactive-orb");
+    if (orb) orb.dataset.mood = moodFromMind(mindSnapshot()).toLowerCase();
+  }
+
+  function filterProactiveMessages(nextMessages) {
+    const rows = Array.isArray(nextMessages) ? nextMessages : [];
+    pendingProactive = null;
+    const visible = [];
+    for (const message of rows) {
+      if (!isProactiveMessage(message)) {
+        visible.push(message);
+        continue;
+      }
+      const id = proactiveId(message);
+      const state = proactiveState[id];
+      if (state === "open") {
+        visible.push(message);
+      } else if (state !== "dismiss") {
+        pendingProactive = message;
+      }
+    }
+    renderProactive();
+    return visible;
+  }
+
   async function refreshHistory() {
     try {
       const result = await api("GET", "/v1/history");
-      renderMessages(Array.isArray(result.messages) ? result.messages : []);
+      renderMessages(filterProactiveMessages(result.messages));
     } catch (error) {
       showBanner(String(error?.message || error), true);
     }
@@ -1676,6 +2205,44 @@
     }
   }
 
+  function onboardingComplete() {
+    return readStoredString(ONBOARDING_KEY, "") === "complete";
+  }
+
+  function maybeShowOnboarding() {
+    if (!els.onboardingDialog || onboardingComplete()) return;
+    els.onboardingName.value = profile.preferred_name || "";
+    els.onboardingLocale.value = locale();
+    els.onboardingStyle.value = profile.conversation_style || "natural";
+    if (!els.onboardingDialog.open) {
+      els.onboardingDialog.showModal();
+      requestAnimationFrame(() => els.onboardingName.focus());
+    }
+  }
+
+  async function finishOnboarding(event) {
+    event.preventDefault();
+    const nextLocale = els.onboardingLocale.value;
+    if (supportedUiLocales.has(nextLocale)) {
+      uiLocale = nextLocale;
+      writeStoredString(UI_LOCALE_KEY, uiLocale);
+    }
+    try {
+      profile = await api("PUT", "/v1/profile", {
+        ...profile,
+        preferred_name: els.onboardingName.value.trim(),
+        conversation_style: els.onboardingStyle.value,
+      });
+      writeStoredString(ONBOARDING_KEY, "complete");
+      fillProfile();
+      applyLocale();
+      els.onboardingDialog.close();
+      if (runtime.phase === "on") els.input.focus();
+    } catch (error) {
+      showBanner(String(error?.message || error), false);
+    }
+  }
+
   async function refreshAll() {
     await loadTarget();
     if (target.mode === "unconfigured") {
@@ -1693,7 +2260,36 @@
       refreshProfile(),
       refreshLearning(),
     ]);
+    maybeShowOnboarding();
   }
+
+  els.proactiveCapsule.addEventListener("click", () => {
+    if (!pendingProactive) return;
+    const message = pendingProactive;
+    rememberProactive(proactiveId(message), "open");
+    pendingProactive = null;
+    renderProactive();
+    renderMessages([...messages, message]);
+    scrollBottom(true);
+  });
+
+  els.proactiveDismiss.addEventListener("click", () => {
+    if (!pendingProactive) return;
+    rememberProactive(proactiveId(pendingProactive), "dismiss");
+    pendingProactive = null;
+    renderProactive();
+  });
+
+  els.onboardingForm.addEventListener("submit", (event) => {
+    void finishOnboarding(event);
+  });
+
+  els.onboardingLocale.addEventListener("change", () => {
+    const next = els.onboardingLocale.value;
+    if (!supportedUiLocales.has(next)) return;
+    uiLocale = next;
+    applyLocale();
+  });
 
   els.assistantAvatarButton.addEventListener("click", () => {
     els.assistantAvatarInput.click();
