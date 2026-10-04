@@ -211,7 +211,7 @@ fn spawn_windows_runtime(
     let model_checkpoint = model_dir.join("factorized-nolane.pt");
     let tokenizer_dir = resource_dir.join("resources").join("tokenizer");
     let ceremony_path = model_dir.join("promotion-ceremony.json");
-    let software_model = model_dir.join("Qwen_Qwen3.5-2B-Q8_0.gguf");
+    let software_model = model_dir.join("Qwen_Qwen3.5-2B-Q4_K_M.gguf");
     let software_manifest = model_dir.join("software-release.json");
     let llama_server = resource_dir
         .join("resources")
