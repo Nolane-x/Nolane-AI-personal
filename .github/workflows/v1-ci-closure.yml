@@ -67,3 +67,99 @@ jobs:
           name: v1-ci-closure-${{ github.event.workflow_run.head_sha }}
           if-no-files-found: error
           path: artifacts/v1-ci-closure.json
+
+      - name: Download Windows native artifact from Product Client run
+        uses: actions/download-artifact@v4
+        with:
+          name: nolane-v1-windows-native
+          path: artifacts/v1-downloads/windows
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Android arm64 artifact from Product Client run
+        uses: actions/download-artifact@v4
+        with:
+          name: nolane-v1-android-arm64-apk
+          path: artifacts/v1-downloads/android-arm64
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Android emulator artifact from Product Client run
+        uses: actions/download-artifact@v4
+        with:
+          name: v058-emulator-apk
+          path: artifacts/v1-downloads/android-x86_64
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download rendered UI evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: product-ui-render-evidence
+          path: artifacts/v1-downloads/ui
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download LocalMobile court evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: v058-localmobile-court-bundle
+          path: artifacts/v1-downloads/localmobile-court
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Assemble same-SHA v1 software artifact bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="artifacts/nolane-v1-software-artifacts"
+          mkdir -p "$ROOT/evidence/ui" "$ROOT/evidence/localmobile-court"
+
+          WINDOWS_EXE="$(find artifacts/v1-downloads/windows -type f -name '*.exe' -print -quit)"
+          ARM64_APK="$(find artifacts/v1-downloads/android-arm64 -type f -name '*.apk' -print -quit)"
+          X86_APK="$(find artifacts/v1-downloads/android-x86_64 -type f -name '*.apk' -print -quit)"
+
+          test -n "$WINDOWS_EXE"
+          test -n "$ARM64_APK"
+          test -n "$X86_APK"
+
+          cp "$WINDOWS_EXE" "$ROOT/Nolane-v1.0.0-windows-native-court.exe"
+          cp "$ARM64_APK" "$ROOT/Nolane-v1.0.0-android-arm64.apk"
+          cp "$X86_APK" "$ROOT/Nolane-v1.0.0-android-x86_64-emulator.apk"
+          cp artifacts/v1-ci-closure.json "$ROOT/v1-ci-closure.json"
+          cp -R artifacts/v1-downloads/ui/. "$ROOT/evidence/ui/"
+          cp -R artifacts/v1-downloads/localmobile-court/. "$ROOT/evidence/localmobile-court/"
+
+          cat > "$ROOT/ARTIFACTS.md" <<EOF
+          # Nolane AI Personal v1.0 software artifacts
+
+          Product version: ${{ steps.version.outputs.version }}
+          Commit: ${{ github.event.workflow_run.head_sha }}
+          Product Client run: ${{ github.event.workflow_run.id }}
+
+          This bundle is assembled only after same-SHA CI closure succeeds.
+
+          Included:
+          - Windows native court executable;
+          - Android arm64 APK built by Product Client Court;
+          - Android x86_64 emulator APK used by the packaged restart court;
+          - READY_FOR_V1_0_CI_VERIFIED closure receipt;
+          - rendered UI evidence;
+          - LocalMobile court evidence.
+
+          Authority boundary:
+          - the Windows native court executable is not the authority-bound NSIS production installer;
+          - the x86_64 APK is emulator evidence, not an end-user Android release;
+          - final authority-bound Windows/Android production packages remain the output of the dedicated product release workflows with COMPLETE L36 model/ceremony inputs.
+          EOF
+
+          (
+            cd "$ROOT"
+            find . -type f ! -name SHA256SUMS.txt -print0               | sort -z               | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nolane-v1-software-artifacts-${{ github.event.workflow_run.head_sha }}
+          if-no-files-found: error
+          path: artifacts/nolane-v1-software-artifacts/**
