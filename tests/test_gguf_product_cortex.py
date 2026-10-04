@@ -44,7 +44,7 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
     tmp_path,
     monkeypatch,
 ):
-    model = tmp_path / "Qwen_Qwen3.5-2B-Q8_0.gguf"
+    model = tmp_path / "Qwen_Qwen3.5-2B-Q4_K_M.gguf"
     model.write_bytes(b"pinned-qwen-gguf")
     server = tmp_path / "llama-server.exe"
     server.write_bytes(b"llama-server")
@@ -159,8 +159,8 @@ def software_manifest(model: Path, server: Path) -> dict:
         "product_version": "1.0.0",
         "runtime_channel": "software-v1-gguf",
         "model_repo": "bartowski/Qwen_Qwen3.5-2B-GGUF",
-        "model_revision": "7d26695454df6de5fbcce2e58681e62dae06ce43",
-        "model_source_file_commit": "7d26695454df6de5fbcce2e58681e62dae06ce43",
+        "model_revision": "8de6479d2743924f9dc499e3654d4e51ea0d4b9d",
+        "model_source_file_commit": "8de6479d2743924f9dc499e3654d4e51ea0d4b9d",
         "model_filename": model.name,
         "model_sha256": sha256(model),
         "llama_cpp_repo": "ggml-org/llama.cpp",
@@ -178,7 +178,7 @@ def software_manifest(model: Path, server: Path) -> dict:
 
 
 def test_product_runtime_accepts_hash_bound_software_release_assets(tmp_path):
-    model = tmp_path / "Qwen_Qwen3.5-2B-Q8_0.gguf"
+    model = tmp_path / "Qwen_Qwen3.5-2B-Q4_K_M.gguf"
     model.write_bytes(b"software-model")
     server = tmp_path / "llama-server.exe"
     server.write_bytes(b"software-server")
@@ -214,7 +214,7 @@ def test_product_runtime_accepts_hash_bound_software_release_assets(tmp_path):
 
 
 def test_product_runtime_rejects_partial_software_mode(tmp_path):
-    model = tmp_path / "Qwen_Qwen3.5-2B-Q8_0.gguf"
+    model = tmp_path / "Qwen_Qwen3.5-2B-Q4_K_M.gguf"
     model.write_bytes(b"model")
     with pytest.raises(ValueError, match="requires model, llama-server and manifest"):
         ProductRuntime(
