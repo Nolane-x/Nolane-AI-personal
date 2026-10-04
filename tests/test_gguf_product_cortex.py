@@ -315,3 +315,33 @@ def test_quality_guard_respects_explicit_language_override():
         text="Paris is the capital city of France.",
     )
     assert "vietnamese_lock_suspect" not in issues
+
+
+def test_quality_guard_enforces_explicit_exact_literal_reply():
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Chỉ trả lời đúng hai từ: Xin chào",
+        state=LivingState(identity_id="exact-reply"),
+    )
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="compact",
+    )
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Xin chào Huy",
+    )
+    assert "exact_reply_mismatch" in issues
+
+    cortex = object.__new__(gguf.GgufProductCortex)
+    cortex.profile_getter = lambda: profile
+    replies = iter(["Xin chào Huy", "Xin chào Huy!"])
+    cortex._chat = lambda *args, **kwargs: next(replies)
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Xin chào"
