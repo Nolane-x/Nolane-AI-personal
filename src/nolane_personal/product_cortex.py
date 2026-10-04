@@ -17,9 +17,9 @@ from .product_prompt_payload import (
 
 
 _LENGTH_TOKENS = {
-    "compact": 96,
-    "balanced": 160,
-    "expansive": 256,
+    "compact": 128,
+    "balanced": 256,
+    "expansive": 512,
 }
 
 class FactorizedProductCortex:
@@ -163,7 +163,7 @@ class FactorizedProductCortex:
                 input_ids=ids,
                 max_new_tokens=max_new_tokens,
                 do_sample=True,
-                temperature=0.78,
+                temperature=0.55,
                 top_p=0.9,
                 sampling_seed=int(self.sampling_seed_getter()),
                 eos_token_id=self.tokenizer.eos_token_id,
