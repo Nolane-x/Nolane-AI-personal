@@ -12,6 +12,8 @@ from .qwen import SYSTEM_PROMPT
 PAYLOAD_SCHEMA = "NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1"
 MAX_OPEN_THREADS = 4
 MAX_MEMORIES = 8
+MAX_RECENT_MESSAGES = 8
+MAX_RECENT_MESSAGE_CHARS = 2000
 
 STYLE_GUIDANCE = {
     "natural": "Speak naturally. Avoid canned assistant phrasing.",
@@ -287,13 +289,27 @@ def build_product_messages(
     profile: ProductProfile,
     request: CortexRequest,
 ) -> list[dict[str, str]]:
-    return [
+    messages: list[dict[str, str]] = [
         {
             "role": "system",
             "content": SYSTEM_PROMPT,
-        },
+        }
+    ]
+    for row in request.recent_messages[-MAX_RECENT_MESSAGES:]:
+        role = str(row.get("role", "")).strip().lower()
+        content = str(row.get("content", "")).strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        messages.append(
+            {
+                "role": role,
+                "content": content[:MAX_RECENT_MESSAGE_CHARS],
+            }
+        )
+    messages.append(
         {
             "role": "user",
             "content": product_user_payload(profile, request),
-        },
-    ]
+        }
+    )
+    return messages
