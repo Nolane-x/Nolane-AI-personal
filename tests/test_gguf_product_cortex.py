@@ -460,3 +460,70 @@ def test_quality_guard_repairs_and_falls_back_for_reversed_relation_chain():
     assert len(calls) == 2
     assert calls[1]["temperature"] == 0.0
     assert "simple transitive relation problem" in calls[1]["messages"][0]["content"]
+
+
+def test_quality_guard_repairs_and_falls_back_for_basic_arithmetic_error():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "5 quả táo",
+        "5",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text=(
+            "Lan có 3 quả táo, được cho thêm 4 quả. "
+            "Lan có tất cả bao nhiêu quả táo?"
+        ),
+        state=LivingState(identity_id="arithmetic-repair"),
+    )
+
+    contract = gguf.GgufProductCortex._simple_arithmetic_contract(
+        request.user_text
+    )
+    assert contract == 7
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="5 quả táo",
+    )
+    assert "simple_arithmetic_inconsistent" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Kết quả là 7."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "simple arithmetic problem" in calls[1]["messages"][0]["content"]
+
+
+def test_simple_arithmetic_contract_supports_explicit_integer_operators():
+    resolve = gguf.GgufProductCortex._simple_arithmetic_contract
+
+    assert resolve("12 + 5 bằng bao nhiêu?") == 17
+    assert resolve("12 - 5 bằng bao nhiêu?") == 7
+    assert resolve("12 * 5 bằng bao nhiêu?") == 60
+    assert resolve("12 / 3 bằng bao nhiêu?") == 4
+    assert resolve("12 / 5 bằng bao nhiêu?") is None
