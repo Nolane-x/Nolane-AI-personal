@@ -26,6 +26,14 @@ _LENGTH_TOKENS = {
 _SERVER_ALIAS = "nolane-qwen3-0.6b"
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _pick_loopback_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -90,9 +98,7 @@ class GgufProductCortex:
             )
 
         self.profile_getter = profile_getter
-        self.checkpoint_sha256 = hashlib.sha256(
-            self.model_path.read_bytes()
-        ).hexdigest()
+        self.checkpoint_sha256 = _sha256_file(self.model_path)
         self.port = _pick_loopback_port()
         self.api_key = secrets.token_hex(32)
         self.endpoint = f"http://127.0.0.1:{self.port}"
