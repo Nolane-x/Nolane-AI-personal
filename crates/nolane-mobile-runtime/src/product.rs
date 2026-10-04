@@ -603,6 +603,32 @@ impl LocalMobileProductRuntime {
             "initiative": &self.meta.initiative,
             "model_checkpoint_sha256": self.runtime.source_checkpoint_sha256(),
             "device": "android-local-rust",
+            "mind": {
+                "schema": "NOLANE-OBSERVABLE-MIND-V1",
+                "raw_reasoning_exposed": false,
+                "affect": state.map(|value| json!({
+                    "valence": value.state.affect.valence,
+                    "energy": value.state.affect.energy,
+                    "playfulness": value.state.affect.playfulness,
+                    "irritation": value.state.affect.irritation,
+                    "concern": value.state.affect.concern,
+                    "social_drive": self.meta.social_drive,
+                })).unwrap_or(Value::Null),
+                "working": {
+                    "curiosity": self.meta.curiosity,
+                    "uncertainty": Value::Null,
+                    "active_intent": Value::Null,
+                    "recent_topics": [],
+                },
+                "relationship": state.map(|value| json!({
+                    "closeness": value.state.relationship.closeness,
+                    "trust": value.state.relationship.trust,
+                    "familiarity": value.state.relationship.familiarity,
+                })).unwrap_or(Value::Null),
+                "open_threads": state
+                    .map(|value| value.state.open_threads.iter().take(3).cloned().collect::<Vec<_>>())
+                    .unwrap_or_default(),
+            },
             "lifecycle": {
                 "schema": LOCAL_MOBILE_META_SCHEMA,
                 "tick": self.meta.tick,
