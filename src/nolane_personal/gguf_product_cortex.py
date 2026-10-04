@@ -492,7 +492,12 @@ class GgufProductCortex:
                 ),
             }
             repair_temperature = (
-                0.0 if "recall_askback" in issues else 0.15
+                0.0
+                if (
+                    "recall_askback" in issues
+                    or "simple_relation_inconsistent" in issues
+                )
+                else 0.15
             )
             repaired = self._chat(
                 repair_messages,
