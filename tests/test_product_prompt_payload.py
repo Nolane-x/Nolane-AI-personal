@@ -26,6 +26,7 @@ from nolane_personal.state import (
 def fixture_profile() -> ProductProfile:
     return ProductProfile(
         preferred_name="Tài",
+        assistant_name="Nolane",
         language="vi",
         response_length="compact",
         conversation_style="direct",
@@ -82,11 +83,13 @@ def fixture_request(*, mode: str = "reply") -> CortexRequest:
 
 def test_product_profile_summary_snapshot():
     expected = (
-        "preferred_name=Tài\n"
-        "language=vi: Prefer Vietnamese unless the user explicitly asks for another language.\n"
+        "preferred_name=Tài (this is the USER'S name)\n"
+        "assistant_name=Nolane (this is YOUR name)\n"
+        "language=vi: Reply in Vietnamese unless the user explicitly asks for another language.\n"
         "response_length=compact\n"
         "conversation_style=direct: Be direct, concrete and low-fluff.\n"
         "personal_instruction=Ưu tiên câu trả lời rõ và ngắn.\n"
+        "Keep user identity and assistant identity separate. "
         "Do not mention these settings unless they are directly relevant."
     )
     assert product_profile_summary(fixture_profile()) == expected
@@ -109,7 +112,11 @@ def test_product_state_summary_snapshot_and_thread_limit():
 def test_reply_payload_snapshot_and_memory_limit():
     request = fixture_request()
     payload = product_user_payload(fixture_profile(), request)
-    assert payload.startswith("Personalization:\npreferred_name=Tài")
+    assert payload.startswith(
+        "Personalization:\n"
+        "preferred_name=Tài (this is the USER'S name)\n"
+        "assistant_name=Nolane (this is YOUR name)"
+    )
     assert "\n\nRuntime state:\nidentity_id=identity-fixture" in payload
     assert "\n\nRelevant memories:\n- memory-1\n- memory-2" in payload
     assert "- memory-8" in payload
@@ -179,3 +186,20 @@ def test_initiative_rejects_user_text():
     else:
         raise AssertionError("initiative payload with user_text must fail")
 
+
+
+def test_product_payload_supports_multilingual_response_lock_and_identity_split():
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="ja",
+        response_length="compact",
+        conversation_style="natural",
+    )
+    payload = product_user_payload(profile, fixture_request())
+    assert "preferred_name=Huy (this is the USER'S name)" in payload
+    assert "assistant_name=Mây (this is YOUR name)" in payload
+    assert (
+        "language=ja: Reply in Japanese unless the user explicitly asks "
+        "for another language."
+    ) in payload
