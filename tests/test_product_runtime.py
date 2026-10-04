@@ -200,6 +200,53 @@ def test_memory_toggle_changes_actual_living_memory_behavior(tmp_path):
         runtime.close()
 
 
+def test_memory_controls_change_real_retrieval_state_and_keep_audit_private(tmp_path):
+    runtime = ProductRuntime(
+        tmp_path,
+        cortex_factory=fake_factory,
+    )
+    try:
+        runtime.power_on()
+        runtime.send_message("I prefer concise answers")
+
+        snapshot = runtime.status()["mind"]
+        assert len(snapshot["memories"]) == 1
+        memory_id = snapshot["memories"][0]["id"]
+
+        kept = runtime.memory_action("keep", memory_id)
+        assert kept["memory"]["kept"] is True
+        stored = runtime.store.memory_by_ids([memory_id])[memory_id]
+        assert stored.metadata["user_kept"] is True
+        assert stored.salience >= 0.85
+
+        edited = runtime.memory_action(
+            "edit",
+            memory_id,
+            text="I prefer concise, natural answers",
+        )
+        assert edited["memory"]["text"] == "I prefer concise, natural answers"
+        assert runtime.store.memory_by_ids([memory_id])[memory_id].text == (
+            "I prefer concise, natural answers"
+        )
+
+        deleted = runtime.memory_action("delete", memory_id)
+        assert deleted["memory"]["deleted"] is True
+        assert runtime.store.memories() == []
+        assert runtime.status()["mind"]["memories"] == []
+
+        rows = runtime.store.db.execute(
+            "SELECT action,before_sha256,after_sha256 FROM memory_controls ORDER BY at"
+        ).fetchall()
+        assert [row["action"] for row in rows] == ["keep", "edit", "delete"]
+        receipt_text = json.dumps(
+            [dict(row) for row in rows],
+            ensure_ascii=False,
+        )
+        assert "concise" not in receipt_text
+    finally:
+        runtime.close()
+
+
 def test_product_profile_persists_and_normalizes(tmp_path):
     store = ProductProfileStore(tmp_path / "profile.json")
     saved = store.update(
