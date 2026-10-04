@@ -1088,7 +1088,6 @@ summary:focus-visible {
       max(12px, env(safe-area-inset-left));
   }
 
-  .identity-copy span,
   .power-status {
     display: none;
   }
