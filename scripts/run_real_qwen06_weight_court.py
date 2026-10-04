@@ -42,7 +42,7 @@ def relative_error(torch,left,right):
 def main() -> int:
     parser=argparse.ArgumentParser()
     parser.add_argument("--model",default=str(ROOT/"models/Qwen3-0.6B"))
-    parser.add_argument("--lock",default=str(ROOT/"model.lock.json"))
+    parser.add_argument("--lock",default=str(ROOT/"config/legacy-qwen3-0.6b-model.lock.json"))
     parser.add_argument("--sample-rows",type=int,default=512)
     parser.add_argument("--rank",type=int,default=128)
     parser.add_argument("--output",default="runtime-data/l20-real-qwen06-court.json")
