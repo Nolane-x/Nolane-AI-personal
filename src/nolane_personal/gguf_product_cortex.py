@@ -251,6 +251,23 @@ class GgufProductCortex:
         if any(marker in lowered for marker in leaked_markers):
             issues.append("runtime_context_leak")
 
+        recall_prompts = (
+            "vừa nói",
+            "vừa bảo",
+            "vừa nhắc",
+            "tôi đã nói",
+            "mình đã nói",
+            "what did i just",
+            "what did i say",
+            "i just said",
+            "i just told",
+        )
+        if (
+            any(marker in user_text for marker in recall_prompts)
+            and text.strip().endswith("?")
+        ):
+            issues.append("recall_askback")
+
         capability_prompts = (
             "bạn làm được gì",
             "bạn có thể làm gì",
@@ -355,12 +372,24 @@ class GgufProductCortex:
                         + "Output exactly this text and nothing else: "
                         + json.dumps(exact_reply, ensure_ascii=False)
                     )
+                    + (
+                        ""
+                        if "recall_askback" not in issues
+                        else "\nThis is a recent-turn recall question. "
+                        + "Read the recent role-aware conversation history, "
+                        + "recover the information the user already stated, "
+                        + "and answer it directly. Do not ask the recall "
+                        + "question back to the user."
+                    )
                 ),
             }
+            repair_temperature = (
+                0.0 if "recall_askback" in issues else 0.15
+            )
             repaired = self._chat(
                 repair_messages,
                 max_tokens=_LENGTH_TOKENS[profile.response_length],
-                temperature=0.15,
+                temperature=repair_temperature,
                 top_p=0.9,
             )
             repaired_issues = self._quality_issues(
