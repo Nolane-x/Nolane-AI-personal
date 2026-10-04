@@ -20,10 +20,33 @@ STYLE_GUIDANCE = {
     "playful": "Allow light wit and playfulness when context supports it.",
 }
 
+LANGUAGE_NAMES = {
+    "en": "English",
+    "vi": "Vietnamese",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "pt": "Portuguese",
+    "it": "Italian",
+    "th": "Thai",
+    "id": "Indonesian",
+    "ru": "Russian",
+    "ar": "Arabic",
+    "hi": "Hindi",
+    "tr": "Turkish",
+    "pl": "Polish",
+    "nl": "Dutch",
+}
+
 LANGUAGE_GUIDANCE = {
     "auto": "Follow the user's current language naturally.",
-    "vi": "Prefer Vietnamese unless the user explicitly asks for another language.",
-    "en": "Prefer English unless the user explicitly asks for another language.",
+    **{
+        code: f"Reply in {name} unless the user explicitly asks for another language."
+        for code, name in LANGUAGE_NAMES.items()
+    },
 }
 
 
@@ -52,6 +75,7 @@ def _profile_input(profile: ProductProfile) -> dict[str, Any]:
     profile.normalize()
     return {
         "preferred_name": profile.preferred_name,
+        "assistant_name": profile.assistant_name,
         "language": profile.language,
         "response_length": profile.response_length,
         "conversation_style": profile.conversation_style,
@@ -127,13 +151,16 @@ def _profile_summary_from_input(profile: dict[str, Any]) -> str:
             f"unsupported response length: {response_length}"
         )
     preferred = str(profile["preferred_name"]) or "(not set)"
+    assistant = str(profile["assistant_name"]) or "Nolane"
     instruction = str(profile["personal_instruction"]) or "(none)"
     return (
-        f"preferred_name={preferred}\n"
+        f"preferred_name={preferred} (this is the USER'S name)\n"
+        f"assistant_name={assistant} (this is YOUR name)\n"
         f"language={language}: {LANGUAGE_GUIDANCE[language]}\n"
         f"response_length={response_length}\n"
         f"conversation_style={style}: {STYLE_GUIDANCE[style]}\n"
         f"personal_instruction={instruction}\n"
+        "Keep user identity and assistant identity separate. "
         "Do not mention these settings unless they are directly relevant."
     )
 
