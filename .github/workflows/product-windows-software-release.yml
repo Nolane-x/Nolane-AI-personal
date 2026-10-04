@@ -51,6 +51,7 @@ jobs:
           if ($lock.schema -ne "NOLANE-V100-WINDOWS-SOFTWARE-RUNTIME-LOCK-V1") { throw "Unsupported software runtime lock schema" }
           "MODEL_REPO=$($lock.model.repo)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "MODEL_REVISION=$($lock.model.revision)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MODEL_SOURCE_COMMIT=$($lock.model.source_file_commit)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "MODEL_FILE=$($lock.model.filename)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "MODEL_SHA256=$($lock.model.sha256)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "LLAMA_TAG=$($lock.llama_cpp.tag)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -90,7 +91,7 @@ jobs:
       - name: Stage pinned one-click resources
         shell: pwsh
         run: |
-          python scripts/stage_windows_software_release.py --runtime-dir dist/nolane-product-runtime --model "release-input/$env:MODEL_FILE" --llama-dir release-input/llama --product-version "$env:PRODUCT_VERSION" --model-repo "$env:MODEL_REPO" --model-revision "$env:MODEL_REVISION" --llama-tag "$env:LLAMA_TAG"
+          python scripts/stage_windows_software_release.py --runtime-dir dist/nolane-product-runtime --model "release-input/$env:MODEL_FILE" --llama-dir release-input/llama --product-version "$env:PRODUCT_VERSION" --model-repo "$env:MODEL_REPO" --model-revision "$env:MODEL_REVISION" --model-source-commit "$env:MODEL_SOURCE_COMMIT" --llama-tag "$env:LLAMA_TAG"
 
       - name: Parse clean-install court
         shell: pwsh
