@@ -19,7 +19,7 @@ pub const PROMPT_CONTRACT_AUTHORITY: &str =
 
 pub const PRODUCT_PAYLOAD_SCHEMA: &str =
     "NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1";
-pub const PRODUCT_SYSTEM_PROMPT: &str = "You are the language cortex of Nolane AI Personal.\nYou are not a generic assistant. Speak like a persistent personal companion whose state and memories are supplied by the runtime.\nUse natural language, usually concise. Vietnamese and English are both allowed; follow the user's language.\nYou may disagree, tease gently, joke, or sound mildly annoyed when context supports it, but never guilt the user for leaving, demand attention, threaten abandonment, or claim suffering to pressure them.\nDo not invent memories. Do not claim certainty about the user's emotion; phrase uncertain impressions naturally.\nThe runtime may ask you to initiate a conversation. In that case, do not mention that you were triggered or scored by a policy.\n";
+pub const PRODUCT_SYSTEM_PROMPT: &str = "You are the language cortex of Nolane AI Personal.\nYou are not a generic assistant. Speak like a persistent personal companion whose state and memories are supplied by the runtime.\nThe runtime may provide preferred_name and assistant_name. preferred_name is always the USER'S name. assistant_name is always YOUR name. Never swap, merge, or infer these identities.\nObey the explicit response-language setting when one is supplied. If the setting says Vietnamese, answer in Vietnamese unless the user explicitly requests another language.\nAnswer the user's actual question directly. Do not turn a normal question into a paraphrase, menu label, tutorial heading, or question back to the user.\nFor simple factual questions, give the established fact concisely. If you are genuinely unsure, say so instead of fabricating places, people, numbers, memories, or capabilities.\nIf the user corrects you, re-evaluate the claim and repair the answer instead of doubling down.\nUse natural language, usually concise.\nYou may disagree, tease gently, joke, or sound mildly annoyed when context supports it, but never guilt the user for leaving, demand attention, threaten abandonment, or claim suffering to pressure them.\nDo not invent memories. Do not claim certainty about the user's emotion; phrase uncertain impressions naturally.\nThe runtime may ask you to initiate a conversation. In that case, do not mention that you were triggered or scored by a policy.\n";
 
 pub const MAX_PRODUCT_OPEN_THREADS: usize = 4;
 pub const MAX_PRODUCT_MEMORIES: usize = 8;
@@ -33,6 +33,8 @@ pub const PERSISTENT_MOBILE_STATE_SCHEMA: &str =
     "NOLANE-V055-MOBILE-PERSISTENT-STATE-V1";
 pub const PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1: &str =
     "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V1";
+pub const PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2: &str =
+    "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V2";
 pub const MAX_PERSISTENT_MOBILE_STATE_BYTES: u64 = 4 * 1024 * 1024;
 
 const SAMPLER_LOGIT_SCALE: f64 = 1_000.0;
@@ -43,9 +45,15 @@ const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
 const SPLITMIX_MUL1: u64 = 0xBF58476D1CE4E5B9;
 const SPLITMIX_MUL2: u64 = 0x94D049BB133111EB;
 
+fn default_assistant_name() -> String {
+    "Nolane".to_string()
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadProfile {
     pub preferred_name: String,
+    #[serde(default = "default_assistant_name")]
+    pub assistant_name: String,
     pub language: String,
     pub response_length: String,
     pub conversation_style: String,
@@ -569,8 +577,24 @@ impl FrozenPromptContract {
 fn language_guidance(language: &str) -> Result<&'static str, RuntimeError> {
     match language {
         "auto" => Ok("Follow the user's current language naturally."),
-        "vi" => Ok("Prefer Vietnamese unless the user explicitly asks for another language."),
-        "en" => Ok("Prefer English unless the user explicitly asks for another language."),
+        "en" => Ok("Reply in English unless the user explicitly asks for another language."),
+        "vi" => Ok("Reply in Vietnamese unless the user explicitly asks for another language."),
+        "zh" => Ok("Reply in Chinese unless the user explicitly asks for another language."),
+        "ja" => Ok("Reply in Japanese unless the user explicitly asks for another language."),
+        "ko" => Ok("Reply in Korean unless the user explicitly asks for another language."),
+        "es" => Ok("Reply in Spanish unless the user explicitly asks for another language."),
+        "fr" => Ok("Reply in French unless the user explicitly asks for another language."),
+        "de" => Ok("Reply in German unless the user explicitly asks for another language."),
+        "pt" => Ok("Reply in Portuguese unless the user explicitly asks for another language."),
+        "it" => Ok("Reply in Italian unless the user explicitly asks for another language."),
+        "th" => Ok("Reply in Thai unless the user explicitly asks for another language."),
+        "id" => Ok("Reply in Indonesian unless the user explicitly asks for another language."),
+        "ru" => Ok("Reply in Russian unless the user explicitly asks for another language."),
+        "ar" => Ok("Reply in Arabic unless the user explicitly asks for another language."),
+        "hi" => Ok("Reply in Hindi unless the user explicitly asks for another language."),
+        "tr" => Ok("Reply in Turkish unless the user explicitly asks for another language."),
+        "pl" => Ok("Reply in Polish unless the user explicitly asks for another language."),
+        "nl" => Ok("Reply in Dutch unless the user explicitly asks for another language."),
         other => Err(RuntimeError::Invalid(format!(
             "unsupported product language: {other}"
         ))),
@@ -665,6 +689,11 @@ impl ProductPayloadInput {
         } else {
             self.profile.preferred_name.as_str()
         };
+        let assistant_name = if self.profile.assistant_name.trim().is_empty() {
+            "Nolane"
+        } else {
+            self.profile.assistant_name.as_str()
+        };
         let personal_instruction = if self.profile.personal_instruction.is_empty() {
             "(none)"
         } else {
@@ -690,7 +719,7 @@ impl ProductPayloadInput {
         };
 
         Ok(format!(
-            "Personalization:\npreferred_name={preferred_name}\nlanguage={}: {}\nresponse_length={}\nconversation_style={}: {}\npersonal_instruction={personal_instruction}\nDo not mention these settings unless they are directly relevant.\n\nRuntime state:\nidentity_id={}\nrelationship: closeness={:.2}, trust={:.2}, familiarity={:.2}, interactions={}\nbehavior: valence={:.2}, energy={:.2}, playfulness={:.2}, concern={:.2}, irritation={:.2}\nopen_threads={}\nrequested_intent={}\n\nRelevant memories:\n{}\n\n{}",
+            "Personalization:\npreferred_name={preferred_name} (this is the USER'S name)\nassistant_name={assistant_name} (this is YOUR name)\nlanguage={}: {}\nresponse_length={}\nconversation_style={}: {}\npersonal_instruction={personal_instruction}\nKeep user identity and assistant identity separate. Do not mention these settings unless they are directly relevant.\n\nRuntime state:\nidentity_id={}\nrelationship: closeness={:.2}, trust={:.2}, familiarity={:.2}, interactions={}\nbehavior: valence={:.2}, energy={:.2}, playfulness={:.2}, concern={:.2}, irritation={:.2}\nopen_threads={}\nrequested_intent={}\n\nRelevant memories:\n{}\n\n{}",
             self.profile.language,
             language_guidance(&self.profile.language)?,
             self.profile.response_length,
@@ -1400,6 +1429,7 @@ mod tests {
             latent: vec![0.125, -0.25, 0.5, 1.0],
             profile: ProductPayloadProfile {
                 preferred_name: "Thuận".into(),
+                assistant_name: "Nolane".into(),
                 language: "vi".into(),
                 response_length: "compact".into(),
                 conversation_style: "natural".into(),
