@@ -246,23 +246,53 @@ class GgufProductCortex:
             if any(marker in lowered for marker in weak_backoffs):
                 issues.append("capability_askback")
 
+        explicit_language_override = any(
+            marker in user_text
+            for marker in (
+                "tiếng anh",
+                "tiếng nhật",
+                "tiếng hàn",
+                "tiếng trung",
+                "tiếng pháp",
+                "tiếng đức",
+                "tiếng tây ban nha",
+                "english",
+                "japanese",
+                "korean",
+                "chinese",
+                "french",
+                "german",
+                "spanish",
+                "reply in ",
+                "answer in ",
+                "speak in ",
+            )
+        )
+        vietnamese_signals = (
+            " bạn ",
+            " mình ",
+            " tôi ",
+            " có ",
+            " là ",
+            " và ",
+            " được ",
+            " không",
+            " giúp",
+            " của ",
+            " với ",
+            " cho ",
+            " trong ",
+        )
+        vietnamese_diacritics = set(
+            "ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệ"
+            "íìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ"
+        )
         if (
             profile.language == "vi"
+            and not explicit_language_override
             and len(text.strip()) >= 20
-            and not any(
-                marker in lowered
-                for marker in (
-                    " bạn ",
-                    " mình ",
-                    " tôi ",
-                    " có ",
-                    " là ",
-                    " và ",
-                    " được ",
-                    " không",
-                    " giúp",
-                )
-            )
+            and not any(marker in f" {lowered} " for marker in vietnamese_signals)
+            and not any(char in vietnamese_diacritics for char in lowered)
         ):
             issues.append("vietnamese_lock_suspect")
 
