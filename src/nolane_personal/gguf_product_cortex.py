@@ -206,15 +206,15 @@ class GgufProductCortex:
         if not raw:
             return None
         patterns = (
-            r"(?is)\\bchỉ\\s+trả\\s+lời\\s+đúng(?:\\s+[^:\\s]+){0,6}\\s*:\\s*(.+?)\\s*$",
-            r"(?is)\\b(?:reply|answer)\\s+(?:with\\s+)?exactly(?:\\s+[^:\\s]+){0,6}\\s*:\\s*(.+?)\\s*$",
+            r"(?is)\bchỉ\s+trả\s+lời\s+đúng(?:\s+[^:\s]+){0,6}\s*:\s*(.+?)\s*$",
+            r"(?is)\b(?:reply|answer)\s+(?:with\s+)?exactly(?:\s+[^:\s]+){0,6}\s*:\s*(.+?)\s*$",
         )
         for pattern in patterns:
             match = re.search(pattern, raw)
             if match is None:
                 continue
-            candidate = match.group(1).strip().strip("\\\"'“”‘’")
-            if candidate and len(candidate) <= 240 and "\\n" not in candidate:
+            candidate = match.group(1).strip().strip("\"'“”‘’")
+            if candidate and len(candidate) <= 240 and "\n" not in candidate:
                 return candidate
         return None
 
