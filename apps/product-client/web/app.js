@@ -1017,7 +1017,11 @@
         ],
       },
     },
-    profile: { ...profile, digest: "preview" },
+    profile: {
+      ...profile,
+      assistant_name: assistantName,
+      digest: "preview",
+    },
     messages: [],
     learningWindows: [],
     learningCandidates: {},
