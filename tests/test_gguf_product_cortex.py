@@ -404,3 +404,59 @@ def test_quality_guard_repairs_recent_turn_recall_askback():
     assert len(calls) == 2
     assert calls[1]["temperature"] == 0.0
     assert "recent-turn recall question" in calls[1]["messages"][0]["content"]
+
+
+def test_quality_guard_repairs_and_falls_back_for_reversed_relation_chain():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Cường cao nhất. Vì An < Bình < Cường.",
+        "Cường cao nhất.",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="An cao hơn Bình, Bình cao hơn Cường. Ai cao nhất?",
+        state=LivingState(identity_id="relation-repair"),
+    )
+
+    contract = gguf.GgufProductCortex._simple_relation_contract(
+        request.user_text
+    )
+    assert contract is not None
+    assert contract[0] == "An"
+    assert contract[1] == "cao"
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Cường cao nhất. Vì An < Bình < Cường.",
+    )
+    assert "simple_relation_inconsistent" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "An cao nhất."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "simple transitive relation problem" in calls[1]["messages"][0]["content"]
