@@ -137,8 +137,15 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
     assert chat_call["payload"]["chat_template_kwargs"] == {
         "enable_thinking": False
     }
-    assert "Xin chào" in chat_call["payload"]["messages"][1]["content"]
-    assert "Người dùng thích câu trả lời ngắn." in chat_call["payload"]["messages"][1]["content"]
+    assert "Xin chào" in chat_call["payload"]["messages"][-1]["content"]
+    assert (
+        "Người dùng thích câu trả lời ngắn."
+        in chat_call["payload"]["messages"][0]["content"]
+    )
+    assert (
+        "User message:"
+        not in chat_call["payload"]["messages"][0]["content"]
+    )
 
     smoke = cortex.self_test()
     assert smoke["status"] == "PASS"
