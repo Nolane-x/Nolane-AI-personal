@@ -121,24 +121,26 @@ Remote pairing remains an explicit development/fallback path and is not silently
 
 ## Language cortex and model assets
 
-The project began from **Qwen3-0.6B** as an upstream teacher and language source. The research program progressively replaced Transformer depth and produced a standalone Nolane-owned factorized inference path.
+The active language cortex is now the **Qwen3-1.7B 2B-class** model. Qwen3-0.6B has been retired from active product/runtime use after failing the product-quality bar. Its lock remains only under `config/legacy-qwen3-0.6b-model.lock.json` so historical research courts stay reproducible.
 
 Model weights are intentionally **not committed to GitHub**.
 
-To reproduce the pinned upstream checkpoint:
+To reproduce the pinned active upstream checkpoint:
 
 ```bash
 python -m pip install -r requirements-model.txt
 python scripts/download_model.py
 ```
 
-The upstream model is pinned to:
+The active upstream model is pinned to:
 
 ```text
-Qwen/Qwen3-0.6B
-revision: c1899de289a04d12100db370d81485cdf75e47ca
+Qwen/Qwen3-1.7B
+revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
 license: Apache-2.0
 ```
+
+The Windows software release uses the official Qwen3-1.7B Q8_0 GGUF through the pinned local llama.cpp runtime.
 
 ## Developer quick start
 
