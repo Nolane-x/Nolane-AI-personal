@@ -1,8 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
+ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
+ENTRY = os.path.join(SPECPATH, "product_runtime_entry.py")
+SRC = os.path.join(ROOT, "src")
+
 analysis = Analysis(
-    ["packaging/product_runtime_entry.py"],
-    pathex=["src"],
+    [ENTRY],
+    pathex=[SRC],
     binaries=[],
     datas=[],
     hiddenimports=[],
