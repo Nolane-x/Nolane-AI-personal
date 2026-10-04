@@ -690,6 +690,7 @@ impl LocalMobileProductRuntime {
         let profile = &state.profile;
         let body = json!({
             "preferred_name": &profile.preferred_name,
+            "assistant_name": &profile.assistant_name,
             "language": &profile.language,
             "response_length": &profile.response_length,
             "conversation_style": &profile.conversation_style,
@@ -718,6 +719,14 @@ impl LocalMobileProductRuntime {
         if let Some(value) = object.get("preferred_name").and_then(Value::as_str) {
             state.profile.preferred_name =
                 truncate_chars(value, MAX_PROFILE_NAME_CHARS);
+        }
+        if let Some(value) = object.get("assistant_name").and_then(Value::as_str) {
+            let normalized = truncate_chars(value.trim(), 32);
+            state.profile.assistant_name = if normalized.is_empty() {
+                "Nolane".to_string()
+            } else {
+                normalized
+            };
         }
         if let Some(value) = object.get("language").and_then(Value::as_str) {
             state.profile.language = value.to_string();
