@@ -154,7 +154,7 @@ def software_manifest(model: Path, server: Path) -> dict:
         "product_version": "1.0.0",
         "runtime_channel": "software-v1-gguf",
         "model_repo": "Qwen/Qwen3-1.7B-GGUF",
-        "model_revision": "main",
+        "model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
         "model_source_file_commit": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
         "model_filename": model.name,
         "model_sha256": sha256(model),
