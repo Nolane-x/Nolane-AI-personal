@@ -1305,6 +1305,10 @@
 
   function renderRuntime() {
     const phase = phaseForUi();
+    if (els.appShell) {
+      els.appShell.dataset.presence =
+        phase === "thinking" ? "thinking" : phase === "on" ? "present" : "resting";
+    }
     els.powerButton.dataset.phase = phase;
     els.powerButton.setAttribute("aria-checked", String(runtime.phase === "on"));
     els.powerButton.setAttribute(
