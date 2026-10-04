@@ -1,10 +1,6 @@
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "nolane-ai-personal"
-version = "1.0.0"
+version = "1.0.1"
 description = "Event-driven persistent living runtime for Nolane AI Personal"
 readme = "README.md"
 requires-python = ">=3.10"
