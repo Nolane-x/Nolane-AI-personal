@@ -244,10 +244,57 @@ class GgufProductCortex:
             raise RuntimeError(
                 "semantic smoke failed: basic factual probe did not answer Paris"
             )
+
+        identity = self._chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "The user's name is Huy. Your assistant name is Nolane. "
+                        "Reply with only your assistant name."
+                    ),
+                },
+                {"role": "user", "content": "Tên bạn là gì?"},
+            ],
+            max_tokens=8,
+            temperature=0.0,
+            top_p=1.0,
+        )
+        identity_folded = identity.casefold()
+        if "nolane" not in identity_folded or "huy" in identity_folded:
+            raise RuntimeError(
+                "semantic smoke failed: assistant/user identity was confused"
+            )
+
+        vietnamese = self._chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Reply in Vietnamese. Follow the user's exact wording "
+                        "when they request an exact short answer."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": "Chỉ trả lời đúng hai từ: Xin chào",
+                },
+            ],
+            max_tokens=8,
+            temperature=0.0,
+            top_p=1.0,
+        )
+        if "xin chào" not in vietnamese.casefold():
+            raise RuntimeError(
+                "semantic smoke failed: Vietnamese language lock was not obeyed"
+            )
+
         return {
             "status": "PASS",
             "reply_nonempty": bool(text.strip()),
             "basic_fact_probe": "PASS",
+            "identity_probe": "PASS",
+            "vietnamese_probe": "PASS",
             "checkpoint_sha256": self.checkpoint_sha256,
             "device": "cpu",
             "runtime": "llama.cpp",
