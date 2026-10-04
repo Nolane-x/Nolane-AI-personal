@@ -1886,16 +1886,21 @@
   async function refreshProfile() {
     try {
       profile = await api("GET", "/v1/profile");
-      const runtimeAssistantName = normalizeAssistantName(
-        profile.assistant_name || "Nolane",
-      );
-      if (runtimeAssistantName) {
-        assistantName = runtimeAssistantName;
-        writeStoredString(
-          AI_NAME_KEY,
-          assistantName === "Nolane" ? "" : assistantName,
-        );
-        renderAssistantIdentity();
+      const suppliedAssistantName =
+        typeof profile.assistant_name === "string"
+          ? profile.assistant_name.trim()
+          : "";
+      if (suppliedAssistantName) {
+        const runtimeAssistantName =
+          normalizeAssistantName(suppliedAssistantName);
+        if (runtimeAssistantName) {
+          assistantName = runtimeAssistantName;
+          writeStoredString(
+            AI_NAME_KEY,
+            assistantName === "Nolane" ? "" : assistantName,
+          );
+          renderAssistantIdentity();
+        }
       }
       fillProfile();
       applyLocale();
