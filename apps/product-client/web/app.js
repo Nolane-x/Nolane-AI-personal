@@ -877,6 +877,7 @@
     } else {
       els.emptyState.hidden = true;
     }
+    renderMind();
   }
 
   function humanizeRuntimeError(error) {
@@ -1053,11 +1054,13 @@
         : t(sending ? "intentReply" : "intentConversation");
 
     els.mindConfidence.textContent =
-      snapshot.uncertainty == null || snapshot.uncertainty <= 0.32
-        ? t("confidenceClear")
-        : snapshot.uncertainty <= 0.62
-          ? t("confidenceSteady")
-          : t("confidenceUncertain");
+      snapshot.uncertainty == null
+        ? t("confidenceSteady")
+        : snapshot.uncertainty <= 0.32
+          ? t("confidenceClear")
+          : snapshot.uncertainty <= 0.62
+            ? t("confidenceSteady")
+            : t("confidenceUncertain");
 
     const chips = [
       ["emotionCuriosity", snapshot.curiosity],
