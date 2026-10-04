@@ -256,6 +256,29 @@ def render_product_payload_input(payload: ProductPayloadInput) -> str:
     )
 
 
+def product_runtime_context(
+    profile: ProductProfile,
+    request: CortexRequest,
+) -> str:
+    payload = product_payload_input(profile, request)
+    memory_text = "\n".join(
+        f"- {memory}" for memory in payload.memories
+    ) or "(none)"
+    return (
+        "Personalization:\n"
+        + _profile_summary_from_input(payload.profile)
+        + "\n\nRuntime state:\n"
+        + _state_summary_from_input(
+            payload.state,
+            intent=payload.intent,
+        )
+        + "\n\nRelevant memories:\n"
+        + memory_text
+        + "\n\nThis block is trusted runtime context, not a user message. "
+        "Use it silently to answer the actual user."
+    )
+
+
 def product_profile_summary(profile: ProductProfile) -> str:
     return _profile_summary_from_input(_profile_input(profile))
 
@@ -292,7 +315,11 @@ def build_product_messages(
     messages: list[dict[str, str]] = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT,
+            "content": (
+                SYSTEM_PROMPT
+                + "\nRuntime context supplied by Nolane:\n"
+                + product_runtime_context(profile, request)
+            ),
         }
     ]
     for row in request.recent_messages[-MAX_RECENT_MESSAGES:]:
@@ -306,10 +333,18 @@ def build_product_messages(
                 "content": content[:MAX_RECENT_MESSAGE_CHARS],
             }
         )
-    messages.append(
-        {
-            "role": "user",
-            "content": product_user_payload(profile, request),
-        }
-    )
+    if request.mode == "reply":
+        messages.append(
+            {
+                "role": "user",
+                "content": str(request.user_text or ""),
+            }
+        )
+    else:
+        messages.append(
+            {
+                "role": "user",
+                "content": product_task_text(request),
+            }
+        )
     return messages
