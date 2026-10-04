@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
@@ -15,31 +15,68 @@
         class="identity-button"
         id="profileButton"
         type="button"
-        aria-label="Cá nhân hóa"
+        aria-label="Personalize"
       >
         <span class="identity-mark" aria-hidden="true">N</span>
         <span class="identity-copy">
           <strong>Nolane</strong>
-          <span id="identitySubline">của riêng bạn</span>
+          <span id="identitySubline">yours</span>
         </span>
       </button>
 
-      <div class="power-zone">
-        <span class="power-status" id="powerStatusText">Đang tắt</span>
+      <div class="topbar-actions">
+        <label class="language-switcher" aria-label="Interface language">
+          <span class="language-globe" aria-hidden="true">◎</span>
+          <select id="uiLanguage" aria-label="Interface language">
+            <option value="en" selected>English</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="zh">中文</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="pt">Português</option>
+            <option value="it">Italiano</option>
+            <option value="th">ไทย</option>
+            <option value="id">Bahasa Indonesia</option>
+            <option value="ru">Русский</option>
+            <option value="ar">العربية</option>
+            <option value="hi">हिन्दी</option>
+            <option value="tr">Türkçe</option>
+            <option value="pl">Polski</option>
+            <option value="nl">Nederlands</option>
+          </select>
+        </label>
+
         <button
-          class="power-button"
-          id="powerButton"
+          class="mind-state-button"
+          id="mindStateButton"
           type="button"
-          role="switch"
-          aria-checked="false"
-          aria-label="Bật AI"
-          data-phase="off"
+          aria-label="Open Nolane mind state"
+          hidden
         >
-          <span class="ember" aria-hidden="true">
-            <span class="ember-core"></span>
-          </span>
-          <span class="power-label" id="powerButtonLabel">Bật AI</span>
+          <span class="mind-orb" id="mindOrb" aria-hidden="true"></span>
+          <span class="mind-state-label" id="mindStateLabel">Calm</span>
         </button>
+
+        <div class="power-zone">
+          <span class="power-status" id="powerStatusText">Off</span>
+          <button
+            class="power-button"
+            id="powerButton"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            aria-label="Start AI"
+            data-phase="off"
+          >
+            <span class="ember" aria-hidden="true">
+              <span class="ember-core"></span>
+            </span>
+            <span class="power-label" id="powerButtonLabel">Start AI</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -50,12 +87,12 @@
         role="log"
         aria-live="polite"
         aria-relevant="additions"
-        aria-label="Cuộc trò chuyện với Nolane"
+        aria-label="Conversation with Nolane"
       >
         <div class="empty-state" id="emptyState">
           <div class="empty-ember" aria-hidden="true"></div>
-          <p id="emptyTitle">Nolane đang nghỉ.</p>
-          <span id="emptyBody">Bật AI khi bạn muốn nói chuyện.</span>
+          <p id="emptyTitle">Nolane is resting.</p>
+          <span id="emptyBody">Start the AI whenever you want to talk.</span>
         </div>
       </section>
     </main>
@@ -63,31 +100,99 @@
     <div class="runtime-banner" id="runtimeBanner" role="status" hidden>
       <span class="runtime-banner-dot" aria-hidden="true"></span>
       <span id="runtimeBannerText"></span>
-      <button id="runtimeRetry" type="button" hidden>Thử lại</button>
+      <button id="runtimeRetry" type="button" hidden>Try again</button>
     </div>
 
     <form class="composer" id="composer" autocomplete="off">
-      <label class="sr-only" for="messageInput">Tin nhắn</label>
+      <label class="sr-only" for="messageInput">Message</label>
       <textarea
         id="messageInput"
         name="message"
         rows="1"
         maxlength="12000"
         enterkeyhint="send"
-        placeholder="Nhắn cho Nolane…"
+        placeholder="Message Nolane…"
         disabled
       ></textarea>
       <button
         class="send-button"
         id="sendButton"
         type="submit"
-        aria-label="Gửi"
+        aria-label="Send"
         disabled
       >
         <span aria-hidden="true">↑</span>
       </button>
     </form>
   </div>
+
+  <dialog class="mind-dialog" id="mindDialog">
+    <div class="mind-sheet">
+      <div class="mind-ambient" aria-hidden="true"></div>
+      <header class="mind-header">
+        <div class="mind-title-group">
+          <span class="mind-hero-orb" id="mindHeroOrb" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow" id="mindEyebrow">Observable mind</p>
+            <h2 id="mindTitle">Inside Nolane</h2>
+            <p class="mind-disclaimer" id="mindDisclaimer">
+              A live view of state and activity — not raw private reasoning.
+            </p>
+          </div>
+        </div>
+        <button class="icon-button" type="button" id="closeMindButton" aria-label="Close">×</button>
+      </header>
+
+      <div class="mind-body">
+        <section class="mind-hero-card">
+          <div>
+            <span class="mind-kicker" id="mindMoodLabel">Mood</span>
+            <strong class="mind-mood" id="mindMood">Calm</strong>
+          </div>
+          <div class="emotion-chips" id="emotionChips"></div>
+        </section>
+
+        <section class="mind-grid">
+          <article class="mind-card mind-card-wide">
+            <span class="mind-kicker" id="mindActivityLabel">Activity</span>
+            <strong id="mindActivity">Ready to listen</strong>
+            <div class="mind-progress" aria-hidden="true">
+              <span id="mindProgressBar"></span>
+            </div>
+            <small id="mindActivityHint">Nolane's visible activity summary appears here while a reply is being formed.</small>
+          </article>
+
+          <article class="mind-card">
+            <span class="mind-kicker" id="mindIntentLabel">Intent</span>
+            <strong id="mindIntent">Conversation</strong>
+            <small id="mindIntentHint">Current behavioral direction</small>
+          </article>
+
+          <article class="mind-card">
+            <span class="mind-kicker" id="mindConfidenceLabel">Confidence</span>
+            <strong id="mindConfidence">Steady</strong>
+            <small id="mindConfidenceHint">Based on current uncertainty</small>
+          </article>
+
+          <article class="mind-card mind-card-wide">
+            <span class="mind-kicker" id="mindThreadsLabel">In mind</span>
+            <div class="mind-thread-list" id="mindThreads">
+              <span class="mind-empty" id="mindThreadsEmpty">No open thread right now.</span>
+            </div>
+          </article>
+
+          <article class="mind-card relationship-card">
+            <span class="mind-kicker" id="mindRelationshipLabel">Relationship</span>
+            <div class="relationship-bars">
+              <div><span id="mindClosenessLabel">Closeness</span><i><b id="closenessBar"></b></i></div>
+              <div><span id="mindTrustLabel">Trust</span><i><b id="trustBar"></b></i></div>
+              <div><span id="mindFamiliarityLabel">Familiarity</span><i><b id="familiarityBar"></b></i></div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+  </dialog>
 
   <dialog class="personalization-dialog" id="personalizationDialog">
     <form method="dialog" class="sheet" id="profileForm">
