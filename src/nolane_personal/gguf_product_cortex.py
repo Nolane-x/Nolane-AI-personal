@@ -18,9 +18,9 @@ from .product_prompt_payload import build_product_messages
 
 
 _LENGTH_TOKENS = {
-    "compact": 96,
-    "balanced": 160,
-    "expansive": 256,
+    "compact": 128,
+    "balanced": 256,
+    "expansive": 512,
 }
 
 _SERVER_ALIAS = "nolane-qwen35-2b"
@@ -195,15 +195,120 @@ class GgufProductCortex:
             raise RuntimeError("llama.cpp chat response is empty")
         return content.strip()
 
+    @staticmethod
+    def _normalized_text(value: str) -> str:
+        return " ".join(str(value).strip().casefold().split())
+
+    @classmethod
+    def _quality_issues(
+        cls,
+        *,
+        profile: ProductProfile,
+        request: CortexRequest,
+        text: str,
+    ) -> list[str]:
+        issues: list[str] = []
+        normalized = cls._normalized_text(text)
+        user_text = cls._normalized_text(request.user_text or "")
+
+        if not normalized:
+            issues.append("empty")
+        if user_text and normalized == user_text:
+            issues.append("user_echo")
+
+        lowered = text.casefold()
+        leaked_markers = (
+            "personalization:",
+            "runtime state:",
+            "relevant memories:",
+            "requested_intent=",
+            "preferred_name=",
+            "assistant_name=",
+        )
+        if any(marker in lowered for marker in leaked_markers):
+            issues.append("runtime_context_leak")
+
+        capability_prompts = (
+            "bạn làm được gì",
+            "bạn có thể làm gì",
+            "what can you do",
+            "what are you capable of",
+        )
+        if any(marker in user_text for marker in capability_prompts):
+            weak_backoffs = (
+                "bạn đang cần gì",
+                "bạn muốn khám phá",
+                "có thể nói thêm",
+                "what do you need",
+            )
+            if len(text.strip()) < 45:
+                issues.append("capability_too_thin")
+            if any(marker in lowered for marker in weak_backoffs):
+                issues.append("capability_askback")
+
+        if (
+            profile.language == "vi"
+            and len(text.strip()) >= 20
+            and not any(
+                marker in lowered
+                for marker in (
+                    " bạn ",
+                    " mình ",
+                    " tôi ",
+                    " có ",
+                    " là ",
+                    " và ",
+                    " được ",
+                    " không",
+                    " giúp",
+                )
+            )
+        ):
+            issues.append("vietnamese_lock_suspect")
+
+        return issues
+
     def generate(self, request: CortexRequest) -> CortexReply:
         profile = self.profile_getter()
         messages = build_product_messages(profile, request)
         text = self._chat(
             messages,
             max_tokens=_LENGTH_TOKENS[profile.response_length],
-            temperature=0.55,
+            temperature=0.45,
             top_p=0.9,
         )
+        issues = self._quality_issues(
+            profile=profile,
+            request=request,
+            text=text,
+        )
+        if issues:
+            repair_messages = [dict(message) for message in messages]
+            repair_messages[0] = {
+                "role": "system",
+                "content": (
+                    repair_messages[0]["content"]
+                    + "\n\nQuality repair is required for this turn. "
+                    + "The previous draft failed these checks: "
+                    + ", ".join(issues)
+                    + ". Regenerate the answer from scratch. Answer the "
+                    + "actual user request directly, completely, naturally, "
+                    + "and without mentioning this quality check."
+                ),
+            }
+            repaired = self._chat(
+                repair_messages,
+                max_tokens=_LENGTH_TOKENS[profile.response_length],
+                temperature=0.15,
+                top_p=0.9,
+            )
+            repaired_issues = self._quality_issues(
+                profile=profile,
+                request=request,
+                text=repaired,
+            )
+            if len(repaired_issues) <= len(issues):
+                text = repaired
         return CortexReply(text, intent=request.intent)
 
     def self_test(self) -> dict[str, object]:
