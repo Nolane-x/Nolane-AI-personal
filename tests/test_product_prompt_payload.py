@@ -133,6 +133,43 @@ def test_reply_payload_snapshot_and_memory_limit():
     ]
 
 
+def test_recent_dialogue_is_role_aware_bounded_and_not_duplicated_in_payload():
+    request = fixture_request()
+    request.recent_messages = [
+        {"role": "user", "content": "Mình tên Huy."},
+        {"role": "assistant", "content": "Ừ, mình nhớ bạn là Huy."},
+        {"role": "tool", "content": "must be ignored"},
+        {"role": "assistant", "content": "   "},
+    ]
+    payload = product_user_payload(fixture_profile(), request)
+    assert "Mình tên Huy." not in payload
+    messages = build_product_messages(fixture_profile(), request)
+    assert messages[0] == {"role": "system", "content": SYSTEM_PROMPT}
+    assert messages[1] == {"role": "user", "content": "Mình tên Huy."}
+    assert messages[2] == {
+        "role": "assistant",
+        "content": "Ừ, mình nhớ bạn là Huy.",
+    }
+    assert messages[-1] == {"role": "user", "content": payload}
+    assert len(messages) == 4
+
+
+def test_recent_dialogue_keeps_only_last_eight_messages():
+    request = fixture_request()
+    request.recent_messages = [
+        {
+            "role": "user" if index % 2 == 0 else "assistant",
+            "content": f"turn-{index}",
+        }
+        for index in range(12)
+    ]
+    messages = build_product_messages(fixture_profile(), request)
+    recent = messages[1:-1]
+    assert len(recent) == 8
+    assert recent[0]["content"] == "turn-4"
+    assert recent[-1]["content"] == "turn-11"
+
+
 def test_initiate_task_is_stable():
     request = fixture_request(mode="initiative")
     expected = (
