@@ -938,7 +938,7 @@
     }
 
     setText("settingsEyebrow", "settingsEyebrow");
-    setText("settingsTitle", "settingsTitle");
+    $("settingsTitle").textContent = ti("settingsTitle");
     setText("preferredNameLabel", "preferredNameLabel");
     setText("languageLabel", "responseLanguageLabel");
     setText("lengthLabel", "lengthLabel");
@@ -1004,7 +1004,7 @@
     if (runtime.error) {
       showBanner(humanizeRuntimeError(runtime.error), true);
     } else if (target.mode === "unconfigured") {
-      showBanner(t("remoteMissing"), false);
+      showBanner(ti("remoteMissing"), false);
     } else {
       hideBanner();
     }
