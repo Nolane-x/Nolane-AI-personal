@@ -527,3 +527,65 @@ def test_simple_arithmetic_contract_supports_explicit_integer_operators():
     assert resolve("12 * 5 bằng bao nhiêu?") == 60
     assert resolve("12 / 3 bằng bao nhiêu?") == 4
     assert resolve("12 / 5 bằng bao nhiêu?") is None
+
+
+def test_quality_guard_recovers_explicit_recent_preference_semantically():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Bạn vừa nói mình thích đồ uống.",
+        "Bạn vừa nói mình thích đồ uống.",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Tôi vừa nói mình thích đồ uống nào hơn?",
+        state=LivingState(identity_id="preference-semantic-recall"),
+        recent_messages=[
+            {
+                "role": "user",
+                "content": "Tôi thích cà phê hơn trà. Hãy nhớ điều này trong cuộc trò chuyện.",
+            },
+            {
+                "role": "assistant",
+                "content": "Đã ghi nhớ. Bạn thích cà phê hơn trà.",
+            },
+        ],
+    )
+
+    contract = gguf.GgufProductCortex._recent_preference_contract(request)
+    assert contract == ("cà phê", "trà")
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Bạn vừa nói mình thích đồ uống.",
+    )
+    assert "preference_recall_incomplete" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Bạn thích cà phê hơn trà."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "name it explicitly" in calls[1]["messages"][0]["content"]
