@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Iterable
 
-from .product_profile import ProductProfile
+from .product_profile import ProductProfile, SUPPORTED_RESPONSE_LANGUAGES
 from .state import LivingState
 from .store import canonical_json, payload_digest
 
@@ -16,6 +16,9 @@ from .store import canonical_json, payload_digest
 PERSISTENT_MOBILE_STATE_SCHEMA = "NOLANE-V055-MOBILE-PERSISTENT-STATE-V1"
 PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1 = (
     "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V1"
+)
+PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2 = (
+    "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V2"
 )
 MAX_PERSISTENT_MOBILE_STATE_BYTES = 4 * 1024 * 1024
 MAX_OPEN_THREADS = 4
@@ -40,11 +43,24 @@ def _f64_bits(value: object) -> int:
 
 def _typed_integrity_projection(
     payload: dict[str, object],
+    *,
+    include_assistant_name: bool,
 ) -> dict[str, object]:
     profile = payload["profile"]
     runtime_state = payload["state"]
     relationship = runtime_state["relationship"]
     affect = runtime_state["affect"]
+    profile_projection = {
+        "preferred_name": profile["preferred_name"],
+        "language": profile["language"],
+        "response_length": profile["response_length"],
+        "conversation_style": profile["conversation_style"],
+        "personal_instruction": profile["personal_instruction"],
+    }
+    if include_assistant_name:
+        profile_projection["assistant_name"] = str(
+            profile.get("assistant_name", "Nolane")
+        )
     return {
         "source_checkpoint_sha256": payload[
             "source_checkpoint_sha256"
@@ -52,13 +68,7 @@ def _typed_integrity_projection(
         "latent_f32_bits": [
             _f32_bits(value) for value in payload["latent"]
         ],
-        "profile": {
-            "preferred_name": profile["preferred_name"],
-            "language": profile["language"],
-            "response_length": profile["response_length"],
-            "conversation_style": profile["conversation_style"],
-            "personal_instruction": profile["personal_instruction"],
-        },
+        "profile": profile_projection,
         "state": {
             "identity_id": runtime_state["identity_id"],
             "relationship": {
@@ -92,8 +102,17 @@ def _typed_integrity_projection(
     }
 
 
-def _typed_integrity_digest(payload: dict[str, object]) -> str:
-    return payload_digest(_typed_integrity_projection(payload))
+def _typed_integrity_digest(
+    payload: dict[str, object],
+    *,
+    include_assistant_name: bool,
+) -> str:
+    return payload_digest(
+        _typed_integrity_projection(
+            payload,
+            include_assistant_name=include_assistant_name,
+        )
+    )
 
 
 def build_persistent_mobile_state(
@@ -111,6 +130,7 @@ def build_persistent_mobile_state(
         "latent": [float(value) for value in latent],
         "profile": {
             "preferred_name": profile.preferred_name,
+            "assistant_name": profile.assistant_name,
             "language": profile.language,
             "response_length": profile.response_length,
             "conversation_style": profile.conversation_style,
@@ -187,7 +207,10 @@ def validate_persistent_mobile_state(
     profile = payload.get("profile")
     if not isinstance(profile, dict):
         raise ValueError("persistent mobile profile must be an object")
-    if str(profile.get("language", "")) not in {"auto", "vi", "en"}:
+    assistant_name = str(profile.get("assistant_name", "Nolane")).strip()
+    if not assistant_name or len(assistant_name) > 32:
+        raise ValueError("invalid assistant name")
+    if str(profile.get("language", "")) not in SUPPORTED_RESPONSE_LANGUAGES:
         raise ValueError("unsupported product language")
     if str(profile.get("response_length", "")) not in {
         "compact",
@@ -274,8 +297,11 @@ def write_persistent_mobile_state(
     )
     envelope = {
         "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
-        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
-        "state_sha256": _typed_integrity_digest(payload),
+        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2,
+        "state_sha256": _typed_integrity_digest(
+            payload,
+            include_assistant_name=True,
+        ),
         "state": payload,
     }
     encoded = (canonical_json(envelope) + "\n").encode("utf-8")
@@ -339,7 +365,15 @@ def read_persistent_mobile_state(
     if integrity is None:
         actual_digest = payload_digest(payload)
     elif integrity == PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1:
-        actual_digest = _typed_integrity_digest(payload)
+        actual_digest = _typed_integrity_digest(
+            payload,
+            include_assistant_name=False,
+        )
+    elif integrity == PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2:
+        actual_digest = _typed_integrity_digest(
+            payload,
+            include_assistant_name=True,
+        )
     else:
         raise ValueError(
             "unsupported persistent mobile state integrity mode: "
@@ -354,4 +388,7 @@ def read_persistent_mobile_state(
         ),
         expected_latent_dim=expected_latent_dim,
     )
+    profile = payload.get("profile")
+    if isinstance(profile, dict):
+        profile.setdefault("assistant_name", "Nolane")
     return payload
