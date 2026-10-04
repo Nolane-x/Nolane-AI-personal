@@ -219,6 +219,87 @@ class GgufProductCortex:
         return None
 
     @classmethod
+    def _simple_arithmetic_contract(
+        cls,
+        user_text: str | None,
+    ) -> int | None:
+        raw = str(user_text or "").strip()
+        if not raw:
+            return None
+
+        # Explicit two-integer expressions are safe to resolve locally.
+        explicit = re.search(
+            r"(?<![\w.])(-?\d+)\s*([+\-*/×÷])\s*(-?\d+)(?![\w.])",
+            raw,
+        )
+        if explicit is not None:
+            left = int(explicit.group(1))
+            operator = explicit.group(2)
+            right = int(explicit.group(3))
+            if operator == "+":
+                return left + right
+            if operator == "-":
+                return left - right
+            if operator in {"*", "×"}:
+                return left * right
+            if operator in {"/", "÷"} and right != 0 and left % right == 0:
+                return left // right
+            return None
+
+        numbers = [
+            int(value)
+            for value in re.findall(r"(?<![\w.])-?\d+(?![\w.])", raw)
+        ]
+        if len(numbers) != 2:
+            return None
+        left, right = numbers
+        folded = cls._normalized_text(raw)
+
+        addition_cues = (
+            " thêm ", "tất cả", " tổng ", "cộng", "plus",
+            "total", "altogether", "in all",
+        )
+        subtraction_cues = (
+            " bớt ", " mất ", "còn lại", " trừ ", "minus",
+            "left", "remain",
+        )
+        multiplication_cues = (" nhân ", "times", "multiplied by")
+        division_cues = (" chia ", "divided by")
+
+        padded = f" {folded} "
+        if any(cue in padded for cue in addition_cues):
+            return left + right
+        if any(cue in padded for cue in subtraction_cues):
+            return left - right
+        if any(cue in padded for cue in multiplication_cues):
+            return left * right
+        if (
+            any(cue in padded for cue in division_cues)
+            and right != 0
+            and left % right == 0
+        ):
+            return left // right
+        return None
+
+    @classmethod
+    def _arithmetic_reply_is_correct(
+        cls,
+        *,
+        text: str,
+        expected: int,
+    ) -> bool:
+        numeric_tokens = [
+            int(value)
+            for value in re.findall(
+                r"(?<![\w.])-?\d+(?![\w.])",
+                text,
+            )
+        ]
+        if not numeric_tokens:
+            return False
+        return numeric_tokens[-1] == expected
+
+    @classmethod
     def _simple_relation_contract(
         cls,
         user_text: str | None,
@@ -323,6 +404,18 @@ class GgufProductCortex:
         exact_reply = cls._requested_exact_reply(request.user_text)
         if exact_reply is not None and text.strip() != exact_reply:
             issues.append("exact_reply_mismatch")
+
+        arithmetic_contract = cls._simple_arithmetic_contract(
+            request.user_text
+        )
+        if (
+            arithmetic_contract is not None
+            and not cls._arithmetic_reply_is_correct(
+                text=text,
+                expected=arithmetic_contract,
+            )
+        ):
+            issues.append("simple_arithmetic_inconsistent")
 
         relation_contract = cls._simple_relation_contract(
             request.user_text
@@ -450,6 +543,9 @@ class GgufProductCortex:
             text=text,
         )
         exact_reply = self._requested_exact_reply(request.user_text)
+        arithmetic_contract = self._simple_arithmetic_contract(
+            request.user_text
+        )
         relation_contract = self._simple_relation_contract(
             request.user_text
         )
@@ -483,6 +579,13 @@ class GgufProductCortex:
                     )
                     + (
                         ""
+                        if "simple_arithmetic_inconsistent" not in issues
+                        else "\nThis is a simple arithmetic problem with an "
+                        + "exact integer result. Recompute it carefully and "
+                        + "state the correct result directly."
+                    )
+                    + (
+                        ""
                         if "simple_relation_inconsistent" not in issues
                         else "\nThis is a simple transitive relation problem. "
                         + "Preserve every 'X ... hơn Y' direction exactly, "
@@ -495,6 +598,7 @@ class GgufProductCortex:
                 0.0
                 if (
                     "recall_askback" in issues
+                    or "simple_arithmetic_inconsistent" in issues
                     or "simple_relation_inconsistent" in issues
                 )
                 else 0.15
@@ -517,6 +621,13 @@ class GgufProductCortex:
                 # formatting contract. Do not let personalization add names,
                 # punctuation, explanations or other extra text.
                 text = exact_reply
+            elif (
+                arithmetic_contract is not None
+                and "simple_arithmetic_inconsistent" in issues
+            ):
+                # Exact elementary arithmetic is delegated to a tiny local
+                # deterministic kernel instead of sampling from the LLM.
+                text = f"Kết quả là {arithmetic_contract}."
             elif (
                 relation_contract is not None
                 and "simple_relation_inconsistent" in issues
