@@ -1784,8 +1784,12 @@ summary:focus-visible {
     gap: 8px;
   }
 
-  .identity-copy span {
-    display: none;
+  .identity-copy {
+    min-width: 0;
+  }
+
+  .identity-subline-button {
+    display: inline-flex;
   }
 
   .language-globe {
