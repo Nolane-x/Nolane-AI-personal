@@ -76,11 +76,14 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
             for message in messages
             if isinstance(message, dict) and message.get("role") == "user"
         )
-        content = (
-            "Paris"
-            if "Thủ đô của nước Pháp" in user_text
-            else "Xin chào từ Nolane."
-        )
+        if "Thủ đô của nước Pháp" in user_text:
+            content = "Paris"
+        elif "Tên bạn là gì?" in user_text:
+            content = "Nolane"
+        elif "Chỉ trả lời đúng hai từ: Xin chào" in user_text:
+            content = "Xin chào"
+        else:
+            content = "Xin chào từ Nolane."
         return {
             "choices": [
                 {
@@ -140,6 +143,8 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
     smoke = cortex.self_test()
     assert smoke["status"] == "PASS"
     assert smoke["basic_fact_probe"] == "PASS"
+    assert smoke["identity_probe"] == "PASS"
+    assert smoke["vietnamese_probe"] == "PASS"
     assert smoke["checkpoint_sha256"] == sha256(model)
     assert smoke["runtime"] == "llama.cpp"
 
