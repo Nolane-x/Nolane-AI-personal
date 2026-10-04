@@ -11,18 +11,54 @@
 <body>
   <div class="app-shell" id="appShell">
     <header class="topbar">
-      <button
-        class="identity-button"
-        id="profileButton"
-        type="button"
-        aria-label="Personalize"
-      >
-        <span class="identity-mark" aria-hidden="true">N</span>
+      <div class="identity-cluster">
+        <button
+          class="assistant-avatar-button"
+          id="assistantAvatarButton"
+          type="button"
+          aria-label="Change AI avatar"
+          title="Change AI avatar"
+        >
+          <span class="identity-mark" id="assistantAvatarFallback" aria-hidden="true">N</span>
+          <img id="assistantAvatarImage" alt="" hidden />
+          <span class="avatar-edit-dot" aria-hidden="true">＋</span>
+        </button>
+        <input
+          id="assistantAvatarInput"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          hidden
+        />
+
         <span class="identity-copy">
-          <strong>Nolane</strong>
-          <span id="identitySubline">yours</span>
+          <span class="identity-name-row">
+            <button
+              class="assistant-name-button"
+              id="assistantNameButton"
+              type="button"
+              aria-label="Rename Nolane"
+              title="Rename Nolane"
+            >Nolane</button>
+            <input
+              class="assistant-name-input"
+              id="assistantNameInput"
+              type="text"
+              maxlength="32"
+              value="Nolane"
+              aria-label="AI name"
+              hidden
+            />
+          </span>
+          <button
+            class="identity-subline-button"
+            id="profileButton"
+            type="button"
+            aria-label="Personalize"
+          >
+            <span id="identitySubline">yours</span>
+          </button>
         </span>
-      </button>
+      </div>
 
       <div class="topbar-actions">
         <label class="language-switcher" aria-label="Interface language">

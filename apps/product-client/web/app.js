@@ -70,6 +70,12 @@
     closenessBar: $("closenessBar"),
     trustBar: $("trustBar"),
     familiarityBar: $("familiarityBar"),
+    assistantAvatarButton: $("assistantAvatarButton"),
+    assistantAvatarInput: $("assistantAvatarInput"),
+    assistantAvatarFallback: $("assistantAvatarFallback"),
+    assistantAvatarImage: $("assistantAvatarImage"),
+    assistantNameButton: $("assistantNameButton"),
+    assistantNameInput: $("assistantNameInput"),
   };
 
   const strings = {
@@ -189,6 +195,9 @@
     emotionPlayful: "Playful",
     emotionEnergy: "Energy",
     emotionIrritation: "Irritation",
+    changeAvatar: "Change AI avatar",
+    renameAi: "Rename AI",
+    aiName: "AI name",
   });
   Object.assign(strings.vi, {
     profileAria: "Cá nhân hóa",
@@ -242,6 +251,9 @@
     emotionPlayful: "Tinh nghịch",
     emotionEnergy: "Năng lượng",
     emotionIrritation: "Khó chịu",
+    changeAvatar: "Đổi ảnh đại diện AI",
+    renameAi: "Đổi tên AI",
+    aiName: "Tên AI",
   });
 
   const compactLocales = {
@@ -473,6 +485,8 @@
   Object.assign(strings, compactLocales);
 
   const UI_LOCALE_KEY = "nolane.ui.locale.v1";
+  const AI_NAME_KEY = "nolane.ui.ai-name.v1";
+  const AI_AVATAR_KEY = "nolane.ui.ai-avatar.v1";
   const supportedUiLocales = new Set([
     "en", "vi", "zh", "ja", "ko", "es", "fr", "de", "pt", "it",
     "th", "id", "ru", "ar", "hi", "tr", "pl", "nl",
@@ -485,6 +499,31 @@
       return "en";
     }
   })();
+
+  const readStoredString = (key, fallback = "") => {
+    try {
+      const value = localStorage.getItem(key);
+      return typeof value === "string" && value ? value : fallback;
+    } catch (_error) {
+      return fallback;
+    }
+  };
+
+  const writeStoredString = (key, value) => {
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch (_error) {
+      // Identity skin persistence is best-effort in restricted webviews.
+    }
+  };
+
+  let assistantName = readStoredString(AI_NAME_KEY, "Nolane")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 32) || "Nolane";
+  let assistantAvatar = readStoredString(AI_AVATAR_KEY, "");
 
   let profile = {
     preferred_name: "",
@@ -515,6 +554,110 @@
   const locale = () => uiLocale;
   const t = (key) =>
     strings[locale()]?.[key] || strings.en[key] || strings.vi[key] || key;
+  const ti = (key) => String(t(key)).replaceAll("Nolane", assistantName);
+
+  function assistantInitial() {
+    return Array.from(assistantName.trim())[0]?.toUpperCase() || "N";
+  }
+
+  function applyAssistantAvatar(target) {
+    if (!target) return;
+    target.textContent = assistantAvatar ? "" : assistantInitial();
+    target.classList.toggle("has-custom-avatar", Boolean(assistantAvatar));
+    target.style.backgroundImage = assistantAvatar
+      ? `url("${assistantAvatar.replaceAll('"', '%22')}")`
+      : "";
+  }
+
+  function renderAssistantIdentity() {
+    document.title = assistantName;
+    els.assistantNameButton.textContent = assistantName;
+    els.assistantNameButton.setAttribute("aria-label", t("renameAi") + ": " + assistantName);
+    els.assistantNameButton.title = t("renameAi");
+    els.assistantNameInput.value = assistantName;
+    els.assistantNameInput.setAttribute("aria-label", t("aiName"));
+    els.assistantAvatarButton.setAttribute("aria-label", t("changeAvatar"));
+    els.assistantAvatarButton.title = t("changeAvatar");
+    els.assistantAvatarFallback.textContent = assistantInitial();
+
+    if (assistantAvatar) {
+      els.assistantAvatarImage.src = assistantAvatar;
+      els.assistantAvatarImage.hidden = false;
+      els.assistantAvatarFallback.hidden = true;
+    } else {
+      els.assistantAvatarImage.removeAttribute("src");
+      els.assistantAvatarImage.hidden = true;
+      els.assistantAvatarFallback.hidden = false;
+    }
+
+    els.conversation
+      .querySelectorAll(".assistant-mark")
+      .forEach((node) => applyAssistantAvatar(node));
+  }
+
+  function normalizeAssistantName(value) {
+    return String(value || "")
+      .replace(/[\u0000-\u001f\u007f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 32);
+  }
+
+  function beginAssistantNameEdit() {
+    els.assistantNameButton.hidden = true;
+    els.assistantNameInput.hidden = false;
+    els.assistantNameInput.value = assistantName;
+    els.assistantNameInput.focus();
+    els.assistantNameInput.select();
+  }
+
+  function finishAssistantNameEdit({ cancel = false } = {}) {
+    const next = cancel ? assistantName : normalizeAssistantName(els.assistantNameInput.value);
+    if (!cancel && next) {
+      assistantName = next;
+      writeStoredString(AI_NAME_KEY, assistantName === "Nolane" ? "" : assistantName);
+    }
+    els.assistantNameInput.hidden = true;
+    els.assistantNameButton.hidden = false;
+    renderAssistantIdentity();
+    applyLocale();
+  }
+
+  function readImageAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error("Could not read image"));
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function prepareAvatar(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      throw new Error("Avatar must be an image");
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      throw new Error("Avatar image is too large");
+    }
+    const source = await readImageAsDataUrl(file);
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Could not decode avatar"));
+      image.src = source;
+    });
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas is unavailable");
+    const side = Math.min(image.naturalWidth, image.naturalHeight);
+    const sx = Math.max(0, (image.naturalWidth - side) / 2);
+    const sy = Math.max(0, (image.naturalHeight - side) / 2);
+    context.drawImage(image, sx, sy, side, side, 0, 0, size, size);
+    return canvas.toDataURL("image/webp", 0.86);
+  }
 
   const hasTauri = () =>
     Boolean(window.__TAURI__ && window.__TAURI__.core?.invoke);
@@ -781,21 +924,21 @@
     if (els.uiLanguage) els.uiLanguage.value = locale();
 
     els.profileButton.setAttribute("aria-label", t("profileAria"));
-    els.conversation.setAttribute("aria-label", t("conversationAria"));
+    els.conversation.setAttribute("aria-label", ti("conversationAria"));
     els.powerButtonLabel.textContent =
       runtime.phase === "on" || runtime.phase === "thinking"
         ? t("turnOff")
         : t("turnOn");
-    els.input.placeholder = t("input");
+    els.input.placeholder = ti("input");
     els.send.setAttribute("aria-label", t("send"));
     els.retry.textContent = t("retry");
     els.identitySubline.textContent = t("settingsSubline");
     if (els.mindStateButton) {
-      els.mindStateButton.setAttribute("aria-label", t("mindOpen"));
+      els.mindStateButton.setAttribute("aria-label", ti("mindOpen"));
     }
 
     setText("settingsEyebrow", "settingsEyebrow");
-    setText("settingsTitle", "settingsTitle");
+    $("settingsTitle").textContent = ti("settingsTitle");
     setText("preferredNameLabel", "preferredNameLabel");
     setText("languageLabel", "responseLanguageLabel");
     setText("lengthLabel", "lengthLabel");
@@ -808,7 +951,7 @@
     if (els.preferredName) els.preferredName.placeholder = t("preferredNamePlaceholder");
 
     setText("mindEyebrow", "mindEyebrow");
-    setText("mindTitle", "mindTitle");
+    $("mindTitle").textContent = ti("mindTitle");
     setText("mindDisclaimer", "mindDisclaimer");
     setText("mindMoodLabel", "moodLabel");
     setText("mindActivityLabel", "activityLabel");
@@ -822,6 +965,7 @@
     setText("mindTrustLabel", "trust");
     setText("mindFamiliarityLabel", "familiarity");
 
+    renderAssistantIdentity();
     renderRuntime();
     renderMind();
     renderThinking();
@@ -860,7 +1004,7 @@
     if (runtime.error) {
       showBanner(humanizeRuntimeError(runtime.error), true);
     } else if (target.mode === "unconfigured") {
-      showBanner(t("remoteMissing"), false);
+      showBanner(ti("remoteMissing"), false);
     } else {
       hideBanner();
     }
@@ -868,11 +1012,11 @@
     if (messages.length === 0) {
       els.emptyState.hidden = false;
       if (runtime.phase === "on") {
-        els.emptyTitle.textContent = t("emptyOnTitle");
-        els.emptyBody.textContent = t("emptyOnBody");
+        els.emptyTitle.textContent = ti("emptyOnTitle");
+        els.emptyBody.textContent = ti("emptyOnBody");
       } else {
-        els.emptyTitle.textContent = t("emptyOffTitle");
-        els.emptyBody.textContent = t("emptyOffBody");
+        els.emptyTitle.textContent = ti("emptyOffTitle");
+        els.emptyBody.textContent = ti("emptyOffBody");
       }
     } else {
       els.emptyState.hidden = true;
@@ -925,6 +1069,7 @@
       const mark = document.createElement("div");
       mark.className = "assistant-mark";
       mark.setAttribute("aria-hidden", "true");
+      applyAssistantAvatar(mark);
       node.appendChild(mark);
     }
     const content = document.createElement("div");
@@ -1550,6 +1695,37 @@
     ]);
   }
 
+  els.assistantAvatarButton.addEventListener("click", () => {
+    els.assistantAvatarInput.click();
+  });
+
+  els.assistantAvatarInput.addEventListener("change", async () => {
+    const [file] = els.assistantAvatarInput.files || [];
+    els.assistantAvatarInput.value = "";
+    if (!file) return;
+    try {
+      assistantAvatar = await prepareAvatar(file);
+      writeStoredString(AI_AVATAR_KEY, assistantAvatar);
+      renderAssistantIdentity();
+    } catch (error) {
+      showBanner(String(error?.message || error), false);
+    }
+  });
+
+  els.assistantNameButton.addEventListener("click", beginAssistantNameEdit);
+  els.assistantNameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      finishAssistantNameEdit();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      finishAssistantNameEdit({ cancel: true });
+    }
+  });
+  els.assistantNameInput.addEventListener("blur", () => {
+    if (!els.assistantNameInput.hidden) finishAssistantNameEdit();
+  });
+
   els.uiLanguage.addEventListener("change", () => {
     const next = els.uiLanguage.value;
     uiLocale = supportedUiLocales.has(next) ? next : "en";
@@ -1662,6 +1838,7 @@
 
   autoResize();
   els.uiLanguage.value = uiLocale;
+  renderAssistantIdentity();
   applyLocale();
   void refreshAll();
 

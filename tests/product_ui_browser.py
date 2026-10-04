@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import contextlib
 import http.server
 import socketserver
@@ -61,6 +62,37 @@ def run_desktop(browser, base_url):
     assert page.locator("#uiLanguage").input_value() == "vi"
     assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Nolane…"
 
+    name_button = page.locator("#assistantNameButton")
+    assert name_button.inner_text() == "Nolane"
+    name_button.click()
+    name_input = page.locator("#assistantNameInput")
+    assert name_input.is_visible()
+    name_input.fill("Airi")
+    name_input.press("Enter")
+    assert name_button.inner_text() == "Airi"
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Airi…"
+
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQrQAAAAASUVORK5CYII="
+    )
+    page.locator("#assistantAvatarInput").set_input_files(
+        {
+            "name": "avatar.png",
+            "mimeType": "image/png",
+            "buffer": png,
+        }
+    )
+    page.wait_for_function(
+        "() => { const el = document.querySelector('#assistantAvatarImage');"
+        " return el && !el.hidden && el.src.startsWith('data:image/webp'); }"
+    )
+    page.reload(wait_until="networkidle")
+    assert page.locator("#assistantNameButton").inner_text() == "Airi"
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Airi…"
+    assert page.locator("#assistantAvatarImage").evaluate(
+        "(el) => !el.hidden && el.src.startsWith('data:image/webp')"
+    )
+
     power = page.locator("#powerButton")
     composer = page.locator("#messageInput")
     send = page.locator("#sendButton")
@@ -96,6 +128,10 @@ def run_desktop(browser, base_url):
     page.wait_for_selector(".message.assistant")
     assert page.locator(".message.user").last.inner_text() == "Chào Nolane"
     assert "runtime Nolane thật" in page.locator(".message.assistant").last.inner_text()
+    assert page.locator(".message.assistant .assistant-mark").last.evaluate(
+        "(el) => el.classList.contains('has-custom-avatar') && "
+        "el.style.backgroundImage.includes('data:image/webp')"
+    )
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(EVIDENCE / "desktop-chat.png"), full_page=True)
 
