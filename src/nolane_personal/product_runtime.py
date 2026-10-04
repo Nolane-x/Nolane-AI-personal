@@ -444,6 +444,34 @@ class ProductRuntime:
                 "initiative": self.profile.initiative,
                 "model_checkpoint_sha256": self._model_checkpoint_sha256,
                 "device": self.device,
+                "mind": {
+                    "schema": "NOLANE-OBSERVABLE-MIND-V1",
+                    "raw_reasoning_exposed": False,
+                    "affect": {
+                        "valence": state.affect.valence,
+                        "energy": state.affect.energy,
+                        "playfulness": state.affect.playfulness,
+                        "irritation": state.affect.irritation,
+                        "concern": state.affect.concern,
+                        "social_drive": state.affect.social_drive,
+                    },
+                    "working": {
+                        "curiosity": state.working.curiosity,
+                        "uncertainty": state.working.uncertainty,
+                        "active_intent": state.working.active_intent,
+                        "recent_topics": list(state.working.recent_topics[-3:]),
+                    },
+                    "relationship": {
+                        "closeness": state.relationship.closeness,
+                        "trust": state.relationship.trust,
+                        "familiarity": state.relationship.familiarity,
+                    },
+                    "open_threads": [
+                        thread.topic
+                        for thread in state.open_threads
+                        if thread.unresolved
+                    ][-3:],
+                },
                 "readiness": (
                     None
                     if self._readiness_report is None
