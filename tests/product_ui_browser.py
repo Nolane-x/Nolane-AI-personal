@@ -53,8 +53,27 @@ def run_desktop(browser, base_url):
     page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
 
+    onboarding = page.locator("#onboardingDialog")
+    page.wait_for_function(
+        "() => document.querySelector('#onboardingDialog').open"
+    )
+    assert onboarding.evaluate("(el) => el.open")
+    assert page.locator("#uiLanguage").input_value() == "en"
+    page.locator("#onboardingName").fill("Tài")
+    page.locator("#onboardingLocale").select_option("vi")
+    page.locator("#onboardingStyle").select_option("warm")
+    page.locator("#onboardingStart").click()
+    page.wait_for_function(
+        "() => !document.querySelector('#onboardingDialog').open"
+    )
+    assert page.locator("#uiLanguage").input_value() == "vi"
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Nolane…"
+    page.reload(wait_until="networkidle")
+    assert not onboarding.evaluate("(el) => el.open")
+
     language = page.locator("#uiLanguage")
-    assert language.input_value() == "en"
+    assert language.input_value() == "vi"
+    language.select_option("en")
     assert page.locator("#messageInput").get_attribute("placeholder") == "Message Nolane…"
     language.select_option("vi")
     assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Nolane…"
@@ -118,6 +137,36 @@ def run_desktop(browser, base_url):
     assert page.locator("#mindMood").inner_text()
     assert page.locator("#mindActivity").inner_text()
     assert page.locator("#emotionChips .emotion-chip").count() >= 1
+    assert page.locator("#mindRelationshipStage").inner_text() in {
+        "Mới quen",
+        "Quen thuộc",
+        "Gần gũi",
+    }
+    memory_card = page.locator("#mindMemories .mind-memory").first
+    assert memory_card.is_visible()
+    assert "câu trả lời ngắn" in memory_card.inner_text()
+
+    memory_card.locator(".memory-action", has_text="Giữ").click()
+    page.wait_for_function(
+        "() => document.querySelector('#mindMemories .mind-memory')?.dataset.kept === 'true'"
+    )
+    memory_card = page.locator("#mindMemories .mind-memory").first
+    memory_card.locator(".memory-action", has_text="Sửa").click()
+    editor = memory_card.locator(".memory-editor textarea")
+    editor.fill("Bạn thích câu trả lời ngắn, tự nhiên và rõ ràng.")
+    memory_card.locator(".memory-editor .memory-primary").click()
+    page.wait_for_function(
+        "() => document.querySelector('#mindMemories .mind-memory-text')?.textContent.includes('rõ ràng')"
+    )
+    memory_card = page.locator("#mindMemories .mind-memory").first
+    delete_button = memory_card.locator(".memory-danger")
+    delete_button.click()
+    assert "Quên" in delete_button.inner_text()
+    delete_button.click()
+    page.wait_for_function(
+        "() => document.querySelectorAll('#mindMemories .mind-memory').length === 0"
+    )
+    assert page.locator("#mindMemories .mind-empty").is_visible()
     page.screenshot(path=str(EVIDENCE / "desktop-mind-panel.png"), full_page=True)
     page.locator("#closeMindButton").click()
     assert not mind_dialog.evaluate("(el) => el.open")
@@ -215,6 +264,10 @@ def run_desktop(browser, base_url):
     page.keyboard.press("Escape")
     assert not dialog.evaluate("(el) => el.open")
 
+    assert page.locator("#proactiveWrap").is_hidden()
+    assert page.locator("#proactiveCapsule").count() == 1
+    assert page.locator("#mindOrb").count() == 1
+
     overflow = page.evaluate(
         "() => document.documentElement.scrollWidth - document.documentElement.clientWidth"
     )
@@ -231,6 +284,9 @@ def run_mobile(browser, base_url):
         locale="vi-VN",
     )
     page = context.new_page()
+    page.add_init_script(
+        "localStorage.setItem('nolane.onboarding.v1', 'complete');"
+    )
     page.goto(base_url, wait_until="networkidle")
 
     assert page.locator("#uiLanguage").input_value() == "en"
@@ -284,6 +340,9 @@ def run_mobile(browser, base_url):
 def run_reduced_motion(browser, base_url):
     context = browser.new_context(reduced_motion="reduce", locale="vi-VN")
     page = context.new_page()
+    page.add_init_script(
+        "localStorage.setItem('nolane.onboarding.v1', 'complete');"
+    )
     page.goto(base_url, wait_until="networkidle")
     page.locator("#powerButton").click()
     page.wait_for_function(
