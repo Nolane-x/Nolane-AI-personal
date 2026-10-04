@@ -52,6 +52,15 @@ def run_desktop(browser, base_url):
     page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
 
+    language = page.locator("#uiLanguage")
+    assert language.input_value() == "en"
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Message Nolane…"
+    language.select_option("vi")
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Nolane…"
+    page.reload(wait_until="networkidle")
+    assert page.locator("#uiLanguage").input_value() == "vi"
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Nolane…"
+
     power = page.locator("#powerButton")
     composer = page.locator("#messageInput")
     send = page.locator("#sendButton")
@@ -68,6 +77,18 @@ def run_desktop(browser, base_url):
     )
     assert power.get_attribute("aria-checked") == "true"
     assert not composer.is_disabled()
+
+    mind_button = page.locator("#mindStateButton")
+    assert mind_button.is_visible()
+    mind_button.click()
+    mind_dialog = page.locator("#mindDialog")
+    assert mind_dialog.evaluate("(el) => el.open")
+    assert page.locator("#mindMood").inner_text()
+    assert page.locator("#mindActivity").inner_text()
+    assert page.locator("#emotionChips .emotion-chip").count() >= 1
+    page.screenshot(path=str(EVIDENCE / "desktop-mind-panel.png"), full_page=True)
+    page.locator("#closeMindButton").click()
+    assert not mind_dialog.evaluate("(el) => el.open")
 
     composer.fill("Chào Nolane")
     send.click()
@@ -176,12 +197,25 @@ def run_mobile(browser, base_url):
     page = context.new_page()
     page.goto(base_url, wait_until="networkidle")
 
+    assert page.locator("#uiLanguage").input_value() == "en"
+    page.locator("#uiLanguage").select_option("vi")
+    assert page.locator("#messageInput").get_attribute("placeholder") == "Nhắn cho Nolane…"
+
     power = page.locator("#powerButton")
     assert_min_target(power)
     power.tap()
     page.wait_for_function(
         "() => document.querySelector('#powerButton').dataset.phase === 'on'"
     )
+
+    mind_button = page.locator("#mindStateButton")
+    assert mind_button.is_visible()
+    mind_button.tap()
+    mind_dialog = page.locator("#mindDialog")
+    assert mind_dialog.evaluate("(el) => el.open")
+    page.screenshot(path=str(EVIDENCE / "mobile-mind-panel.png"), full_page=True)
+    page.locator("#closeMindButton").tap()
+    assert not mind_dialog.evaluate("(el) => el.open")
 
     page.locator("#profileButton").tap()
     dialog = page.locator("#personalizationDialog")
