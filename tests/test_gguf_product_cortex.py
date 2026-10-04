@@ -299,3 +299,19 @@ def test_quality_guard_retries_one_bad_draft_with_low_temperature():
     assert calls[0]["max_tokens"] == 256
     assert calls[1]["temperature"] == 0.15
     assert "Quality repair is required" in calls[1]["messages"][0]["content"]
+
+
+def test_quality_guard_respects_explicit_language_override():
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Hãy trả lời bằng tiếng Anh: Paris là gì?",
+        state=LivingState(identity_id="language-override"),
+    )
+    profile = ProductProfile(language="vi")
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Paris is the capital city of France.",
+    )
+    assert "vietnamese_lock_suspect" not in issues
