@@ -1,56 +1,59 @@
 # Nolane Product Client
 
-This directory contains the deliberately small Windows + Android product surface for Nolane AI Personal.
+Shared **Windows + Android** product surface for Nolane AI Personal v1.0.
 
-## Product shape
+The UI is intentionally small: identity, language, observable presence, AI power, transcript and composer. Deeper controls live in sheets instead of permanent dashboard chrome.
 
-The normal chat screen permanently exposes only:
+## v1 surface
 
-- Nolane identity;
-- one explicit AI power control;
-- the transcript;
-- the composer.
+The client implements the **Ember Quiet** NUI direction:
 
-Deep personalization is available through one secondary sheet instead of permanent dashboard chrome.
+- **Nolane Presence** — runtime-driven orb mood/activity, with reduced-motion support;
+- **Observable Mind** — safe state summary, not raw private reasoning;
+- **Memory & Threads** — real local memory projection with keep/edit/forget controls;
+- **Relationship growth** — New → Familiar → Close, derived from bounded relationship state;
+- **three-step onboarding** — preferred name, UI language and conversation style;
+- **proactive capsule** — initiative speech waits behind a quiet surface rather than a popup;
+- **identity skin** — local AI name/avatar customization;
+- **18 UI languages** — English, Vietnamese, Chinese, Japanese, Korean, Spanish, French, German, Portuguese, Italian, Thai, Indonesian, Russian, Arabic, Hindi, Turkish, Polish and Dutch.
 
-The selected NUI direction is **Ember Quiet**: warm neutral surfaces, document-like assistant responses, compact user messages, and orange reserved for living/primary state.
+The browser-preview backend exists only for deterministic UI courts and is never packaged as model authority.
 
-## Architecture
+## Runtime architecture
 
 ```text
 Windows
 Tauri WebView
-   |
-   | invoke()
-   v
+   │ invoke()
+   ▼
 Rust native host
-   |
-   | authenticated random loopback proxy
-   v
-PyInstaller product runtime
-   |
-   v
-LivingEngine + FactorizedProductCortex
-   |
-   +-- local SQLite identity/memory/history
-   +-- approved factorized-nolane.pt
-   +-- COMPLETE L36 promotion ceremony
-   +-- local tokenizer assets
+   │ authenticated random loopback
+   ▼
+bundled product runtime
+   ▼
+LivingEngine + Personal Cortex
+   ├── local SQLite identity / memory / history
+   ├── promoted factorized model
+   ├── tokenizer assets
+   └── release authority evidence
+
+Android
+Tauri WebView
+   │ invoke()
+   ▼
+Rust native host
+   ▼
+LocalMobile
+   ├── native tokenizer + prompt contract
+   ├── recurrent/factorized inference
+   ├── persistent identity / relationship / memory
+   ├── initiative + REST baseline
+   └── authority-bound mobile bundle
 ```
 
-The web layer never receives the loopback authentication token.
+The web layer never receives the Windows loopback authentication token.
 
-On Android, the same Tauri/web UI compiles as an APK. Android deliberately remains fail-closed until either local mobile inference or a cryptographically secure paired runtime is available. A remote target must use HTTPS except for loopback and its pairing token is memory-only.
-
-v0.50 adds the local-inference foundation underneath that shell: a Python-free mobile package (`contract.json + weights.safetensors`) and a pure-Rust one-token factorized/recurrent kernel. CI compares Rust logits/state against a deterministic Python golden trajectory and also compiles the kernel for `aarch64-linux-android`. Tokenization, autoregressive sampling and Tauri local-runtime wiring are still open, so the APK is not yet claimed production-complete.
-
-v0.51 adds a separate native generation host on top of that kernel. It loads the frozen Hugging Face `tokenizer.json` directly in Rust, performs prompt prefill and bounded greedy autoregressive generation, and is checked against Python tokenization/generation goldens. Exact product chat-template rendering, sampling, persistent state bridging and Tauri local routing remain open.
-
-v0.52 freezes the exact pinned product chat-template result into an integrity-bound prefix/between/suffix contract. Rust verifies the contract and tokenizer hashes, renders system+user prompts without shipping Jinja, and is checked byte-for-byte and token-for-token against Python Transformers on the exact pinned Qwen3 tokenizer revision. Dynamic product state/profile/memory construction, sampling and Tauri LocalMobile routing remain open.
-
-## Browser UI court
-
-The frontend includes a deterministic browser-preview backend only for UI verification. It is never packaged as inference authority.
+## Browser court
 
 ```bash
 python -m pip install playwright
@@ -58,24 +61,29 @@ python -m playwright install chromium
 python tests/product_ui_browser.py
 ```
 
-The court verifies desktop and phone viewports, power semantics, chat interaction, personalization persistence, minimum touch targets, horizontal overflow and reduced motion.
+The court covers desktop/mobile viewports, first-run onboarding, language persistence, AI power truth, Observable Mind, relationship state, keep/edit/forget memory controls, chat, avatar/name persistence, reduced motion, touch targets and overflow.
 
-## Product runtime courts
+## Runtime courts
 
 ```bash
 python -m pip install -e '.[dev]'
-python -m pytest -q tests/test_product_runtime.py tests/test_product_release_assets.py
+python -m pytest -q \
+  tests/test_product_runtime.py \
+  tests/test_product_release_assets.py \
+  tests/test_product_version.py \
+  tests/test_v1_closure.py
 ```
 
-These cover actual LivingEngine integration, power state, transcript persistence, memory-off privacy behavior, loopback auth, release asset staging and L36 authority binding.
+Native Android parity is additionally courted by the Rust LocalMobile fixtures, including restart continuity and v1 memory-control persistence.
 
-## Native development build
+## Development
 
-Install the current Tauri CLI, then:
+Windows:
 
 ```bash
 cd apps/product-client
-tauri build --no-bundle
+npm install
+npm run tauri -- dev
 ```
 
 Android:
@@ -86,60 +94,19 @@ tauri android init
 tauri android build --apk --target aarch64
 ```
 
-Tauri's generated `src-tauri/gen/` tree is intentionally not committed.
+Generated `src-tauri/gen/` trees are intentionally not committed.
 
-## Windows release build
+## Release integrity
 
-A production installer must not be produced from arbitrary local files.
+Product version must match across:
 
-Use the **Windows Product Release** workflow. It requires:
+- root `pyproject.toml`;
+- `apps/product-client/package.json`;
+- Tauri `Cargo.toml`;
+- `tauri.conf.json`.
 
-- promoted factorized model URL;
-- exact model SHA-256;
-- matching COMPLETE L36 ceremony JSON;
-- tokenizer archive URL + SHA-256.
+The v1.0 software release gate is the **same-SHA CI closure** across Product Client, Living Runtime, Neural Shadow and Platform Crash. Product Client evidence includes Windows native packaging, Android arm64/x86_64 packaging, native LocalMobile execution and packaged emulator force-stop/restart continuity.
 
-The workflow:
+Physical-device battery, thermal behavior, OEM compatibility and real-world performance distributions remain separate certification claims. The software release does not imply those claims.
 
-1. downloads assets only from HTTPS;
-2. builds the self-contained PyInstaller sidecar;
-3. verifies model SHA and L36 ceremony;
-4. stages sidecar/model/tokenizer as Tauri resources;
-5. starts the bundled runtime;
-6. powers the model on and performs a real chat inference smoke;
-7. builds an NSIS one-click installer with offline WebView2 installation support;
-8. uploads the installer plus release manifest.
-
-Missing or mismatched evidence stops the release.
-
-## Release boundary
-
-v0.42 establishes the product/distribution substrate. A Windows installer is only a real release once the manual release workflow runs with an actually promoted checkpoint and succeeds end-to-end.
-
-Android UI/APK compilation is not the same claim as Android local inference. That remains explicitly open.
-
-### Dynamic product payload parity
-
-v0.53 freezes the personalization/state/memory payload below the existing UI. Desktop Python and the native mobile runtime now share one structured payload schema and are required to render the same pinned-Qwen prompt and token IDs. No additional settings panel or Android-only chat surface is introduced.
-
-The current native parity covers preferred name, language, response length, conversational style, personal instruction, relationship/affect state, four unresolved threads, eight relevant memories and reply/initiative task wording. Sampling and persistent Android state remain separate follow-on gates.
-
-v0.54 freezes seeded stochastic decoding parity below the same Ember Quiet UI. Desktop Python and native Rust share SplitMix64 + quantized nucleus sampling; CI freezes generated sampled token IDs, text, EOS behavior and final recurrent state. The production desktop path still chooses a fresh 64-bit seed per response unless a deterministic seed source is injected for courts/replay.
-
-v0.55 adds the native persistent state bridge without adding a new settings surface. A checkpoint-bound, integrity-checked local artifact now carries latent/profile/identity/relationship/affect/open-thread/memory continuity between launches, and Python-authored state is courted directly inside the Rust runtime.
-
-v0.56 routes Android through a native Rust LocalMobile product host. The existing UI now has local status/power/profile/history/chat semantics without a Python sidecar or loopback HTTP server, and restart continuity is courted from the same persisted mobile state.
-
-v0.57 makes the Android local bundle authority-bound. Production LocalMobile now requires a COMPLETE L36 ceremony tied to the exact checkpoint and hashes for the native package, tokenizer, prompt contract and bootstrap state. The release workflow stages those assets and performs a strict native smoke before building the APK.
-
-v0.58 adds a packaged Android emulator court. CI builds an x86_64 APK with the deterministic authority-bound fixture, launches the real Tauri package, executes native LocalMobile chat, force-stops the package and requires identity/state/history continuity after process restart.
-
-v0.59 ports the mobile lifecycle baseline: persisted time/event state, desktop-style affect relaxation, user-event relationship dynamics, initiative guards/scoring and conservative REST scheduling. LocalMobile now exposes `POST /v1/tick` and can initiate through the same native product generation path.
-
-v0.60 adds the final release-readiness gate. It binds L43 longitudinal evidence, the exact COMPLETE L36 promoted checkpoint, Windows clean-install evidence, real physical-device Android evidence and Android performance evidence into one privacy-preserving closure receipt. Synthetic device/candidate evidence is never sufficient for v1 production closure.
-
-Android is still not called production-complete until the gate receives real authority-bound release/device/performance evidence and the resulting closure receipt says `READY_FOR_V1_0`.
-
-## CI-verified v1 release policy
-
-For v1.0 software release, the required gate is the same-SHA CI closure across Product Client, Living Runtime, Neural Shadow and Platform Crash, including Windows packaging, Android arm64/x86_64 packaging, native LocalMobile and emulator force-stop/restart continuity. Physical-device battery, thermal and OEM certification remain optional and are not claimed by the CI receipt.
+See [the repository README](../../README.md) and [v1 Living Presence](../../docs/V1-LIVING-PRESENCE.md).

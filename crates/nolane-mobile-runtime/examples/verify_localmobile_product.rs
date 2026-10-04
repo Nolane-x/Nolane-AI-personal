@@ -77,6 +77,62 @@ fn main() {
     assert_eq!(history["messages"][0]["text"], "Tiếp tục Nolane nhé");
     assert_eq!(history["messages"][1]["role"], "assistant");
 
+    let memory_status = host
+        .api("GET", "/v1/status", None)
+        .expect("memory status");
+    let memories = memory_status["mind"]["memories"]
+        .as_array()
+        .expect("memory projection");
+    assert_eq!(memories.len(), 2);
+    assert_eq!(memories[0]["kept"], false);
+
+    host.api(
+        "POST",
+        "/v1/memory",
+        Some(json!({
+            "action": "keep",
+            "memory_id": "slot:0",
+        })),
+    )
+    .expect("keep LocalMobile memory");
+    let kept = host.api("GET", "/v1/status", None).unwrap();
+    assert_eq!(kept["mind"]["memories"][0]["kept"], true);
+
+    host.api(
+        "POST",
+        "/v1/memory",
+        Some(json!({
+            "action": "edit",
+            "memory_id": "slot:0",
+            "text": "Người dùng đang xây Nolane v1.",
+        })),
+    )
+    .expect("edit LocalMobile memory");
+    let edited = host.api("GET", "/v1/status", None).unwrap();
+    assert_eq!(
+        edited["mind"]["memories"][0]["text"],
+        "Người dùng đang xây Nolane v1."
+    );
+    assert_eq!(edited["mind"]["memories"][0]["kept"], true);
+
+    host.api(
+        "POST",
+        "/v1/memory",
+        Some(json!({
+            "action": "delete",
+            "memory_id": "slot:1",
+        })),
+    )
+    .expect("forget LocalMobile memory");
+    let forgotten = host.api("GET", "/v1/status", None).unwrap();
+    assert_eq!(
+        forgotten["mind"]["memories"]
+            .as_array()
+            .expect("memory projection")
+            .len(),
+        1
+    );
+
     let updated = host
         .api(
             "PUT",
@@ -113,6 +169,15 @@ fn main() {
     assert_eq!(status["interactions"], 18);
     assert_eq!(status["initiative"], "active");
     assert_eq!(status["memory_enabled"], false);
+    let reloaded_memories = status["mind"]["memories"]
+        .as_array()
+        .expect("reloaded memories");
+    assert_eq!(reloaded_memories.len(), 1);
+    assert_eq!(
+        reloaded_memories[0]["text"],
+        "Người dùng đang xây Nolane v1."
+    );
+    assert_eq!(reloaded_memories[0]["kept"], true);
 
     let history = reloaded
         .api("GET", "/v1/history", None)

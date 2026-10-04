@@ -91,6 +91,7 @@ struct LocalMobileMeta {
     last_rest_ms: Option<u64>,
     last_rest_source_count: usize,
     last_rest_new_memories: usize,
+    kept_memory_sha256: Vec<String>,
 }
 
 impl Default for LocalMobileMeta {
@@ -110,6 +111,7 @@ impl Default for LocalMobileMeta {
             last_rest_ms: None,
             last_rest_source_count: 0,
             last_rest_new_memories: 0,
+            kept_memory_sha256: Vec::new(),
         }
     }
 }
@@ -410,6 +412,16 @@ fn load_meta(path: &Path) -> Result<LocalMobileMeta, RuntimeError> {
             "LocalMobile lifecycle metadata contains non-finite value".into(),
         ));
     }
+    if meta.kept_memory_sha256.len() > 64
+        || meta.kept_memory_sha256.iter().any(|value| !is_lower_hex_sha256(value))
+    {
+        return Err(RuntimeError::Invalid(
+            "LocalMobile kept-memory metadata is invalid".into(),
+        ));
+    }
+    let mut seen_kept = HashSet::new();
+    meta.kept_memory_sha256
+        .retain(|value| seen_kept.insert(value.clone()));
     meta.schema = LOCAL_MOBILE_META_SCHEMA.to_string();
     meta.social_drive = clamp01(meta.social_drive);
     meta.curiosity = clamp01(meta.curiosity);
@@ -567,6 +579,12 @@ impl LocalMobileProductRuntime {
             ("POST", "/v1/tick") => {
                 self.tick_at(now_millis(), None)
             }
+            ("POST", "/v1/memory") => {
+                let payload = body.ok_or_else(|| RuntimeError::Invalid(
+                    "memory action body is required".into(),
+                ))?;
+                self.memory_action(payload)
+            }
             (_, route) if route.starts_with("/v1/learning/") => {
                 Err(RuntimeError::Invalid(
                     "Learning review is not available on LocalMobile".into(),
@@ -627,6 +645,19 @@ impl LocalMobileProductRuntime {
                 })).unwrap_or(Value::Null),
                 "open_threads": state
                     .map(|value| value.state.open_threads.iter().take(3).cloned().collect::<Vec<_>>())
+                    .unwrap_or_default(),
+                "memories": state
+                    .map(|value| value.memories.iter().take(5).enumerate().map(|(index, text)| {
+                        let digest = sha256_hex(text.as_bytes());
+                        json!({
+                            "id": format!("slot:{index}"),
+                            "text": text,
+                            "kind": "local",
+                            "confidence": Value::Null,
+                            "salience": Value::Null,
+                            "kept": self.meta.kept_memory_sha256.iter().any(|value| value == &digest),
+                        })
+                    }).collect::<Vec<_>>())
                     .unwrap_or_default(),
             },
             "lifecycle": {
@@ -723,6 +754,93 @@ impl LocalMobileProductRuntime {
         self.runtime.save_persistent_state(&self.state_path)?;
         write_json(&self.meta_path, &self.meta)?;
         self.profile_json()
+    }
+
+    fn memory_action(&mut self, payload: Value) -> Result<Value, RuntimeError> {
+        let action = payload
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_ascii_lowercase();
+        let memory_id = payload
+            .get("memory_id")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let index = memory_id
+            .strip_prefix("slot:")
+            .and_then(|value| value.parse::<usize>().ok())
+            .ok_or_else(|| RuntimeError::Invalid("invalid memory id".into()))?;
+        let mut state = self
+            .runtime
+            .persistent_state()
+            .cloned()
+            .ok_or_else(|| RuntimeError::Invalid(
+                "LocalMobile persistent state is not attached".into(),
+            ))?;
+        if index >= state.memories.len() {
+            return Err(RuntimeError::Invalid("unknown memory".into()));
+        }
+
+        match action.as_str() {
+            "keep" => {
+                let digest = sha256_hex(state.memories[index].as_bytes());
+                if !self.meta.kept_memory_sha256.iter().any(|value| value == &digest) {
+                    self.meta.kept_memory_sha256.push(digest);
+                    if self.meta.kept_memory_sha256.len() > 64 {
+                        let excess = self.meta.kept_memory_sha256.len() - 64;
+                        self.meta.kept_memory_sha256.drain(0..excess);
+                    }
+                }
+            }
+            "edit" => {
+                let text = payload
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .map(|value| truncate_chars(value, 4000))
+                    .unwrap_or_default();
+                if text.is_empty() {
+                    return Err(RuntimeError::Invalid(
+                        "memory text is empty".into(),
+                    ));
+                }
+                let old_digest = sha256_hex(state.memories[index].as_bytes());
+                let was_kept = self
+                    .meta
+                    .kept_memory_sha256
+                    .iter()
+                    .any(|value| value == &old_digest);
+                state.memories[index] = text;
+                if was_kept {
+                    self.meta.kept_memory_sha256.retain(
+                        |value| value != &old_digest
+                    );
+                    self.meta.kept_memory_sha256.push(
+                        sha256_hex(state.memories[index].as_bytes())
+                    );
+                }
+            }
+            "delete" => {
+                let digest = sha256_hex(state.memories[index].as_bytes());
+                self.meta.kept_memory_sha256.retain(
+                    |value| value != &digest
+                );
+                state.memories.remove(index);
+            }
+            _ => {
+                return Err(RuntimeError::Invalid(
+                    "unsupported memory action".into(),
+                ));
+            }
+        }
+
+        self.runtime.set_persistent_state(state)?;
+        self.runtime.save_persistent_state(&self.state_path)?;
+        write_json(&self.meta_path, &self.meta)?;
+        Ok(json!({
+            "action": action,
+            "mind": self.status()["mind"].clone(),
+        }))
     }
 
     fn generate_product_with_policy(
@@ -1040,6 +1158,14 @@ impl LocalMobileProductRuntime {
             }
         }
         state.memories = compacted;
+        let surviving: HashSet<String> = state
+            .memories
+            .iter()
+            .map(|memory| sha256_hex(memory.as_bytes()))
+            .collect();
+        self.meta.kept_memory_sha256.retain(
+            |digest| surviving.contains(digest)
+        );
         self.meta.rest_cycles = self.meta.rest_cycles.saturating_add(1);
         self.meta.last_rest_ms = Some(at_ms);
         self.meta.last_rest_source_count = source_count;

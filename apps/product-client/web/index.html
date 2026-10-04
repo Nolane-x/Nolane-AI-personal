@@ -139,6 +139,17 @@
       <button id="runtimeRetry" type="button" hidden>Try again</button>
     </div>
 
+    <div class="proactive-wrap" id="proactiveWrap" hidden>
+      <button class="proactive-capsule" id="proactiveCapsule" type="button">
+        <span class="mind-orb proactive-orb" aria-hidden="true"></span>
+        <span class="proactive-copy">
+          <strong id="proactiveTitle">Nolane has something to say</strong>
+          <small id="proactiveBody">Tap to open</small>
+        </span>
+      </button>
+      <button class="proactive-dismiss" id="proactiveDismiss" type="button" aria-label="Dismiss">×</button>
+    </div>
+
     <form class="composer" id="composer" autocomplete="off">
       <label class="sr-only" for="messageInput">Message</label>
       <textarea
@@ -210,15 +221,27 @@
             <small id="mindConfidenceHint">Based on current uncertainty</small>
           </article>
 
-          <article class="mind-card mind-card-wide">
-            <span class="mind-kicker" id="mindThreadsLabel">In mind</span>
-            <div class="mind-thread-list" id="mindThreads">
-              <span class="mind-empty" id="mindThreadsEmpty">No open thread right now.</span>
+          <article class="mind-card mind-card-wide memory-thread-card">
+            <span class="mind-kicker" id="mindThreadsLabel">Memory & threads</span>
+            <div class="mind-subsection">
+              <small class="mind-subsection-title" id="openThreadsTitle">Open threads</small>
+              <div class="mind-thread-list" id="mindThreads">
+                <span class="mind-empty" id="mindThreadsEmpty">No open thread right now.</span>
+              </div>
+            </div>
+            <div class="mind-subsection">
+              <small class="mind-subsection-title" id="memoriesTitle">What Nolane remembers</small>
+              <div class="mind-memory-list" id="mindMemories">
+                <span class="mind-empty" id="mindMemoriesEmpty">No local memory yet.</span>
+              </div>
             </div>
           </article>
 
           <article class="mind-card relationship-card">
-            <span class="mind-kicker" id="mindRelationshipLabel">Relationship</span>
+            <div class="relationship-heading">
+              <span class="mind-kicker" id="mindRelationshipLabel">Relationship</span>
+              <strong class="relationship-stage" id="mindRelationshipStage">New</strong>
+            </div>
             <div class="relationship-bars">
               <div><span id="mindClosenessLabel">Closeness</span><i><b id="closenessBar"></b></i></div>
               <div><span id="mindTrustLabel">Trust</span><i><b id="trustBar"></b></i></div>
@@ -388,6 +411,70 @@
         <button class="primary-button" type="submit" id="saveProfileButton">
           Lưu
         </button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="onboarding-dialog" id="onboardingDialog">
+    <form class="onboarding-sheet" id="onboardingForm">
+      <header class="onboarding-header">
+        <span class="mind-hero-orb" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow" id="onboardingEyebrow">First meeting</p>
+          <h2 id="onboardingTitle">Make Nolane yours in three small steps</h2>
+          <p id="onboardingBody">Only the essentials. You can change everything later.</p>
+        </div>
+      </header>
+      <div class="onboarding-cards">
+        <label class="onboarding-card">
+          <span class="onboarding-step">1</span>
+          <span>
+            <strong id="onboardingNameLabel">What should Nolane call you?</strong>
+            <input id="onboardingName" maxlength="80" autocomplete="name" />
+          </span>
+        </label>
+        <label class="onboarding-card">
+          <span class="onboarding-step">2</span>
+          <span>
+            <strong id="onboardingLanguageLabel">Interface language</strong>
+            <select id="onboardingLocale">
+              <option value="en">English</option>
+              <option value="vi">Tiếng Việt</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="pt">Português</option>
+              <option value="it">Italiano</option>
+              <option value="th">ไทย</option>
+              <option value="id">Bahasa Indonesia</option>
+              <option value="ru">Русский</option>
+              <option value="ar">العربية</option>
+              <option value="hi">हिन्दी</option>
+              <option value="tr">Türkçe</option>
+              <option value="pl">Polski</option>
+              <option value="nl">Nederlands</option>
+            </select>
+          </span>
+        </label>
+        <label class="onboarding-card">
+          <span class="onboarding-step">3</span>
+          <span>
+            <strong id="onboardingStyleLabel">How should Nolane talk?</strong>
+            <select id="onboardingStyle">
+              <option value="natural">Natural</option>
+              <option value="warm">Warm</option>
+              <option value="direct">Direct and clear</option>
+              <option value="playful">Playful</option>
+            </select>
+          </span>
+        </label>
+      </div>
+      <footer class="onboarding-footer">
+        <small id="onboardingPrivacy">Stored locally with your profile.</small>
+        <button class="primary-button" type="submit" id="onboardingStart">Start talking</button>
       </footer>
     </form>
   </dialog>

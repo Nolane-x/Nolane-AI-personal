@@ -26,7 +26,7 @@ from nolane_personal.v1_closure import (
 )
 
 
-VERSION = "0.60.0"
+VERSION = "1.0.0"
 CHECKPOINT = "a" * 64
 CEREMONY_AUTH = "b" * 64
 DEVICE_FINGERPRINT = "d" * 64
