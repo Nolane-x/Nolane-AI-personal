@@ -31,6 +31,7 @@ fn main() {
     )
     .expect("read Python-authored persistent state");
     assert_eq!(state.profile.preferred_name, "Thuận");
+    assert_eq!(state.profile.assistant_name, "Nolane");
     assert_eq!(state.state.identity_id, "identity-v055-mobile");
     assert_eq!(state.memories.len(), 2);
 
@@ -53,6 +54,7 @@ fn main() {
         )
         .expect("build product payload from persisted state");
     assert_eq!(payload.profile.preferred_name, "Thuận");
+    assert_eq!(payload.profile.assistant_name, "Nolane");
     assert_eq!(payload.state.identity_id, "identity-v055-mobile");
     assert_eq!(payload.memories.len(), 2);
 
