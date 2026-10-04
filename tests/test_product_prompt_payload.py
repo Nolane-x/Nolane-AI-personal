@@ -9,6 +9,7 @@ from nolane_personal.product_prompt_payload import (
     build_product_messages,
     product_payload_input,
     product_profile_summary,
+    product_runtime_context,
     product_state_summary,
     product_task_text,
     product_user_payload,
@@ -127,10 +128,15 @@ def test_reply_payload_snapshot_and_memory_limit():
     )
 
     messages = build_product_messages(fixture_profile(), request)
-    assert messages == [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": payload},
-    ]
+    assert len(messages) == 2
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"].startswith(SYSTEM_PROMPT)
+    assert (
+        "Runtime context supplied by Nolane:\nPersonalization:"
+        in messages[0]["content"]
+    )
+    assert "User message:\nTiếp tục nhé" not in messages[0]["content"]
+    assert messages[1] == {"role": "user", "content": "Tiếp tục nhé"}
 
 
 def test_recent_dialogue_is_role_aware_bounded_and_not_duplicated_in_payload():
@@ -144,13 +150,15 @@ def test_recent_dialogue_is_role_aware_bounded_and_not_duplicated_in_payload():
     payload = product_user_payload(fixture_profile(), request)
     assert "Mình tên Huy." not in payload
     messages = build_product_messages(fixture_profile(), request)
-    assert messages[0] == {"role": "system", "content": SYSTEM_PROMPT}
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"].startswith(SYSTEM_PROMPT)
+    assert "Mình tên Huy." not in messages[0]["content"]
     assert messages[1] == {"role": "user", "content": "Mình tên Huy."}
     assert messages[2] == {
         "role": "assistant",
         "content": "Ừ, mình nhớ bạn là Huy.",
     }
-    assert messages[-1] == {"role": "user", "content": payload}
+    assert messages[-1] == {"role": "user", "content": "Tiếp tục nhé"}
     assert len(messages) == 4
 
 
@@ -200,6 +208,21 @@ def test_structured_payload_is_canonical_and_desktop_renders_from_it():
     assert render_product_payload_input(structured) == product_user_payload(
         profile,
         request,
+    )
+
+
+def test_runtime_context_is_system_side_and_keeps_identity_language_memory():
+    profile = fixture_profile()
+    request = fixture_request()
+    rendered = product_runtime_context(profile, request)
+    assert "preferred_name=Tài (this is the USER'S name)" in rendered
+    assert "assistant_name=Nolane (this is YOUR name)" in rendered
+    assert "language=vi: Reply in Vietnamese" in rendered
+    assert "Relevant memories:\n- memory-1" in rendered
+    assert "User message:" not in rendered
+    assert rendered.endswith(
+        "This block is trusted runtime context, not a user message. "
+        "Use it silently to answer the actual user."
     )
 
 
