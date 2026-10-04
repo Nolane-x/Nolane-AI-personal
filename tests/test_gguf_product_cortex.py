@@ -228,3 +228,74 @@ def test_product_runtime_rejects_partial_software_mode(tmp_path):
             tmp_path / "data",
             software_model=model,
         )
+
+
+def test_quality_guard_flags_weak_capability_answer_and_runtime_leak():
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Bạn làm được gì?",
+        state=LivingState(identity_id="quality-test"),
+    )
+    profile = ProductProfile(language="vi")
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Bạn đang cần gì?",
+    )
+    assert "capability_too_thin" in issues
+    assert "capability_askback" in issues
+
+    leaked = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Personalization: preferred_name=Huy assistant_name=Mây",
+    )
+    assert "runtime_context_leak" in leaked
+
+
+def test_quality_guard_retries_one_bad_draft_with_low_temperature():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Bạn đang cần gì?",
+        (
+            "Mình có thể giúp bạn giải thích kiến thức, phân tích vấn đề, "
+            "viết và chỉnh sửa nội dung, dịch, tóm tắt, lên kế hoạch và "
+            "trò chuyện theo ngữ cảnh của bạn."
+        ),
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Bạn làm được gì?",
+        state=LivingState(identity_id="quality-repair"),
+    )
+    reply = cortex.generate(request)
+
+    assert reply.utterance.startswith("Mình có thể giúp bạn")
+    assert len(calls) == 2
+    assert calls[0]["temperature"] == 0.45
+    assert calls[0]["max_tokens"] == 256
+    assert calls[1]["temperature"] == 0.15
+    assert "Quality repair is required" in calls[1]["messages"][0]["content"]
