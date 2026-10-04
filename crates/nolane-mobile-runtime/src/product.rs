@@ -567,6 +567,12 @@ impl LocalMobileProductRuntime {
             ("POST", "/v1/tick") => {
                 self.tick_at(now_millis(), None)
             }
+            ("POST", "/v1/memory") => {
+                let payload = body.ok_or_else(|| RuntimeError::Invalid(
+                    "memory action body is required".into(),
+                ))?;
+                self.memory_action(payload)
+            }
             (_, route) if route.starts_with("/v1/learning/") => {
                 Err(RuntimeError::Invalid(
                     "Learning review is not available on LocalMobile".into(),
@@ -627,6 +633,16 @@ impl LocalMobileProductRuntime {
                 })).unwrap_or(Value::Null),
                 "open_threads": state
                     .map(|value| value.state.open_threads.iter().take(3).cloned().collect::<Vec<_>>())
+                    .unwrap_or_default(),
+                "memories": state
+                    .map(|value| value.memories.iter().take(5).enumerate().map(|(index, text)| json!({
+                        "id": format!("slot:{index}"),
+                        "text": text,
+                        "kind": "local",
+                        "confidence": Value::Null,
+                        "salience": Value::Null,
+                        "kept": index == 0,
+                    })).collect::<Vec<_>>())
                     .unwrap_or_default(),
             },
             "lifecycle": {
@@ -723,6 +739,68 @@ impl LocalMobileProductRuntime {
         self.runtime.save_persistent_state(&self.state_path)?;
         write_json(&self.meta_path, &self.meta)?;
         self.profile_json()
+    }
+
+    fn memory_action(&mut self, payload: Value) -> Result<Value, RuntimeError> {
+        let action = payload
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_ascii_lowercase();
+        let memory_id = payload
+            .get("memory_id")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let index = memory_id
+            .strip_prefix("slot:")
+            .and_then(|value| value.parse::<usize>().ok())
+            .ok_or_else(|| RuntimeError::Invalid("invalid memory id".into()))?;
+        let mut state = self
+            .runtime
+            .persistent_state()
+            .cloned()
+            .ok_or_else(|| RuntimeError::Invalid(
+                "LocalMobile persistent state is not attached".into(),
+            ))?;
+        if index >= state.memories.len() {
+            return Err(RuntimeError::Invalid("unknown memory".into()));
+        }
+
+        match action.as_str() {
+            "keep" => {
+                let memory = state.memories.remove(index);
+                state.memories.insert(0, memory);
+            }
+            "edit" => {
+                let text = payload
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .map(|value| truncate_chars(value, 4000))
+                    .unwrap_or_default();
+                if text.is_empty() {
+                    return Err(RuntimeError::Invalid(
+                        "memory text is empty".into(),
+                    ));
+                }
+                state.memories[index] = text;
+            }
+            "delete" => {
+                state.memories.remove(index);
+            }
+            _ => {
+                return Err(RuntimeError::Invalid(
+                    "unsupported memory action".into(),
+                ));
+            }
+        }
+
+        self.runtime.set_persistent_state(state)?;
+        self.runtime.save_persistent_state(&self.state_path)?;
+        Ok(json!({
+            "action": action,
+            "mind": self.status()["mind"].clone(),
+        }))
     }
 
     fn generate_product_with_policy(
