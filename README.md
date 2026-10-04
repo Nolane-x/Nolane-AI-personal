@@ -121,24 +121,22 @@ Remote pairing remains an explicit development/fallback path and is not silently
 
 ## Language cortex and model assets
 
-The project began from **Qwen3-0.6B** as an upstream teacher and language source. The research program progressively replaced Transformer depth and produced a standalone Nolane-owned factorized inference path.
+The Windows production language cortex is **Qwen3.5-2B**. Qwen3-0.6B has been retired from every active product/runtime path after failing the product-quality bar. Its lock remains only under `config/legacy-qwen3-0.6b-model.lock.json` so historical research courts stay reproducible.
 
-Model weights are intentionally **not committed to GitHub**.
-
-To reproduce the pinned upstream checkpoint:
-
-```bash
-python -m pip install -r requirements-model.txt
-python scripts/download_model.py
-```
-
-The upstream model is pinned to:
+The production Windows release pins the upstream Qwen checkpoint and the recommended Q4_K_M GGUF conversion:
 
 ```text
-Qwen/Qwen3-0.6B
-revision: c1899de289a04d12100db370d81485cdf75e47ca
+upstream: Qwen/Qwen3.5-2B
+revision: 15852e8c16360a2fea060d615a32b45270f8a8fc
+GGUF: bartowski/Qwen_Qwen3.5-2B-GGUF
+GGUF revision: 8de6479d2743924f9dc499e3654d4e51ea0d4b9d
+file: Qwen_Qwen3.5-2B-Q4_K_M.gguf
 license: Apache-2.0
 ```
+
+The GGUF is hash-pinned and runs through the pinned local llama.cpp runtime. The repository's root `model.lock.json` remains a Qwen3-1.7B research-compatibility scaffold for the existing Transformer surgery/mobile tokenizer research path; it is not the Windows production model.
+
+Model weights are intentionally **not committed to GitHub**. Historical Qwen3-0.6B evidence stays reproducible but can no longer be selected accidentally by the normal product/runtime path.
 
 ## Developer quick start
 

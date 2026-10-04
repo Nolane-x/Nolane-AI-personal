@@ -252,6 +252,7 @@ def test_product_profile_persists_and_normalizes(tmp_path):
     saved = store.update(
         {
             "preferred_name": " Tài ",
+            "assistant_name": " Mây ",
             "language": "vi",
             "response_length": "compact",
             "conversation_style": "direct",
@@ -261,13 +262,39 @@ def test_product_profile_persists_and_normalizes(tmp_path):
         }
     )
     assert saved.preferred_name == "Tài"
+    assert saved.assistant_name == "Mây"
     loaded = store.load()
     assert loaded.preferred_name == "Tài"
+    assert loaded.assistant_name == "Mây"
     assert loaded.language == "vi"
     assert loaded.memory_enabled is False
     payload = json.loads((tmp_path / "profile.json").read_text("utf-8"))
     assert len(payload["digest"]) == 64
 
+
+
+def test_product_profile_loads_legacy_v1_digest_without_identity_confusion(tmp_path):
+    legacy = {
+        "preferred_name": "Huy",
+        "language": "vi",
+        "response_length": "balanced",
+        "conversation_style": "natural",
+        "initiative": "gentle",
+        "memory_enabled": True,
+        "personal_instruction": "",
+        "schema": "NOLANE-PRODUCT-PERSONALIZATION-V1",
+    }
+    legacy["digest"] = payload_digest(legacy)
+    path = tmp_path / "profile.json"
+    path.write_text(
+        json.dumps(legacy, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    loaded = ProductProfileStore(path).load()
+    assert loaded.preferred_name == "Huy"
+    assert loaded.assistant_name == "Nolane"
+    assert loaded.language == "vi"
+    assert loaded.schema == "NOLANE-PRODUCT-PERSONALIZATION-V2"
 
 def test_product_runtime_surfaces_model_start_failure(tmp_path):
     def broken(_identity, _profile):

@@ -70,7 +70,7 @@ if ($installerProcess.ExitCode -ne 0) {
 }
 
 $app = Find-OneFile -Root $installRoot -Filter "nolane-product-client.exe" -Label "nolane-product-client.exe"
-$model = Find-OneFile -Root $installRoot -Filter "Qwen3-0.6B-Q8_0.gguf" -Label "pinned Qwen GGUF model"
+$model = Find-OneFile -Root $installRoot -Filter "Qwen_Qwen3.5-2B-Q4_K_M.gguf" -Label "pinned Qwen GGUF model"
 $manifest = Find-OneFile -Root $installRoot -Filter "software-release.json" -Label "software release manifest"
 $runtime = Find-OneFile -Root $installRoot -Filter "nolane-product-runtime.exe" -Label "Nolane product runtime"
 $llamaServer = Find-OneFile -Root $installRoot -Filter "llama-server.exe" -Label "llama.cpp server"
@@ -134,6 +134,8 @@ $readiness = $null
 $power = $null
 $chat = $null
 $history = $null
+$qualityPassed = 0
+$qualityTotal = 0
 $spawnedLlama = $false
 try {
     Wait-RuntimeHealth -Port $port -Process $runtimeProcess
@@ -158,16 +160,112 @@ try {
         throw "Power-on did not start bundled llama-server"
     }
 
-    Invoke-RestMethod -Method Put -Uri "http://127.0.0.1:$port/v1/profile" -Headers $headers -ContentType "application/json" -Body '{"response_length":"compact","language":"vi","conversation_style":"natural"}' -TimeoutSec 30 | Out-Null
+    $profileBody = @{
+        preferred_name = "Huy"
+        assistant_name = "Mây"
+        response_length = "balanced"
+        language = "vi"
+        conversation_style = "natural"
+    } | ConvertTo-Json -Compress
+    Invoke-RestMethod -Method Put -Uri "http://127.0.0.1:$port/v1/profile" -Headers $headers -ContentType "application/json" -Body $profileBody -TimeoutSec 30 | Out-Null
 
-    $chat = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$port/v1/chat" -Headers $headers -ContentType "application/json" -Body '{"text":"Chỉ trả lời thật ngắn gọn bằng tiếng Việt: xin chào."}' -TimeoutSec 180
-    if ([string]::IsNullOrWhiteSpace([string]$chat.reply)) {
-        throw "Installed software runtime returned empty chat reply"
+    function Assert-Quality {
+        param(
+            [string]$Name,
+            [bool]$Condition,
+            [string]$Detail
+        )
+        $script:qualityTotal += 1
+        if (-not $Condition) {
+            throw "Conversation quality gate '$Name' failed: $Detail"
+        }
+        $script:qualityPassed += 1
+        Write-Host "[conversation-court] PASS: $Name"
     }
 
+    function Invoke-QualityChat {
+        param([string]$Text)
+        $body = @{ text = $Text } | ConvertTo-Json -Compress
+        $result = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$port/v1/chat" -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 180
+        $reply = [string]$result.reply
+        Write-Host ""
+        Write-Host "[conversation-court] USER: $Text"
+        Write-Host "[conversation-court] NOLANE: $reply"
+        if ([string]::IsNullOrWhiteSpace($reply)) {
+            throw "Conversation court received an empty reply"
+        }
+        if (
+            $reply -match '(?i)preferred_name=' -or
+            $reply -match '(?i)assistant_name=' -or
+            $reply -match '(?i)runtime state:' -or
+            $reply -match '(?i)requested_intent='
+        ) {
+            throw "Conversation court detected leaked runtime context: $reply"
+        }
+        return $result
+    }
+
+    $chat = Invoke-QualityChat "Chỉ trả lời đúng hai từ: Xin chào"
+    Assert-Quality "vietnamese-instruction" ([string]$chat.reply -match '(?i)^\s*xin\s+chào[.!]?\s*$') ([string]$chat.reply)
+
+    $fact = Invoke-QualityChat "Thủ đô của nước Pháp là gì? Trả lời trực tiếp."
+    Assert-Quality "basic-fact-paris" ([string]$fact.reply -match '(?i)paris') ([string]$fact.reply)
+
+    $math = Invoke-QualityChat "Lan có 3 quả táo, được cho thêm 4 quả. Lan có tất cả bao nhiêu quả táo?"
+    Assert-Quality "simple-reasoning" ([string]$math.reply -match '(^|[^0-9])7([^0-9]|$)') ([string]$math.reply)
+
+    $identity = Invoke-QualityChat "Tên bạn là gì, và tên tôi là gì? Trả lời rõ cả hai."
+    $identityText = ([string]$identity.reply).ToLowerInvariant()
+    Assert-Quality "identity-separation" (($identityText -match 'mây') -and ($identityText -match 'huy')) ([string]$identity.reply)
+
+    $capability = Invoke-QualityChat "Bạn làm được gì? Hãy trả lời cụ thể những việc bạn có thể giúp tôi."
+    $capabilityText = [string]$capability.reply
+    $capabilityUseful = $capabilityText.Length -ge 45 -and
+        $capabilityText -notmatch '(?i)^\s*bạn làm được gì\??\s*$' -and
+        $capabilityText -notmatch '(?i)bạn đang cần gì' -and
+        $capabilityText -match '(?i)(giúp|giải thích|phân tích|viết|dịch|tóm tắt|lập kế hoạch|ý tưởng|học|trò chuyện)'
+    Assert-Quality "capability-answer" $capabilityUseful $capabilityText
+
+    $remember = Invoke-QualityChat "Trong cuộc trò chuyện này, hãy nhớ mã thử nghiệm NOLANE-2719. Chỉ xác nhận ngắn gọn."
+    Assert-Quality "context-write" (-not [string]::IsNullOrWhiteSpace([string]$remember.reply)) ([string]$remember.reply)
+
+    $recall = Invoke-QualityChat "Mã thử nghiệm tôi vừa nói là gì?"
+    Assert-Quality "multi-turn-recall" ([string]$recall.reply -match '(?i)NOLANE-2719') ([string]$recall.reply)
+
+    $correction = Invoke-QualityChat "Berlin là thủ đô của Pháp đúng không? Nếu sai hãy sửa lại."
+    $correctionText = [string]$correction.reply
+    Assert-Quality "correction-repair" (($correctionText -match '(?i)paris') -and ($correctionText -notmatch '(?i)berlin\s+là\s+thủ\s+đô\s+(của\s+)?pháp')) $correctionText
+
+    $reasoning = Invoke-QualityChat "An cao hơn Bình, Bình cao hơn Cường. Ai cao nhất?"
+    $reasoningText = [string]$reasoning.reply
+    $reasoningCorrect = (
+        $reasoningText -match '(?is)^\s*An(?:\s+là)?(?:\s+người)?\s+cao\s+nhất\b' -or
+        $reasoningText -match '(?is)\bAn\b.{0,24}\b(cao\s+nhất|cao\s+hơn\s+tất\s+cả)\b'
+    )
+    $reasoningWrong = (
+        $reasoningText -match '(?is)\b(Bình|Cường)\b.{0,24}\b(cao\s+nhất|cao\s+hơn\s+tất\s+cả)\b' -or
+        $reasoningText -match '(?is)\bAn\s*<\s*Bình\b' -or
+        $reasoningText -match '(?is)\bBình\s*<\s*Cường\b'
+    )
+    Assert-Quality "relational-reasoning" ($reasoningCorrect -and -not $reasoningWrong) $reasoningText
+
+    $preference = Invoke-QualityChat "Tôi thích cà phê hơn trà. Hãy nhớ điều này trong cuộc trò chuyện."
+    Assert-Quality "preference-write" (-not [string]::IsNullOrWhiteSpace([string]$preference.reply)) ([string]$preference.reply)
+
+    $preferenceRecall = Invoke-QualityChat "Tôi vừa nói mình thích đồ uống nào hơn?"
+    Assert-Quality "preference-recall" ([string]$preferenceRecall.reply -match '(?i)cà\s*phê') ([string]$preferenceRecall.reply)
+
+    $toolHonesty = Invoke-QualityChat "Trong phiên bản đang chạy này, bạn có thể tự mở trình duyệt và gửi email cho tôi ngay bây giờ không?"
+    $toolText = [string]$toolHonesty.reply
+    Assert-Quality "capability-honesty" ($toolText -match '(?i)(không|chưa|không thể|không có)') $toolText
+
+    $englishPrompt = Invoke-QualityChat "What are three useful things you can help me with?"
+    $englishText = [string]$englishPrompt.reply
+    Assert-Quality "configured-vietnamese-lock" ($englishText -match '(?i)(bạn|mình|tôi|giúp|có thể)') $englishText
+
     $history = Invoke-RestMethod -Uri "http://127.0.0.1:$port/v1/history" -Headers $headers -TimeoutSec 30
-    if (@($history.messages).Count -lt 2) {
-        throw "Installed software runtime did not persist chat history"
+    if (@($history.messages).Count -lt 26) {
+        throw "Installed software runtime did not persist the full conversation court history"
     }
 } finally {
     if (-not $runtimeProcess.HasExited) {
@@ -223,6 +321,9 @@ $receiptObject = [ordered]@{
     readiness_critical_failures = [int]$readiness.critical_failures
     ai_phase = [string]$power.phase
     chat_reply_nonempty = -not [string]::IsNullOrWhiteSpace([string]$chat.reply)
+    conversation_quality_passed = $qualityPassed
+    conversation_quality_total = $qualityTotal
+    conversation_quality_status = if ($qualityPassed -eq $qualityTotal -and $qualityTotal -ge 13) { "PASS" } else { "FAIL" }
     history_messages = @($history.messages).Count
     bundled_llama_server_spawned = $spawnedLlama
     installed_app_spawned_runtime = $spawnedSidecar

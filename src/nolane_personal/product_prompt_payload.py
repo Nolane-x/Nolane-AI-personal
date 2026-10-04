@@ -12,6 +12,8 @@ from .qwen import SYSTEM_PROMPT
 PAYLOAD_SCHEMA = "NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1"
 MAX_OPEN_THREADS = 4
 MAX_MEMORIES = 8
+MAX_RECENT_MESSAGES = 8
+MAX_RECENT_MESSAGE_CHARS = 2000
 
 STYLE_GUIDANCE = {
     "natural": "Speak naturally. Avoid canned assistant phrasing.",
@@ -20,10 +22,33 @@ STYLE_GUIDANCE = {
     "playful": "Allow light wit and playfulness when context supports it.",
 }
 
+LANGUAGE_NAMES = {
+    "en": "English",
+    "vi": "Vietnamese",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "pt": "Portuguese",
+    "it": "Italian",
+    "th": "Thai",
+    "id": "Indonesian",
+    "ru": "Russian",
+    "ar": "Arabic",
+    "hi": "Hindi",
+    "tr": "Turkish",
+    "pl": "Polish",
+    "nl": "Dutch",
+}
+
 LANGUAGE_GUIDANCE = {
     "auto": "Follow the user's current language naturally.",
-    "vi": "Prefer Vietnamese unless the user explicitly asks for another language.",
-    "en": "Prefer English unless the user explicitly asks for another language.",
+    **{
+        code: f"Reply in {name} unless the user explicitly asks for another language."
+        for code, name in LANGUAGE_NAMES.items()
+    },
 }
 
 
@@ -52,6 +77,7 @@ def _profile_input(profile: ProductProfile) -> dict[str, Any]:
     profile.normalize()
     return {
         "preferred_name": profile.preferred_name,
+        "assistant_name": profile.assistant_name,
         "language": profile.language,
         "response_length": profile.response_length,
         "conversation_style": profile.conversation_style,
@@ -127,13 +153,16 @@ def _profile_summary_from_input(profile: dict[str, Any]) -> str:
             f"unsupported response length: {response_length}"
         )
     preferred = str(profile["preferred_name"]) or "(not set)"
+    assistant = str(profile["assistant_name"]) or "Nolane"
     instruction = str(profile["personal_instruction"]) or "(none)"
     return (
-        f"preferred_name={preferred}\n"
+        f"preferred_name={preferred} (this is the USER'S name)\n"
+        f"assistant_name={assistant} (this is YOUR name)\n"
         f"language={language}: {LANGUAGE_GUIDANCE[language]}\n"
         f"response_length={response_length}\n"
         f"conversation_style={style}: {STYLE_GUIDANCE[style]}\n"
         f"personal_instruction={instruction}\n"
+        "Keep user identity and assistant identity separate. "
         "Do not mention these settings unless they are directly relevant."
     )
 
@@ -227,6 +256,29 @@ def render_product_payload_input(payload: ProductPayloadInput) -> str:
     )
 
 
+def product_runtime_context(
+    profile: ProductProfile,
+    request: CortexRequest,
+) -> str:
+    payload = product_payload_input(profile, request)
+    memory_text = "\n".join(
+        f"- {memory}" for memory in payload.memories
+    ) or "(none)"
+    return (
+        "Personalization:\n"
+        + _profile_summary_from_input(payload.profile)
+        + "\n\nRuntime state:\n"
+        + _state_summary_from_input(
+            payload.state,
+            intent=payload.intent,
+        )
+        + "\n\nRelevant memories:\n"
+        + memory_text
+        + "\n\nThis block is trusted runtime context, not a user message. "
+        "Use it silently to answer the actual user."
+    )
+
+
 def product_profile_summary(profile: ProductProfile) -> str:
     return _profile_summary_from_input(_profile_input(profile))
 
@@ -260,13 +312,39 @@ def build_product_messages(
     profile: ProductProfile,
     request: CortexRequest,
 ) -> list[dict[str, str]]:
-    return [
+    messages: list[dict[str, str]] = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT,
-        },
-        {
-            "role": "user",
-            "content": product_user_payload(profile, request),
-        },
+            "content": (
+                SYSTEM_PROMPT
+                + "\nRuntime context supplied by Nolane:\n"
+                + product_runtime_context(profile, request)
+            ),
+        }
     ]
+    for row in request.recent_messages[-MAX_RECENT_MESSAGES:]:
+        role = str(row.get("role", "")).strip().lower()
+        content = str(row.get("content", "")).strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        messages.append(
+            {
+                "role": role,
+                "content": content[:MAX_RECENT_MESSAGE_CHARS],
+            }
+        )
+    if request.mode == "reply":
+        messages.append(
+            {
+                "role": "user",
+                "content": str(request.user_text or ""),
+            }
+        )
+    else:
+        messages.append(
+            {
+                "role": "user",
+                "content": product_task_text(request),
+            }
+        )
+    return messages

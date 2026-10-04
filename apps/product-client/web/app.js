@@ -807,6 +807,7 @@
 
   let profile = {
     preferred_name: "",
+    assistant_name: "Nolane",
     language: "auto",
     response_length: "balanced",
     conversation_style: "natural",
@@ -893,16 +894,32 @@
     els.assistantNameInput.select();
   }
 
-  function finishAssistantNameEdit({ cancel = false } = {}) {
-    const next = cancel ? assistantName : normalizeAssistantName(els.assistantNameInput.value);
+  async function finishAssistantNameEdit({ cancel = false } = {}) {
+    const next = cancel
+      ? assistantName
+      : normalizeAssistantName(els.assistantNameInput.value);
+    const changed = !cancel && next && next !== assistantName;
     if (!cancel && next) {
       assistantName = next;
-      writeStoredString(AI_NAME_KEY, assistantName === "Nolane" ? "" : assistantName);
+      writeStoredString(
+        AI_NAME_KEY,
+        assistantName === "Nolane" ? "" : assistantName,
+      );
     }
     els.assistantNameInput.hidden = true;
     els.assistantNameButton.hidden = false;
     renderAssistantIdentity();
     applyLocale();
+
+    if (changed && target.mode !== "unconfigured") {
+      try {
+        profile = await api("PUT", "/v1/profile", {
+          assistant_name: assistantName,
+        });
+      } catch (error) {
+        showBanner(String(error?.message || error), true);
+      }
+    }
   }
 
   function readImageAsDataUrl(file) {
@@ -1000,7 +1017,11 @@
         ],
       },
     },
-    profile: { ...profile, digest: "preview" },
+    profile: {
+      ...profile,
+      assistant_name: assistantName,
+      digest: "preview",
+    },
     messages: [],
     learningWindows: [],
     learningCandidates: {},
@@ -1869,6 +1890,22 @@
   async function refreshProfile() {
     try {
       profile = await api("GET", "/v1/profile");
+      const suppliedAssistantName =
+        typeof profile.assistant_name === "string"
+          ? profile.assistant_name.trim()
+          : "";
+      if (suppliedAssistantName) {
+        const runtimeAssistantName =
+          normalizeAssistantName(suppliedAssistantName);
+        if (runtimeAssistantName) {
+          assistantName = runtimeAssistantName;
+          writeStoredString(
+            AI_NAME_KEY,
+            assistantName === "Nolane" ? "" : assistantName,
+          );
+          renderAssistantIdentity();
+        }
+      }
       fillProfile();
       applyLocale();
     } catch (error) {
@@ -2154,6 +2191,7 @@
   function profilePatch() {
     return {
       preferred_name: els.preferredName.value,
+      assistant_name: assistantName,
       language: els.language.value,
       response_length: els.responseLength.value,
       conversation_style: els.conversationStyle.value,
@@ -2167,6 +2205,14 @@
     els.saveState.textContent = "";
     try {
       profile = await api("PUT", "/v1/profile", profilePatch());
+      if (
+        profile.language !== "auto" &&
+        supportedUiLocales.has(profile.language)
+      ) {
+        uiLocale = profile.language;
+        writeStoredString(UI_LOCALE_KEY, uiLocale);
+        els.uiLanguage.value = uiLocale;
+      }
       fillProfile();
       applyLocale();
       els.saveState.textContent = t("saved");
@@ -2235,6 +2281,8 @@
       profile = await api("PUT", "/v1/profile", {
         ...profile,
         preferred_name: els.onboardingName.value.trim(),
+        assistant_name: assistantName,
+        language: nextLocale,
         conversation_style: els.onboardingStyle.value,
       });
       writeStoredString(ONBOARDING_KEY, "complete");
@@ -2316,14 +2364,16 @@
   els.assistantNameInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      finishAssistantNameEdit();
+      void finishAssistantNameEdit();
     } else if (event.key === "Escape") {
       event.preventDefault();
-      finishAssistantNameEdit({ cancel: true });
+      void finishAssistantNameEdit({ cancel: true });
     }
   });
   els.assistantNameInput.addEventListener("blur", () => {
-    if (!els.assistantNameInput.hidden) finishAssistantNameEdit();
+    if (!els.assistantNameInput.hidden) {
+      void finishAssistantNameEdit();
+    }
   });
 
   els.uiLanguage.addEventListener("change", () => {
@@ -2335,6 +2385,20 @@
       // Local persistence is best-effort in restricted browser contexts.
     }
     applyLocale();
+
+    if (target.mode !== "unconfigured") {
+      void api("PUT", "/v1/profile", {
+        language: uiLocale,
+        assistant_name: assistantName,
+      })
+        .then((saved) => {
+          profile = saved;
+          fillProfile();
+        })
+        .catch((error) => {
+          showBanner(String(error?.message || error), true);
+        });
+    }
   });
 
   els.mindStateButton.addEventListener("click", () => {

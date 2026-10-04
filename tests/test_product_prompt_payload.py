@@ -9,6 +9,7 @@ from nolane_personal.product_prompt_payload import (
     build_product_messages,
     product_payload_input,
     product_profile_summary,
+    product_runtime_context,
     product_state_summary,
     product_task_text,
     product_user_payload,
@@ -26,6 +27,7 @@ from nolane_personal.state import (
 def fixture_profile() -> ProductProfile:
     return ProductProfile(
         preferred_name="Tài",
+        assistant_name="Nolane",
         language="vi",
         response_length="compact",
         conversation_style="direct",
@@ -82,11 +84,13 @@ def fixture_request(*, mode: str = "reply") -> CortexRequest:
 
 def test_product_profile_summary_snapshot():
     expected = (
-        "preferred_name=Tài\n"
-        "language=vi: Prefer Vietnamese unless the user explicitly asks for another language.\n"
+        "preferred_name=Tài (this is the USER'S name)\n"
+        "assistant_name=Nolane (this is YOUR name)\n"
+        "language=vi: Reply in Vietnamese unless the user explicitly asks for another language.\n"
         "response_length=compact\n"
         "conversation_style=direct: Be direct, concrete and low-fluff.\n"
         "personal_instruction=Ưu tiên câu trả lời rõ và ngắn.\n"
+        "Keep user identity and assistant identity separate. "
         "Do not mention these settings unless they are directly relevant."
     )
     assert product_profile_summary(fixture_profile()) == expected
@@ -109,7 +113,11 @@ def test_product_state_summary_snapshot_and_thread_limit():
 def test_reply_payload_snapshot_and_memory_limit():
     request = fixture_request()
     payload = product_user_payload(fixture_profile(), request)
-    assert payload.startswith("Personalization:\npreferred_name=Tài")
+    assert payload.startswith(
+        "Personalization:\n"
+        "preferred_name=Tài (this is the USER'S name)\n"
+        "assistant_name=Nolane (this is YOUR name)"
+    )
     assert "\n\nRuntime state:\nidentity_id=identity-fixture" in payload
     assert "\n\nRelevant memories:\n- memory-1\n- memory-2" in payload
     assert "- memory-8" in payload
@@ -120,10 +128,54 @@ def test_reply_payload_snapshot_and_memory_limit():
     )
 
     messages = build_product_messages(fixture_profile(), request)
-    assert messages == [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": payload},
+    assert len(messages) == 2
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"].startswith(SYSTEM_PROMPT)
+    assert (
+        "Runtime context supplied by Nolane:\nPersonalization:"
+        in messages[0]["content"]
+    )
+    assert "User message:\nTiếp tục nhé" not in messages[0]["content"]
+    assert messages[1] == {"role": "user", "content": "Tiếp tục nhé"}
+
+
+def test_recent_dialogue_is_role_aware_bounded_and_not_duplicated_in_payload():
+    request = fixture_request()
+    request.recent_messages = [
+        {"role": "user", "content": "Mình tên Huy."},
+        {"role": "assistant", "content": "Ừ, mình nhớ bạn là Huy."},
+        {"role": "tool", "content": "must be ignored"},
+        {"role": "assistant", "content": "   "},
     ]
+    payload = product_user_payload(fixture_profile(), request)
+    assert "Mình tên Huy." not in payload
+    messages = build_product_messages(fixture_profile(), request)
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"].startswith(SYSTEM_PROMPT)
+    assert "Mình tên Huy." not in messages[0]["content"]
+    assert messages[1] == {"role": "user", "content": "Mình tên Huy."}
+    assert messages[2] == {
+        "role": "assistant",
+        "content": "Ừ, mình nhớ bạn là Huy.",
+    }
+    assert messages[-1] == {"role": "user", "content": "Tiếp tục nhé"}
+    assert len(messages) == 4
+
+
+def test_recent_dialogue_keeps_only_last_eight_messages():
+    request = fixture_request()
+    request.recent_messages = [
+        {
+            "role": "user" if index % 2 == 0 else "assistant",
+            "content": f"turn-{index}",
+        }
+        for index in range(12)
+    ]
+    messages = build_product_messages(fixture_profile(), request)
+    recent = messages[1:-1]
+    assert len(recent) == 8
+    assert recent[0]["content"] == "turn-4"
+    assert recent[-1]["content"] == "turn-11"
 
 
 def test_initiate_task_is_stable():
@@ -159,6 +211,21 @@ def test_structured_payload_is_canonical_and_desktop_renders_from_it():
     )
 
 
+def test_runtime_context_is_system_side_and_keeps_identity_language_memory():
+    profile = fixture_profile()
+    request = fixture_request()
+    rendered = product_runtime_context(profile, request)
+    assert "preferred_name=Tài (this is the USER'S name)" in rendered
+    assert "assistant_name=Nolane (this is YOUR name)" in rendered
+    assert "language=vi: Reply in Vietnamese" in rendered
+    assert "Relevant memories:\n- memory-1" in rendered
+    assert "User message:" not in rendered
+    assert rendered.endswith(
+        "This block is trusted runtime context, not a user message. "
+        "Use it silently to answer the actual user."
+    )
+
+
 def test_unknown_mode_fails_closed():
     request = fixture_request(mode="surprise")
     try:
@@ -179,3 +246,20 @@ def test_initiative_rejects_user_text():
     else:
         raise AssertionError("initiative payload with user_text must fail")
 
+
+
+def test_product_payload_supports_multilingual_response_lock_and_identity_split():
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="ja",
+        response_length="compact",
+        conversation_style="natural",
+    )
+    payload = product_user_payload(profile, fixture_request())
+    assert "preferred_name=Huy (this is the USER'S name)" in payload
+    assert "assistant_name=Mây (this is YOUR name)" in payload
+    assert (
+        "language=ja: Reply in Japanese unless the user explicitly asks "
+        "for another language."
+    ) in payload

@@ -44,6 +44,7 @@ fn main() {
         .api("GET", "/v1/profile", None)
         .expect("profile");
     assert_eq!(profile["preferred_name"], "Thuận");
+    assert_eq!(profile["assistant_name"], "Nolane");
     assert_eq!(profile["language"], "vi");
     assert_eq!(profile["initiative"], "gentle");
     assert_eq!(profile["memory_enabled"], true);
@@ -139,6 +140,7 @@ fn main() {
             "/v1/profile",
             Some(json!({
                 "preferred_name": "Nolane User",
+                "assistant_name": "Mây",
                 "language": "en",
                 "response_length": "balanced",
                 "conversation_style": "direct",
@@ -149,6 +151,7 @@ fn main() {
         )
         .expect("update LocalMobile profile");
     assert_eq!(updated["preferred_name"], "Nolane User");
+    assert_eq!(updated["assistant_name"], "Mây");
     assert_eq!(updated["language"], "en");
     assert_eq!(updated["initiative"], "active");
     assert_eq!(updated["memory_enabled"], false);
@@ -191,6 +194,7 @@ fn main() {
         .api("GET", "/v1/profile", None)
         .expect("reloaded profile");
     assert_eq!(profile["preferred_name"], "Nolane User");
+    assert_eq!(profile["assistant_name"], "Mây");
     assert_eq!(profile["language"], "en");
     assert_eq!(profile["conversation_style"], "direct");
     assert_eq!(profile["personal_instruction"], "Be concrete.");

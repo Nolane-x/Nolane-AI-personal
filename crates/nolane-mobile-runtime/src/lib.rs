@@ -19,7 +19,7 @@ pub const PROMPT_CONTRACT_AUTHORITY: &str =
 
 pub const PRODUCT_PAYLOAD_SCHEMA: &str =
     "NOLANE-V053-PRODUCT-PAYLOAD-INPUT-V1";
-pub const PRODUCT_SYSTEM_PROMPT: &str = "You are the language cortex of Nolane AI Personal.\nYou are not a generic assistant. Speak like a persistent personal companion whose state and memories are supplied by the runtime.\nUse natural language, usually concise. Vietnamese and English are both allowed; follow the user's language.\nYou may disagree, tease gently, joke, or sound mildly annoyed when context supports it, but never guilt the user for leaving, demand attention, threaten abandonment, or claim suffering to pressure them.\nDo not invent memories. Do not claim certainty about the user's emotion; phrase uncertain impressions naturally.\nThe runtime may ask you to initiate a conversation. In that case, do not mention that you were triggered or scored by a policy.\n";
+pub const PRODUCT_SYSTEM_PROMPT: &str = "You are the language cortex of Nolane AI Personal.\nYou are not a generic assistant. Speak like a persistent personal companion whose state and memories are supplied by the runtime.\nThe runtime may provide preferred_name and assistant_name. preferred_name is always the USER'S name. assistant_name is always YOUR name. Never swap, merge, or infer these identities.\nObey the explicit response-language setting when one is supplied. If the setting says Vietnamese, answer in Vietnamese unless the user explicitly requests another language.\nAnswer the user's actual question directly. Do not turn a normal question into a paraphrase, menu label, tutorial heading, or question back to the user.\nFor simple factual questions, give the established fact concisely. If you are genuinely unsure, say so instead of fabricating places, people, numbers, memories, or capabilities.\nFor comparative or relational reasoning, preserve every stated direction exactly. If A is higher than B, treat that as A > B, not the reverse; verify the final ordering before answering.\nIf the user corrects you, re-evaluate the claim and repair the answer instead of doubling down.\nUse recent role-aware conversation history to resolve follow-ups, pronouns, corrections, and references to what was just said.\nWhen asked what you can do, answer with concrete capabilities and useful examples instead of asking the question back. Do not claim browsing, device control, external tools, sensors, or actions unless the runtime context actually provides them.\nFinish the answer you started. Avoid fragments, canned labels such as \"Hướng dẫn:\", fake quotations, random interjections, and decorative emoji unless the user's own style clearly invites them.\nUse natural language and match the requested response length; concise must still be complete.\nYou may disagree, tease gently, joke, or sound mildly annoyed when context supports it, but never guilt the user for leaving, demand attention, threaten abandonment, or claim suffering to pressure them.\nDo not invent memories. Do not claim certainty about the user's emotion; phrase uncertain impressions naturally.\nThe runtime may ask you to initiate a conversation. In that case, do not mention that you were triggered or scored by a policy.\n";
 
 pub const MAX_PRODUCT_OPEN_THREADS: usize = 4;
 pub const MAX_PRODUCT_MEMORIES: usize = 8;
@@ -33,6 +33,8 @@ pub const PERSISTENT_MOBILE_STATE_SCHEMA: &str =
     "NOLANE-V055-MOBILE-PERSISTENT-STATE-V1";
 pub const PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1: &str =
     "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V1";
+pub const PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2: &str =
+    "NOLANE-V059-PERSISTENT-STATE-TYPED-INTEGRITY-V2";
 pub const MAX_PERSISTENT_MOBILE_STATE_BYTES: u64 = 4 * 1024 * 1024;
 
 const SAMPLER_LOGIT_SCALE: f64 = 1_000.0;
@@ -43,9 +45,15 @@ const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
 const SPLITMIX_MUL1: u64 = 0xBF58476D1CE4E5B9;
 const SPLITMIX_MUL2: u64 = 0x94D049BB133111EB;
 
+fn default_assistant_name() -> String {
+    "Nolane".to_string()
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ProductPayloadProfile {
     pub preferred_name: String,
+    #[serde(default = "default_assistant_name")]
+    pub assistant_name: String,
     pub language: String,
     pub response_length: String,
     pub conversation_style: String,
@@ -286,7 +294,26 @@ fn canonical_json_bytes(
 
 fn persistent_state_typed_projection(
     state: &PersistentMobileState,
+    include_assistant_name: bool,
 ) -> serde_json::Value {
+    let profile = if include_assistant_name {
+        serde_json::json!({
+            "preferred_name": &state.profile.preferred_name,
+            "assistant_name": &state.profile.assistant_name,
+            "language": &state.profile.language,
+            "response_length": &state.profile.response_length,
+            "conversation_style": &state.profile.conversation_style,
+            "personal_instruction": &state.profile.personal_instruction,
+        })
+    } else {
+        serde_json::json!({
+            "preferred_name": &state.profile.preferred_name,
+            "language": &state.profile.language,
+            "response_length": &state.profile.response_length,
+            "conversation_style": &state.profile.conversation_style,
+            "personal_instruction": &state.profile.personal_instruction,
+        })
+    };
     serde_json::json!({
         "source_checkpoint_sha256": &state.source_checkpoint_sha256,
         "latent_f32_bits": state
@@ -294,13 +321,7 @@ fn persistent_state_typed_projection(
             .iter()
             .map(|value| value.to_bits())
             .collect::<Vec<u32>>(),
-        "profile": {
-            "preferred_name": &state.profile.preferred_name,
-            "language": &state.profile.language,
-            "response_length": &state.profile.response_length,
-            "conversation_style": &state.profile.conversation_style,
-            "personal_instruction": &state.profile.personal_instruction,
-        },
+        "profile": profile,
         "state": {
             "identity_id": &state.state.identity_id,
             "relationship": {
@@ -324,8 +345,10 @@ fn persistent_state_typed_projection(
 
 fn persistent_state_typed_digest(
     state: &PersistentMobileState,
+    include_assistant_name: bool,
 ) -> Result<String, RuntimeError> {
-    let projection = persistent_state_typed_projection(state);
+    let projection =
+        persistent_state_typed_projection(state, include_assistant_name);
     Ok(sha256_hex(&canonical_json_bytes(projection)?))
 }
 
@@ -386,7 +409,10 @@ pub fn read_persistent_mobile_state(
             sha256_hex(&canonical_json_bytes(state_value)?)
         }
         Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1) => {
-            persistent_state_typed_digest(&state)?
+            persistent_state_typed_digest(&state, false)?
+        }
+        Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2) => {
+            persistent_state_typed_digest(&state, true)?
         }
         Some(other) => {
             return Err(RuntimeError::Invalid(format!(
@@ -424,10 +450,11 @@ pub fn write_persistent_mobile_state(
     // values stable across write -> restart -> read.
     let persisted_state: PersistentMobileState =
         serde_json::from_value(state_value.clone())?;
-    let state_sha256 = persistent_state_typed_digest(&persisted_state)?;
+    let state_sha256 =
+        persistent_state_typed_digest(&persisted_state, true)?;
     let envelope = serde_json::json!({
         "schema": PERSISTENT_MOBILE_STATE_SCHEMA,
-        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+        "integrity": PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2,
         "state_sha256": state_sha256,
         "state": state_value,
     });
@@ -569,8 +596,24 @@ impl FrozenPromptContract {
 fn language_guidance(language: &str) -> Result<&'static str, RuntimeError> {
     match language {
         "auto" => Ok("Follow the user's current language naturally."),
-        "vi" => Ok("Prefer Vietnamese unless the user explicitly asks for another language."),
-        "en" => Ok("Prefer English unless the user explicitly asks for another language."),
+        "en" => Ok("Reply in English unless the user explicitly asks for another language."),
+        "vi" => Ok("Reply in Vietnamese unless the user explicitly asks for another language."),
+        "zh" => Ok("Reply in Chinese unless the user explicitly asks for another language."),
+        "ja" => Ok("Reply in Japanese unless the user explicitly asks for another language."),
+        "ko" => Ok("Reply in Korean unless the user explicitly asks for another language."),
+        "es" => Ok("Reply in Spanish unless the user explicitly asks for another language."),
+        "fr" => Ok("Reply in French unless the user explicitly asks for another language."),
+        "de" => Ok("Reply in German unless the user explicitly asks for another language."),
+        "pt" => Ok("Reply in Portuguese unless the user explicitly asks for another language."),
+        "it" => Ok("Reply in Italian unless the user explicitly asks for another language."),
+        "th" => Ok("Reply in Thai unless the user explicitly asks for another language."),
+        "id" => Ok("Reply in Indonesian unless the user explicitly asks for another language."),
+        "ru" => Ok("Reply in Russian unless the user explicitly asks for another language."),
+        "ar" => Ok("Reply in Arabic unless the user explicitly asks for another language."),
+        "hi" => Ok("Reply in Hindi unless the user explicitly asks for another language."),
+        "tr" => Ok("Reply in Turkish unless the user explicitly asks for another language."),
+        "pl" => Ok("Reply in Polish unless the user explicitly asks for another language."),
+        "nl" => Ok("Reply in Dutch unless the user explicitly asks for another language."),
         other => Err(RuntimeError::Invalid(format!(
             "unsupported product language: {other}"
         ))),
@@ -619,6 +662,12 @@ impl ProductPayloadInput {
                 "initiative product payload must not contain user_text".into(),
             ));
         }
+        let assistant_name = self.profile.assistant_name.trim();
+        if assistant_name.is_empty() || assistant_name.chars().count() > 32 {
+            return Err(RuntimeError::Invalid(
+                "assistant name must contain 1..32 characters".into(),
+            ));
+        }
         let _ = language_guidance(&self.profile.language)?;
         let _ = style_guidance(&self.profile.conversation_style)?;
         match self.profile.response_length.as_str() {
@@ -665,6 +714,11 @@ impl ProductPayloadInput {
         } else {
             self.profile.preferred_name.as_str()
         };
+        let assistant_name = if self.profile.assistant_name.trim().is_empty() {
+            "Nolane"
+        } else {
+            self.profile.assistant_name.as_str()
+        };
         let personal_instruction = if self.profile.personal_instruction.is_empty() {
             "(none)"
         } else {
@@ -690,7 +744,7 @@ impl ProductPayloadInput {
         };
 
         Ok(format!(
-            "Personalization:\npreferred_name={preferred_name}\nlanguage={}: {}\nresponse_length={}\nconversation_style={}: {}\npersonal_instruction={personal_instruction}\nDo not mention these settings unless they are directly relevant.\n\nRuntime state:\nidentity_id={}\nrelationship: closeness={:.2}, trust={:.2}, familiarity={:.2}, interactions={}\nbehavior: valence={:.2}, energy={:.2}, playfulness={:.2}, concern={:.2}, irritation={:.2}\nopen_threads={}\nrequested_intent={}\n\nRelevant memories:\n{}\n\n{}",
+            "Personalization:\npreferred_name={preferred_name} (this is the USER'S name)\nassistant_name={assistant_name} (this is YOUR name)\nlanguage={}: {}\nresponse_length={}\nconversation_style={}: {}\npersonal_instruction={personal_instruction}\nKeep user identity and assistant identity separate. Do not mention these settings unless they are directly relevant.\n\nRuntime state:\nidentity_id={}\nrelationship: closeness={:.2}, trust={:.2}, familiarity={:.2}, interactions={}\nbehavior: valence={:.2}, energy={:.2}, playfulness={:.2}, concern={:.2}, irritation={:.2}\nopen_threads={}\nrequested_intent={}\n\nRelevant memories:\n{}\n\n{}",
             self.profile.language,
             language_guidance(&self.profile.language)?,
             self.profile.response_length,
@@ -1388,6 +1442,7 @@ mod tests {
         ProductPayloadState,
         SeededNucleusSampler,
         PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1,
+        PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2,
         PERSISTENT_MOBILE_STATE_SCHEMA,
     };
     use serde_json::{json, Value};
@@ -1400,6 +1455,7 @@ mod tests {
             latent: vec![0.125, -0.25, 0.5, 1.0],
             profile: ProductPayloadProfile {
                 preferred_name: "Thuận".into(),
+                assistant_name: "Nolane".into(),
                 language: "vi".into(),
                 response_length: "compact".into(),
                 conversation_style: "natural".into(),
@@ -1466,7 +1522,7 @@ mod tests {
         );
         assert_eq!(
             raw["integrity"].as_str(),
-            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2)
         );
         assert!(raw["state_sha256"].as_str().unwrap().len() == 64);
         assert!(
@@ -1527,7 +1583,7 @@ mod tests {
             serde_json::from_slice(&fs::read(&second_path).unwrap()).unwrap();
         assert_eq!(
             raw["integrity"].as_str(),
-            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V1)
+            Some(PERSISTENT_MOBILE_STATE_INTEGRITY_TYPED_V2)
         );
     }
 

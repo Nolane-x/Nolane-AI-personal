@@ -1,11 +1,13 @@
 {
   "schema": "NOLANE-V100-WINDOWS-SOFTWARE-RUNTIME-LOCK-V1",
   "model": {
-    "repo": "Qwen/Qwen3-0.6B-GGUF",
-    "revision": "main",
-    "filename": "Qwen3-0.6B-Q8_0.gguf",
-    "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
-    "source_file_commit": "1eaf4d9657fe65ad10a51eab76a8db5b363bddaa"
+    "repo": "bartowski/Qwen_Qwen3.5-2B-GGUF",
+    "revision": "8de6479d2743924f9dc499e3654d4e51ea0d4b9d",
+    "filename": "Qwen_Qwen3.5-2B-Q4_K_M.gguf",
+    "sha256": "57a1085840f497d764a7fc5d346922dbde961efb54cc792ea81d694fd846a1d8",
+    "source_file_commit": "8de6479d2743924f9dc499e3654d4e51ea0d4b9d",
+    "upstream_repo": "Qwen/Qwen3.5-2B",
+    "upstream_revision": "15852e8c16360a2fea060d615a32b45270f8a8fc"
   },
   "llama_cpp": {
     "repo": "ggml-org/llama.cpp",

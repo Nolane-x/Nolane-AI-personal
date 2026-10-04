@@ -44,7 +44,7 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
     tmp_path,
     monkeypatch,
 ):
-    model = tmp_path / "Qwen3-0.6B-Q8_0.gguf"
+    model = tmp_path / "Qwen_Qwen3.5-2B-Q4_K_M.gguf"
     model.write_bytes(b"pinned-qwen-gguf")
     server = tmp_path / "llama-server.exe"
     server.write_bytes(b"llama-server")
@@ -70,11 +70,25 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
         )
         if url.endswith("/health"):
             return {"status": "ok"}
+        messages = (payload or {}).get("messages", [])
+        user_text = " ".join(
+            str(message.get("content", ""))
+            for message in messages
+            if isinstance(message, dict) and message.get("role") == "user"
+        )
+        if "Thủ đô của nước Pháp" in user_text:
+            content = "Paris"
+        elif "Tên bạn là gì?" in user_text:
+            content = "Nolane"
+        elif "Chỉ trả lời đúng hai từ: Xin chào" in user_text:
+            content = "Xin chào"
+        else:
+            content = "Xin chào từ Nolane."
         return {
             "choices": [
                 {
                     "message": {
-                        "content": "Xin chào từ Nolane.",
+                        "content": content,
                     }
                 }
             ]
@@ -118,16 +132,26 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
         for row in calls
         if row["url"].endswith("/v1/chat/completions")
     )
-    assert chat_call["payload"]["max_tokens"] == 96
+    assert chat_call["payload"]["max_tokens"] == 128
     assert chat_call["payload"]["stream"] is False
     assert chat_call["payload"]["chat_template_kwargs"] == {
         "enable_thinking": False
     }
-    assert "Xin chào" in chat_call["payload"]["messages"][1]["content"]
-    assert "Người dùng thích câu trả lời ngắn." in chat_call["payload"]["messages"][1]["content"]
+    assert "Xin chào" in chat_call["payload"]["messages"][-1]["content"]
+    assert (
+        "Người dùng thích câu trả lời ngắn."
+        in chat_call["payload"]["messages"][0]["content"]
+    )
+    assert (
+        "User message:"
+        not in chat_call["payload"]["messages"][0]["content"]
+    )
 
     smoke = cortex.self_test()
     assert smoke["status"] == "PASS"
+    assert smoke["basic_fact_probe"] == "PASS"
+    assert smoke["identity_probe"] == "PASS"
+    assert smoke["vietnamese_probe"] == "PASS"
     assert smoke["checkpoint_sha256"] == sha256(model)
     assert smoke["runtime"] == "llama.cpp"
 
@@ -141,9 +165,9 @@ def software_manifest(model: Path, server: Path) -> dict:
         "authority": "CI_SOFTWARE_RELEASE_PINNED_UPSTREAM_RUNTIME",
         "product_version": "1.0.0",
         "runtime_channel": "software-v1-gguf",
-        "model_repo": "Qwen/Qwen3-0.6B-GGUF",
-        "model_revision": "main",
-        "model_source_file_commit": "1eaf4d9657fe65ad10a51eab76a8db5b363bddaa",
+        "model_repo": "bartowski/Qwen_Qwen3.5-2B-GGUF",
+        "model_revision": "8de6479d2743924f9dc499e3654d4e51ea0d4b9d",
+        "model_source_file_commit": "8de6479d2743924f9dc499e3654d4e51ea0d4b9d",
         "model_filename": model.name,
         "model_sha256": sha256(model),
         "llama_cpp_repo": "ggml-org/llama.cpp",
@@ -161,7 +185,7 @@ def software_manifest(model: Path, server: Path) -> dict:
 
 
 def test_product_runtime_accepts_hash_bound_software_release_assets(tmp_path):
-    model = tmp_path / "Qwen3-0.6B-Q8_0.gguf"
+    model = tmp_path / "Qwen_Qwen3.5-2B-Q4_K_M.gguf"
     model.write_bytes(b"software-model")
     server = tmp_path / "llama-server.exe"
     server.write_bytes(b"software-server")
@@ -197,10 +221,371 @@ def test_product_runtime_accepts_hash_bound_software_release_assets(tmp_path):
 
 
 def test_product_runtime_rejects_partial_software_mode(tmp_path):
-    model = tmp_path / "Qwen3-0.6B-Q8_0.gguf"
+    model = tmp_path / "Qwen_Qwen3.5-2B-Q4_K_M.gguf"
     model.write_bytes(b"model")
     with pytest.raises(ValueError, match="requires model, llama-server and manifest"):
         ProductRuntime(
             tmp_path / "data",
             software_model=model,
         )
+
+
+def test_quality_guard_flags_weak_capability_answer_and_runtime_leak():
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Bạn làm được gì?",
+        state=LivingState(identity_id="quality-test"),
+    )
+    profile = ProductProfile(language="vi")
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Bạn đang cần gì?",
+    )
+    assert "capability_too_thin" in issues
+    assert "capability_askback" in issues
+
+    leaked = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Personalization: preferred_name=Huy assistant_name=Mây",
+    )
+    assert "runtime_context_leak" in leaked
+
+
+def test_quality_guard_retries_one_bad_draft_with_low_temperature():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Bạn đang cần gì?",
+        (
+            "Mình có thể giúp bạn giải thích kiến thức, phân tích vấn đề, "
+            "viết và chỉnh sửa nội dung, dịch, tóm tắt, lên kế hoạch và "
+            "trò chuyện theo ngữ cảnh của bạn."
+        ),
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Bạn làm được gì?",
+        state=LivingState(identity_id="quality-repair"),
+    )
+    reply = cortex.generate(request)
+
+    assert reply.utterance.startswith("Mình có thể giúp bạn")
+    assert len(calls) == 2
+    assert calls[0]["temperature"] == 0.45
+    assert calls[0]["max_tokens"] == 256
+    assert calls[1]["temperature"] == 0.15
+    assert "Quality repair is required" in calls[1]["messages"][0]["content"]
+
+
+def test_quality_guard_respects_explicit_language_override():
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Hãy trả lời bằng tiếng Anh: Paris là gì?",
+        state=LivingState(identity_id="language-override"),
+    )
+    profile = ProductProfile(language="vi")
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Paris is the capital city of France.",
+    )
+    assert "vietnamese_lock_suspect" not in issues
+
+
+def test_quality_guard_enforces_explicit_exact_literal_reply():
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Chỉ trả lời đúng hai từ: Xin chào",
+        state=LivingState(identity_id="exact-reply"),
+    )
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="compact",
+    )
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Xin chào Huy",
+    )
+    assert "exact_reply_mismatch" in issues
+
+    cortex = object.__new__(gguf.GgufProductCortex)
+    cortex.profile_getter = lambda: profile
+    replies = iter(["Xin chào Huy", "Xin chào Huy!"])
+    cortex._chat = lambda *args, **kwargs: next(replies)
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Xin chào"
+
+
+def test_quality_guard_repairs_recent_turn_recall_askback():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Bạn vừa nói mình thích đồ uống gì?",
+        "Bạn thích cà phê hơn trà.",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Tôi vừa nói mình thích đồ uống nào hơn?",
+        state=LivingState(identity_id="recall-repair"),
+        recent_messages=[
+            {
+                "role": "user",
+                "content": "Tôi thích cà phê hơn trà. Hãy nhớ điều này.",
+            },
+            {
+                "role": "assistant",
+                "content": "Được rồi, tôi sẽ nhớ rằng bạn thích cà phê hơn trà.",
+            },
+        ],
+    )
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Bạn vừa nói mình thích đồ uống gì?",
+    )
+    assert "recall_askback" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Bạn thích cà phê hơn trà."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "recent-turn recall question" in calls[1]["messages"][0]["content"]
+
+
+def test_quality_guard_repairs_and_falls_back_for_reversed_relation_chain():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Cường cao nhất. Vì An < Bình < Cường.",
+        "Cường cao nhất.",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="An cao hơn Bình, Bình cao hơn Cường. Ai cao nhất?",
+        state=LivingState(identity_id="relation-repair"),
+    )
+
+    contract = gguf.GgufProductCortex._simple_relation_contract(
+        request.user_text
+    )
+    assert contract is not None
+    assert contract[0] == "An"
+    assert contract[1] == "cao"
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Cường cao nhất. Vì An < Bình < Cường.",
+    )
+    assert "simple_relation_inconsistent" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "An cao nhất."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "simple transitive relation problem" in calls[1]["messages"][0]["content"]
+
+
+def test_quality_guard_repairs_and_falls_back_for_basic_arithmetic_error():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "5 quả táo",
+        "5",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text=(
+            "Lan có 3 quả táo, được cho thêm 4 quả. "
+            "Lan có tất cả bao nhiêu quả táo?"
+        ),
+        state=LivingState(identity_id="arithmetic-repair"),
+    )
+
+    contract = gguf.GgufProductCortex._simple_arithmetic_contract(
+        request.user_text
+    )
+    assert contract == 7
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="5 quả táo",
+    )
+    assert "simple_arithmetic_inconsistent" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Kết quả là 7."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "simple arithmetic problem" in calls[1]["messages"][0]["content"]
+
+
+def test_simple_arithmetic_contract_supports_explicit_integer_operators():
+    resolve = gguf.GgufProductCortex._simple_arithmetic_contract
+
+    assert resolve("12 + 5 bằng bao nhiêu?") == 17
+    assert resolve("12 - 5 bằng bao nhiêu?") == 7
+    assert resolve("12 * 5 bằng bao nhiêu?") == 60
+    assert resolve("12 / 3 bằng bao nhiêu?") == 4
+    assert resolve("12 / 5 bằng bao nhiêu?") is None
+
+
+def test_quality_guard_recovers_explicit_recent_preference_semantically():
+    cortex = object.__new__(gguf.GgufProductCortex)
+    profile = ProductProfile(
+        preferred_name="Huy",
+        assistant_name="Mây",
+        language="vi",
+        response_length="balanced",
+    )
+    cortex.profile_getter = lambda: profile
+    replies = iter([
+        "Bạn vừa nói mình thích đồ uống.",
+        "Bạn vừa nói mình thích đồ uống.",
+    ])
+    calls = []
+
+    def fake_chat(messages, *, max_tokens, temperature, top_p):
+        calls.append(
+            {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+            }
+        )
+        return next(replies)
+
+    cortex._chat = fake_chat
+    request = CortexRequest(
+        mode="reply",
+        intent="respond_to_user",
+        user_text="Tôi vừa nói mình thích đồ uống nào hơn?",
+        state=LivingState(identity_id="preference-semantic-recall"),
+        recent_messages=[
+            {
+                "role": "user",
+                "content": "Tôi thích cà phê hơn trà. Hãy nhớ điều này trong cuộc trò chuyện.",
+            },
+            {
+                "role": "assistant",
+                "content": "Đã ghi nhớ. Bạn thích cà phê hơn trà.",
+            },
+        ],
+    )
+
+    contract = gguf.GgufProductCortex._recent_preference_contract(request)
+    assert contract == ("cà phê", "trà")
+
+    issues = gguf.GgufProductCortex._quality_issues(
+        profile=profile,
+        request=request,
+        text="Bạn vừa nói mình thích đồ uống.",
+    )
+    assert "preference_recall_incomplete" in issues
+
+    reply = cortex.generate(request)
+
+    assert reply.utterance == "Bạn thích cà phê hơn trà."
+    assert len(calls) == 2
+    assert calls[1]["temperature"] == 0.0
+    assert "name it explicitly" in calls[1]["messages"][0]["content"]

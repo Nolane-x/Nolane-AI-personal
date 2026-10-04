@@ -14,6 +14,7 @@ class CortexRequest:
     user_text: str | None
     state: LivingState
     memories: list[MemoryRecord] = field(default_factory=list)
+    recent_messages: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass(slots=True)
