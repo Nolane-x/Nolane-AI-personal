@@ -132,7 +132,7 @@ def test_gguf_product_cortex_uses_local_authenticated_llama_server(
         for row in calls
         if row["url"].endswith("/v1/chat/completions")
     )
-    assert chat_call["payload"]["max_tokens"] == 96
+    assert chat_call["payload"]["max_tokens"] == 128
     assert chat_call["payload"]["stream"] is False
     assert chat_call["payload"]["chat_template_kwargs"] == {
         "enable_thinking": False
