@@ -173,6 +173,12 @@ jobs:
         shell: pwsh
         run: tauri build --no-bundle
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nolane-v1-windows-native
+          if-no-files-found: error
+          path: apps/product-client/src-tauri/target/release/nolane-product-client.exe
+
   mobile-native:
     name: Android native kernel
     runs-on: ubuntu-latest
@@ -366,3 +372,9 @@ jobs:
         shell: bash
         run: |
           test -n "$(find apps/product-client/src-tauri/gen/android/app/build/outputs/apk -name '*.apk' -type f -print -quit)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nolane-v1-android-arm64-apk
+          if-no-files-found: error
+          path: apps/product-client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
